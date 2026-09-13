@@ -1,0 +1,6 @@
+{
+  "action": "click",
+  "target": "el_1",
+  "reasoning": "The Submit button is the only remaining step for the task.",
+  "confidence": 0.9
+}

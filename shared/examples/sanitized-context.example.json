@@ -1,0 +1,52 @@
+{
+  "protocolVersion": "0.1.0",
+  "sessionId": "3f1c2a9e-7d4b-4c0e-9a1f-2b6d8e5c7a10",
+  "stepIndex": 0,
+  "task": "Submit the contact form",
+  "page": {
+    "url": "https://example.com/contact",
+    "title": "Contact us",
+    "capturedAt": "2026-09-13T10:00:00.000Z"
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scrollX": 0,
+    "scrollY": 0,
+    "devicePixelRatio": 1
+  },
+  "elements": [
+    {
+      "id": "el_0",
+      "role": "textbox",
+      "label": "Email",
+      "bbox": { "x": 100, "y": 200, "width": 300, "height": 32 },
+      "attributes": { "type": "email", "placeholder": "you@example.com" },
+      "isVisible": true,
+      "isInteractive": true,
+      "redacted": true
+    },
+    {
+      "id": "el_1",
+      "role": "button",
+      "label": "Submit",
+      "bbox": { "x": 100, "y": 260, "width": 120, "height": 40 },
+      "isVisible": true,
+      "isInteractive": true
+    }
+  ],
+  "screenshot": null,
+  "redactions": [
+    {
+      "bbox": { "x": 100, "y": 200, "width": 300, "height": 32 },
+      "category": "email",
+      "confidence": 0.98,
+      "method": "dom"
+    }
+  ],
+  "history": [],
+  "perception": {
+    "modelId": "placeholder",
+    "latencyMs": 0
+  }
+}
