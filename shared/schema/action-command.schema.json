@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odpa.local/schema/action-command.schema.json",
+  "title": "ActionCommand",
+  "description": "Response from /process: a single command for the extension to execute. Mirrors shared/src/types.ts#ActionCommand. Discriminated on `action`.",
+  "type": "object",
+  "required": ["action"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["click", "type", "scroll", "navigate", "wait", "done", "ask_user", "noop"]
+    },
+    "reasoning": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "oneOf": [
+    {
+      "title": "ClickAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "click" },
+        "target": { "type": "string", "minLength": 1 },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "target"],
+      "additionalProperties": false
+    },
+    {
+      "title": "TypeAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "type" },
+        "target": { "type": "string", "minLength": 1 },
+        "text": { "type": "string" },
+        "submit": { "type": "boolean" },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "target", "text"],
+      "additionalProperties": false
+    },
+    {
+      "title": "ScrollAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "scroll" },
+        "direction": { "type": "string", "enum": ["up", "down"] },
+        "amountPx": { "type": "number", "minimum": 0 },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "direction"],
+      "additionalProperties": false
+    },
+    {
+      "title": "NavigateAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "navigate" },
+        "url": { "type": "string", "format": "uri" },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "url"],
+      "additionalProperties": false
+    },
+    {
+      "title": "WaitAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "wait" },
+        "ms": { "type": "integer", "minimum": 0 },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "ms"],
+      "additionalProperties": false
+    },
+    {
+      "title": "DoneAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "done" },
+        "summary": { "type": "string" },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "summary"],
+      "additionalProperties": false
+    },
+    {
+      "title": "AskUserAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "ask_user" },
+        "question": { "type": "string" },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "question"],
+      "additionalProperties": false
+    },
+    {
+      "title": "NoopAction",
+      "type": "object",
+      "properties": {
+        "action": { "const": "noop" },
+        "reason": { "type": "string" },
+        "reasoning": true,
+        "confidence": true
+      },
+      "required": ["action", "reason"],
+      "additionalProperties": false
+    }
+  ]
+}
