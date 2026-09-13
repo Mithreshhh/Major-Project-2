@@ -1,0 +1,27 @@
+{
+  "name": "on-device-perception-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-preserving browser agent: on-device perception + redaction in a browser extension, server-side VLM reasoning, client-side action execution.",
+  "license": "MIT",
+  "workspaces": [
+    "shared",
+    "perception",
+    "extension"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=extension",
+    "dev": "npm run dev --workspace=extension",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "server:install": "cd server && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
+    "server:dev": "cd server && .venv/Scripts/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "server:test": "cd server && .venv/Scripts/python -m pytest -q"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
