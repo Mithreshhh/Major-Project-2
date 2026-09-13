@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odpa.local/schema/sanitized-context.schema.json",
+  "title": "SanitizedContext",
+  "description": "Payload POSTed by the extension to /process. Everything in here has already been redacted on-device. Mirrors shared/src/types.ts#SanitizedContext.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "sessionId",
+    "stepIndex",
+    "task",
+    "page",
+    "viewport",
+    "elements",
+    "screenshot",
+    "redactions",
+    "history",
+    "perception"
+  ],
+  "properties": {
+    "protocolVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "stepIndex": { "type": "integer", "minimum": 0 },
+    "task": { "type": "string" },
+    "page": { "$ref": "#/$defs/PageMeta" },
+    "viewport": { "$ref": "#/$defs/Viewport" },
+    "elements": { "type": "array", "items": { "$ref": "#/$defs/UIElement" } },
+    "screenshot": {
+      "oneOf": [{ "$ref": "#/$defs/SanitizedScreenshot" }, { "type": "null" }]
+    },
+    "redactions": { "type": "array", "items": { "$ref": "#/$defs/RedactedRegion" } },
+    "history": {
+      "type": "array",
+      "items": { "$ref": "action-command.schema.json" }
+    },
+    "perception": { "$ref": "#/$defs/PerceptionSummary" }
+  },
+  "$defs": {
+    "BoundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 }
+      }
+    },
+    "Viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "scrollX", "scrollY", "devicePixelRatio"],
+      "properties": {
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "scrollX": { "type": "number" },
+        "scrollY": { "type": "number" },
+        "devicePixelRatio": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "PageMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title", "capturedAt"],
+      "properties": {
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "capturedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ElementRole": {
+      "type": "string",
+      "enum": [
+        "button", "link", "textbox", "checkbox", "radio", "select",
+        "option", "image", "heading", "text", "other"
+      ]
+    },
+    "UIElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "label", "bbox", "isVisible", "isInteractive"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/ElementRole" },
+        "label": { "type": "string" },
+        "bbox": { "$ref": "#/$defs/BoundingBox" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "isVisible": { "type": "boolean" },
+        "isInteractive": { "type": "boolean" },
+        "redacted": { "type": "boolean" }
+      }
+    },
+    "SensitiveCategory": {
+      "type": "string",
+      "enum": ["pii_text", "credential", "payment_card", "face", "address", "email", "phone", "other"]
+    },
+    "RedactedRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bbox", "category", "confidence", "method"],
+      "properties": {
+        "bbox": { "$ref": "#/$defs/BoundingBox" },
+        "category": { "$ref": "#/$defs/SensitiveCategory" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "method": { "type": "string", "enum": ["ml", "heuristic", "dom"] }
+      }
+    },
+    "SanitizedScreenshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mimeType", "dataBase64", "width", "height"],
+      "properties": {
+        "mimeType": { "type": "string", "enum": ["image/png", "image/jpeg", "image/webp"] },
+        "dataBase64": { "type": "string", "contentEncoding": "base64" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "PerceptionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "latencyMs"],
+      "properties": {
+        "modelId": { "type": "string" },
+        "latencyMs": { "type": "number", "minimum": 0 },
+        "embedding": { "type": "array", "items": { "type": "number" } }
+      }
+    }
+  }
+}
