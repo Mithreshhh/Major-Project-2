@@ -4,9 +4,10 @@ A privacy-preserving browser agent. Perception and redaction happen **on the use
 inside a browser extension; only a sanitized, PII-free context is sent to a server-side
 vision-language model (VLM) for reasoning; the returned action is executed back in the browser.
 
-> **Status: scaffolding.** The end-to-end loop runs with a placeholder perception model, a
-> pass-through redaction layer, and a mock reasoner. Search the code for `TODO(model)`,
-> `TODO(redaction)`, and `TODO(vlm)` to find where the real work goes.
+> **Status: server reasoning and on-device face detection are real; redaction is not yet.**
+> The client runs an UltraFace face detector through ONNX Runtime Web, the server reasons with a
+> local Gemma model via Ollama, and the redaction layer between them is still a pass-through.
+> Search the code for `TODO(redaction)` and `TODO(ui-model)` for the remaining work.
 
 ## Architecture
 
@@ -30,8 +31,10 @@ vision-language model (VLM) for reasoning; the returned action is executed back 
 ```
 
 1. **Capture.** The content script summarises visible UI elements (role, label, bounding box,
-   whitelisted attributes; never form values). The background worker screenshots the tab.
-2. **Perceive.** A lightweight ViT runs via ONNX Runtime Web inside the extension.
+   whitelisted attributes; never form values). Screenshot capture exists but is switched off
+   (`sendScreenshot: false` in `extension/src/shared/config.ts`) until redaction is implemented.
+2. **Perceive.** An UltraFace face detector runs via ONNX Runtime Web inside the extension and
+   reports face boxes as sensitive regions. Visual UI-element detection is a placeholder.
 3. **Redact.** DOM heuristics, text heuristics and model detections mark sensitive regions,
    which are masked in the pixels and the DOM summary. The client is the trust boundary.
 4. **Reason.** The `SanitizedContext` is POSTed to the server, which returns one `ActionCommand`
@@ -43,8 +46,8 @@ vision-language model (VLM) for reasoning; the returned action is executed back 
 | Path | What | Stack |
 | --- | --- | --- |
 | [`extension/`](extension/) | Manifest V3 extension (Chrome + Firefox): content script, background worker, build tooling | TypeScript, esbuild |
-| [`perception/`](perception/) | On-device ML: ONNX Runtime Web integration (`inference.ts`) and redaction stubs (`redaction.ts`) | TypeScript, onnxruntime-web |
-| [`server/`](server/) | Reasoning backend: `POST /process` with a mock reasoner and a `VLMReasoner` stub | Python, FastAPI, Pydantic |
+| [`perception/`](perception/) | On-device ML: UltraFace face detection via ONNX Runtime Web (`inference.ts`), redaction stubs (`redaction.ts`) | TypeScript, onnxruntime-web |
+| [`server/`](server/) | Reasoning backend: `POST /process` prompts a local Gemma model through Ollama; `GET /health/gemma` diagnoses it | Python, FastAPI, Pydantic, httpx |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas for `SanitizedContext` and `ActionCommand` | TypeScript, JSON Schema |
 
 The root `package.json` is an npm workspace managing `shared`, `perception`, and `extension`.
@@ -55,6 +58,8 @@ The server is a plain Python project with its own virtualenv.
 - Node.js 20+ and npm 9+
 - Python 3.11+
 - Chrome 120+ and/or Firefox 128+
+- [Ollama](https://ollama.com) with the model `ledgerguard-gemma4-e2b-q4-0:latest` available
+  (`ollama list` should show it). Another tag can be used via `OLLAMA_MODEL`.
 
 ## Quick start
 
@@ -63,7 +68,8 @@ The server is a plain Python project with its own virtualenv.
 ```bash
 npm install          # installs all workspaces
 npm run typecheck    # tsc across shared, perception, extension
-npm run build        # -> extension/dist/chrome and extension/dist/firefox
+npm test             # perception: real face detection over sample images; extension: bundle smoke tests
+npm run build        # -> extension/dist/chrome and extension/dist/firefox (models and ORT wasm included)
 ```
 
 `npm run dev` rebuilds on change (reload the extension in the browser to pick it up).
@@ -96,24 +102,30 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Check it: <http://127.0.0.1:8000/health> should return `{"status":"ok","protocolVersion":"0.1.0","reasoner":"mock"}`.
-Interactive docs live at <http://127.0.0.1:8000/docs>.
+Check it: <http://127.0.0.1:8000/health> should return
+`{"status":"ok","protocolVersion":"0.1.0","reasoner":"gemma","model":"ledgerguard-gemma4-e2b-q4-0:latest"}`.
+Then <http://127.0.0.1:8000/health/gemma?warm=true> confirms Ollama is reachable, the model tag
+exists, and loads it into memory. Interactive docs live at <http://127.0.0.1:8000/docs>.
 
-Run the tests (contract tests against `shared/schema` plus endpoint tests):
+Configuration is by environment variable (`REASONER`, `OLLAMA_URL`, `OLLAMA_MODEL`, timeouts,
+element cap). See `server/.env.example`. `REASONER=mock` restores the deterministic stand-in.
+
+Run the tests:
 
 ```bash
-pytest -q
+pytest -q                                                          # unit tests, no Ollama needed
+$env:RUN_GEMMA_INTEGRATION = "1"; pytest tests/integration -q -s   # one live Gemma round-trip (PowerShell)
 ```
 
-From the repo root, `npm run server:install`, `npm run server:dev` and `npm run server:test`
-wrap the same commands (Windows paths).
+From the repo root, `npm run server:install`, `npm run server:dev`, `npm run server:test` and
+`npm run server:test:gemma` wrap the same commands (Windows paths).
 
 ### 4. Run one agent step
 
 1. With the server running and the extension loaded, open any `http(s)` page.
 2. Click the extension's toolbar icon. One step runs: capture → perceive → redact → `/process` → execute.
-3. Watch the background console. The mock reasoner clicks the first visible button
-   (preferring one labelled "Submit") or returns `noop`.
+3. Watch the background console. Gemma picks one action from the element list; the first call
+   also loads the model, so allow around ten seconds for it.
 
 Optional settings via the extension's storage (e.g. from the service-worker console):
 
@@ -139,16 +151,21 @@ the JSON Schemas and the Pydantic models, so the two sides can be developed inde
 
 | Marker | File | Work |
 | --- | --- | --- |
-| `TODO(model)` | `perception/src/inference.ts`, `extension/src/shared/config.ts` | Export a lightweight ViT to ONNX, place it in `extension/public/models/`, implement `preprocess`/`postprocess`, enable `InferenceSession.create` |
-| `TODO(redaction)` | `perception/src/redaction.ts`, `extension/src/content/index.ts` | DOM + text + ML detectors, in-place pixel masking, label masking, URL scrubbing |
-| `TODO(vlm)` | `server/app/reasoning.py` | Prompt construction, VLM call, output parsing/validation in `VLMReasoner` |
+| `TODO(redaction)` | `perception/src/redaction.ts`, `extension/src/content/index.ts` | Consume `sensitiveRegions` (faces are real now), DOM + text detectors, in-place pixel masking, label masking, URL scrubbing |
+| `TODO(ui-model)` | `perception/src/inference.ts` | Fine-tuned visual UI-element detector to fill the `uiElements` placeholder |
 | `TODO(agent)` | `extension/src/content/index.ts` | Confirmation UI for destructive actions, target highlighting, multi-step loop |
+
+Server-side reasoning is implemented in `server/app/prompting.py` and `server/app/reasoning.py`
+(Gemma via Ollama, JSON-mode prompt, lenient parser, one retry). Prompt tuning and a
+vision-capable model are the natural follow-ups there.
 
 ## Security note
 
 Until `TODO(redaction)` is implemented **nothing is actually redacted**; the pipeline forwards
-the DOM summary and screenshot as captured. Only run against local or non-sensitive pages, and
-keep the server on `localhost`.
+the DOM summary (labels, placeholders, page URL and title) as captured. No pixels leave the
+browser while `sendScreenshot` is false, and `npm test` in `extension/` checks that the step
+never calls `captureVisibleTab` in that state. Only run against local or non-sensitive pages,
+and keep the server on `localhost`.
 
 ## License
 

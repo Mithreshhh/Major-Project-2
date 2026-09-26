@@ -13,10 +13,12 @@
     "build": "npm run build --workspace=extension",
     "dev": "npm run dev --workspace=extension",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
     "server:install": "cd server && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
     "server:dev": "cd server && .venv/Scripts/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
-    "server:test": "cd server && .venv/Scripts/python -m pytest -q"
+    "server:test": "cd server && .venv/Scripts/python -m pytest -q",
+    "server:test:gemma": "cd server && set RUN_GEMMA_INTEGRATION=1&& .venv/Scripts/python -m pytest tests/integration -q -s"
   },
   "engines": {
     "node": ">=20"
