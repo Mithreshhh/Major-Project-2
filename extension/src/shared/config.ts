@@ -12,8 +12,12 @@ export const CONFIG = {
   /** Task used when the user has not set one via chrome.storage.local { task }. */
   defaultTask: "Describe the next reasonable action on this page",
 
-  /** Set to false to send DOM-only context (no pixels) to the server. */
-  sendScreenshot: true,
+  /**
+   * false: the step never calls captureVisibleTab, never decodes or encodes pixels, never loads
+   * the on-device model, and sends `screenshot: null`. Keep it off until TODO(redaction) is
+   * implemented; until then any captured pixels would leave the device unmasked.
+   */
+  sendScreenshot: false as boolean,
   screenshotMimeType: "image/jpeg" as ScreenshotMimeType,
   screenshotQuality: 0.8,
 
@@ -25,12 +29,12 @@ export const CONFIG = {
 
   perception: {
     /**
-     * TODO(model): point at the ViT once it ships, e.g.
-     *   modelUrl: chrome.runtime.getURL("models/vit-tiny-ui-v0.onnx")
-     * Keep `null` to run in placeholder mode.
+     * UltraFace face detector, copied from perception/models into dist/<browser>/models by the
+     * build. RFB-640 for recall on small faces; swap to version-RFB-320.onnx for ~4x less compute.
+     * Only loaded when sendScreenshot is true (there is nothing to look at otherwise).
      */
-    modelUrl: null as string | null,
-    modelId: "vit-tiny-ui-v0",
-    inputSize: 224,
+    modelUrl: chrome.runtime.getURL("models/version-RFB-640.onnx") as string | null,
+    modelId: "ultraface-rfb-640",
+    scoreThreshold: 0.6,
   },
 } as const;

@@ -78,12 +78,23 @@ async function copyOrtAssets(outdir) {
   return files.length;
 }
 
-/** Static assets (icons, ONNX models, options page, ...) live in extension/public. */
+/** Static assets (icons, options page, ...) live in extension/public. */
 async function copyPublic(outdir) {
   const publicDir = path.join(extensionRoot, "public");
   if (await exists(publicDir)) {
     await cp(publicDir, outdir, { recursive: true });
   }
+}
+
+/** ONNX models are owned by the perception package; ship them at <outdir>/models/. */
+async function copyModels(outdir) {
+  const modelsDir = path.resolve(extensionRoot, "../perception/models");
+  if (!(await exists(modelsDir))) return 0;
+  const dest = path.join(outdir, "models");
+  await mkdir(dest, { recursive: true });
+  const files = (await readdir(modelsDir)).filter((f) => f.endsWith(".onnx"));
+  await Promise.all(files.map((f) => cp(path.join(modelsDir, f), path.join(dest, f))));
+  return files.length;
 }
 
 async function buildTarget(target) {
@@ -93,6 +104,7 @@ async function buildTarget(target) {
 
   await writeManifest(target, outdir);
   await copyPublic(outdir);
+  const modelFiles = await copyModels(outdir);
   const ortFiles = await copyOrtAssets(outdir);
 
   const ctx = await esbuild.context({
@@ -118,7 +130,7 @@ async function buildTarget(target) {
   } else {
     await ctx.rebuild();
     await ctx.dispose();
-    console.log(`[build] ${target} -> ${path.relative(extensionRoot, outdir)} (${ortFiles} ORT files)`);
+    console.log(`[build] ${target} -> ${path.relative(extensionRoot, outdir)} (${ortFiles} ORT file(s), ${modelFiles} model(s))`);
   }
 }
 

@@ -12,8 +12,14 @@
  *
  * Everything before step 5 happens on-device. Step 5 is the only network egress.
  */
-import { loadModel, runInference } from "@odpa/perception";
-import { sanitize } from "@odpa/perception";
+import {
+  loadModel,
+  placeholderOutput,
+  runInference,
+  sanitize,
+  type PerceptionOutput,
+  type RawImage,
+} from "@odpa/perception";
 import { PROTOCOL_VERSION, type ActionCommand, type SanitizedContext } from "@odpa/shared";
 
 import { BROWSER, CONFIG } from "../shared/config";
@@ -56,12 +62,12 @@ function ensurePerception(): Promise<boolean> {
     perceptionReady = loadModel({
       modelUrl: CONFIG.perception.modelUrl,
       modelId: CONFIG.perception.modelId,
-      inputSize: CONFIG.perception.inputSize,
+      scoreThreshold: CONFIG.perception.scoreThreshold,
       wasmBaseUrl: chrome.runtime.getURL("ort/"),
       executionProviders: ["wasm"],
       numThreads: 1,
     }).then((loaded) => {
-      console.info(LOG, loaded ? "perception model loaded" : "perception running in placeholder mode");
+      console.info(LOG, loaded ? `face detector loaded (${CONFIG.perception.modelId})` : "no perception model configured");
       return loaded;
     });
   }
@@ -82,6 +88,12 @@ async function sendToContent(tabId: number, request: ContentRequest): Promise<Co
     await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
     return (await chrome.tabs.sendMessage(tabId, request)) as ContentResponse;
   }
+}
+
+/** PNG of the visible viewport, decoded to RGBA. Only ever called when CONFIG.sendScreenshot is true. */
+async function captureScreenshot(windowId?: number): Promise<RawImage> {
+  const dataUrl = await chrome.tabs.captureVisibleTab(windowId as number, { format: "png" });
+  return decodeDataUrl(dataUrl);
 }
 
 async function captureDom(tabId: number): Promise<DomSnapshot> {
@@ -116,17 +128,25 @@ export async function runStep(tabId: number, windowId?: number): Promise<StepRes
     // 1. DOM snapshot
     const snapshot = await captureDom(tabId);
 
-    // 2. Screenshot (PNG data URL of the visible viewport)
-    const dataUrl = await chrome.tabs.captureVisibleTab(windowId as number, { format: "png" });
-    const rawImage = await decodeDataUrl(dataUrl);
+    // 2. Screenshot. With sendScreenshot=false this branch is skipped entirely: no
+    //    captureVisibleTab, no decode, and (below) no encode and no model load.
+    const rawImage: RawImage | null = CONFIG.sendScreenshot ? await captureScreenshot(windowId) : null;
 
-    // 3. On-device perception (placeholder until the ViT ships)
-    await ensurePerception();
-    const perception = await runInference(rawImage);
+    // 3. On-device perception: UltraFace face detection over the screenshot. No screenshot ->
+    //    nothing to detect, so the model is not even loaded.
+    let perception: PerceptionOutput;
+    if (rawImage) {
+      const loaded = await ensurePerception();
+      if (!loaded) throw new Error("screenshot captured but no perception model is configured; refusing to continue unredacted");
+      perception = await runInference(rawImage);
+      console.info(LOG, `perception: ${perception.sensitiveRegions.length} sensitive region(s) in ${perception.latencyMs} ms`);
+    } else {
+      perception = placeholderOutput();
+    }
 
     // 4. Redaction (pass-through until TODO(redaction) is done)
     const redacted = await sanitize({
-      screenshot: CONFIG.sendScreenshot ? rawImage : null,
+      screenshot: rawImage,
       elements: snapshot.elements,
       perception,
       devicePixelRatio: snapshot.viewport.devicePixelRatio,
@@ -182,11 +202,35 @@ chrome.runtime.onInstalled.addListener(() => {
   console.info(LOG, `installed (${BROWSER}), protocol ${PROTOCOL_VERSION}`);
 });
 
-chrome.action.onClicked.addListener((tab) => {
+/** Small status badge on the toolbar icon so a step is visible without opening DevTools. */
+async function setBadge(tabId: number, text: string, color: string): Promise<void> {
+  try {
+    await chrome.action.setBadgeText({ tabId, text });
+    await chrome.action.setBadgeBackgroundColor({ tabId, color });
+  } catch {
+    // Badge is cosmetic; never let it break a step.
+  }
+}
+
+chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id === undefined) return;
-  runStep(tab.id, tab.windowId)
-    .then((result) => console.info(LOG, "step complete", result))
-    .catch((err) => console.error(LOG, "step failed", err));
+
+  const url = tab.url ?? "";
+  if (!/^https?:/i.test(url)) {
+    console.warn(LOG, "This tab is not an http(s) page. Open a normal web page and click again.", url || "(no url)");
+    await setBadge(tab.id, "!", "#d1242f");
+    return;
+  }
+
+  await setBadge(tab.id, "...", "#6e7781");
+  try {
+    const result = await runStep(tab.id, tab.windowId);
+    console.info(LOG, "step complete", result);
+    await setBadge(tab.id, result.execution.ok ? "OK" : "ERR", result.execution.ok ? "#1a7f37" : "#d1242f");
+  } catch (err) {
+    console.error(LOG, "step failed", err);
+    await setBadge(tab.id, "ERR", "#d1242f");
+  }
 });
 
 // Forget session state when a tab goes away.
