@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent test page</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 16px; background: #f6f7f9; color: #1b1f24; }
+    main { max-width: 720px; margin: 0 auto; display: grid; gap: 24px; }
+    h1 { font-size: 22px; margin: 0; }
+    p.hint { margin: 0; color: #57606a; }
+    form, #log-panel { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    input[type=text], input[type=email], textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; margin-bottom: 14px; }
+    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+    button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #1f6feb; background: #1f6feb; color: #fff; cursor: pointer; }
+    button.secondary { background: #fff; color: #1f6feb; }
+    nav a { margin-right: 16px; }
+    #log { margin: 0; padding: 0; list-style: none; font-family: ui-monospace, monospace; font-size: 13px; max-height: 240px; overflow: auto; }
+    #log li { padding: 2px 0; border-bottom: 1px dashed #eaeef2; }
+    #status { font-weight: 600; color: #1a7f37; min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <main>
+    <div>
+      <h1>Agent test page</h1>
+      <p class="hint">A harmless form for exercising the extension. Nothing is sent anywhere; every event is logged below.</p>
+    </div>
+
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <form id="contact" aria-label="Contact form">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" />
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" />
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" rows="3" placeholder="How can we help?"></textarea>
+
+      <div class="row">
+        <input id="newsletter" name="newsletter" type="checkbox" />
+        <label for="newsletter" style="margin:0;font-weight:400">Subscribe to the newsletter</label>
+      </div>
+
+      <div class="row">
+        <button type="submit">Submit</button>
+        <button type="button" class="secondary" id="clear">Clear form</button>
+      </div>
+      <div id="status" role="status"></div>
+    </form>
+
+    <section id="log-panel">
+      <strong>Event log</strong>
+      <ul id="log"></ul>
+    </section>
+  </main>
+
+  <script>
+    const log = document.getElementById("log");
+    const status = document.getElementById("status");
+    const form = document.getElementById("contact");
+
+    function record(text) {
+      const li = document.createElement("li");
+      li.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+      log.prepend(li);
+    }
+
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest("button, a, input, label");
+      if (el) record(`click  <${el.tagName.toLowerCase()}> ${el.id ? "#" + el.id : ""} "${(el.textContent || el.value || "").trim().slice(0, 40)}"`);
+    });
+    document.addEventListener("input", (e) => {
+      record(`input  #${e.target.id} = "${String(e.target.value).slice(0, 60)}"`);
+    });
+    document.addEventListener("change", (e) => {
+      if (e.target.type === "checkbox") record(`change #${e.target.id} checked=${e.target.checked}`);
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      record(`submit ${JSON.stringify(data)}`);
+      status.textContent = "Form submitted. Thanks!";
+    });
+
+    document.getElementById("clear").addEventListener("click", () => {
+      form.reset();
+      status.textContent = "";
+      record("form reset");
+    });
+
+    record("page ready");
+  </script>
+</body>
+</html>
