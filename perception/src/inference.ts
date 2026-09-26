@@ -1,131 +1,200 @@
 /**
- * ONNX Runtime Web integration for the on-device ViT.
+ * ONNX Runtime Web integration: on-device face detection with UltraFace.
  *
- * Status: SCAFFOLD. The runtime is wired up (env configuration, session lifecycle, typed I/O),
- * but no model is loaded and no tensors are produced yet. Every place that needs real model
- * logic is marked with `TODO(model)`.
+ * Model: Ultra-Light-Fast-Generic-Face-Detector-1MB, RFB variant (Linzaer, MIT licence).
+ *   https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
+ *   models/onnx/version-RFB-320.onnx  input 1x3x240x320, 4420 anchors  (~1.3 MB)
+ *   models/onnx/version-RFB-640.onnx  input 1x3x480x640, 17640 anchors (~1.6 MB)
+ * The ONNX export already applies softmax and anchor decoding, so the JS side only resizes,
+ * normalises, thresholds and runs NMS. See ../README.md for why this model and the checksums.
  *
- * Runtime notes for later:
- *   - Inside an MV3 service worker there is no SharedArrayBuffer and no `import()`, so:
- *       * numThreads must be 1,
- *       * ort.env.wasm.proxy must be false,
- *       * the extension manifest needs `'wasm-unsafe-eval'` in its CSP (already set),
- *       * the .wasm files must ship inside the extension (the build script copies them to /ort).
- *   - If WebGPU is wanted later, an offscreen document is the safer host than the worker.
+ * Output split:
+ *   sensitiveRegions  REAL: faces, in screenshot pixel space
+ *   uiElements        PLACEHOLDER: empty until a UI-detection model exists (TODO(ui-model))
+ *
+ * Runtime notes for MV3 service workers: numThreads 1, proxy false, 'wasm-unsafe-eval' in the
+ * manifest CSP, and the .wasm shipped inside the extension (the build copies it to /ort).
  */
+import type { UIElement } from "@odpa/shared";
 import * as ort from "onnxruntime-web";
 
-import type { PerceptionConfig, PerceptionOutput, RawImage } from "./types";
-import { DEFAULT_PERCEPTION_CONFIG } from "./types";
+import { decodeUltraFace, nms, toSensitiveRegions } from "./postprocess";
+import { preprocess } from "./preprocess";
+import { DEFAULT_PERCEPTION_CONFIG, type PerceptionConfig, type PerceptionOutput, type RawImage } from "./types";
 
-/** Reported as `modelId` whenever no real model is loaded. */
+/** `modelId` of outputs produced without running a model (perception intentionally skipped). */
 export const PLACEHOLDER_MODEL_ID = "placeholder";
 
-let session: ort.InferenceSession | null = null;
+interface LoadedModel {
+  session: ort.InferenceSession;
+  inputName: string;
+  scoresName: string;
+  boxesName: string;
+  inputWidth: number;
+  inputHeight: number;
+}
+
+let loaded: LoadedModel | null = null;
 let activeConfig: PerceptionConfig = DEFAULT_PERCEPTION_CONFIG;
 
 /** Apply runtime-wide ONNX Runtime settings. Safe to call more than once. */
 export function configureRuntime(config: Partial<PerceptionConfig> = {}): PerceptionConfig {
   activeConfig = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
-
-  ort.env.wasm.wasmPaths = activeConfig.wasmBaseUrl;
+  if (activeConfig.wasmBaseUrl) {
+    ort.env.wasm.wasmPaths = activeConfig.wasmBaseUrl;
+  }
   ort.env.wasm.numThreads = activeConfig.numThreads;
   ort.env.wasm.proxy = false;
-  // Keep ORT quiet unless we are debugging the model.
   ort.env.logLevel = "warning";
-
   return activeConfig;
 }
 
 /**
- * Load the ViT session. Returns `true` when a real model is ready, `false` when running in
- * placeholder mode (no `modelUrl` configured yet).
+ * Load the face detector. Returns `true` when a session is ready, `false` when no model source
+ * was configured (callers should then use `placeholderOutput()` rather than `runInference`).
  */
 export async function loadModel(config: Partial<PerceptionConfig> = {}): Promise<boolean> {
   const cfg = configureRuntime(config);
+  await disposeModel();
 
-  if (!cfg.modelUrl) {
-    session = null;
-    return false;
-  }
+  const source = cfg.modelBytes ?? cfg.modelUrl;
+  if (!source) return false;
 
-  // TODO(model): enable once a lightweight ViT export (.onnx) is shipped in extension/public/models.
-  //   session = await ort.InferenceSession.create(cfg.modelUrl, {
-  //     executionProviders: cfg.executionProviders,
-  //     graphOptimizationLevel: "all",
-  //   });
-  //   Validate session.inputNames / session.outputNames against the expected ViT signature here.
-  throw new Error(
-    "loadModel: a modelUrl was provided but real model loading is not implemented yet (see TODO(model))."
-  );
+  const options: ort.InferenceSession.SessionOptions = {
+    executionProviders: cfg.executionProviders,
+    graphOptimizationLevel: "all",
+    // The upstream export lists every weight as a graph input; ORT warns once per weight
+    // (hundreds of lines). Errors only.
+    logSeverityLevel: 3,
+  };
+
+  const session =
+    typeof source === "string"
+      ? await ort.InferenceSession.create(source, options)
+      : await ort.InferenceSession.create(source, options);
+
+  loaded = resolveIo(session, cfg);
+  return true;
 }
 
-/** True when a real ONNX session is loaded (as opposed to placeholder mode). */
+/** Work out tensor names and the fixed input size from the session metadata. */
+function resolveIo(session: ort.InferenceSession, cfg: PerceptionConfig): LoadedModel {
+  const inputs = tensorMetadata(session.inputMetadata);
+  const outputs = tensorMetadata(session.outputMetadata);
+
+  const input = inputs.find((m) => m.shape.length === 4) ?? inputs[0];
+  const inputName = input?.name ?? session.inputNames[0];
+  if (!inputName) throw new Error("loadModel: model has no inputs");
+
+  const dims = input?.shape ?? [];
+  const inputHeight = typeof dims[2] === "number" && dims[2] > 0 ? dims[2] : cfg.inputHeight;
+  const inputWidth = typeof dims[3] === "number" && dims[3] > 0 ? dims[3] : cfg.inputWidth;
+
+  const byLastDim = (n: number) => outputs.find((m) => m.shape[m.shape.length - 1] === n)?.name;
+  const byName = (n: string) => session.outputNames.find((name) => name.toLowerCase() === n);
+  const scoresName = byLastDim(2) ?? byName("scores") ?? session.outputNames[0];
+  const boxesName = byLastDim(4) ?? byName("boxes") ?? session.outputNames[1];
+  if (!scoresName || !boxesName || scoresName === boxesName) {
+    throw new Error(
+      `loadModel: could not identify UltraFace outputs (scores [1,N,2], boxes [1,N,4]) among ${session.outputNames.join(", ")}`
+    );
+  }
+
+  return { session, inputName, scoresName, boxesName, inputWidth, inputHeight };
+}
+
+function tensorMetadata(
+  list: readonly ort.InferenceSession.ValueMetadata[] | undefined
+): ort.InferenceSession.TensorValueMetadata[] {
+  return (list ?? []).filter((m): m is ort.InferenceSession.TensorValueMetadata => m.isTensor);
+}
+
+/** True when a real ONNX session is loaded. */
 export function isModelLoaded(): boolean {
-  return session !== null;
+  return loaded !== null;
 }
 
 /** Release the session (e.g. when the extension is suspended). */
 export async function disposeModel(): Promise<void> {
-  if (session) {
+  if (loaded) {
+    const { session } = loaded;
+    loaded = null;
     await session.release();
-    session = null;
   }
 }
 
 /**
- * Convert an RGBA bitmap into the NCHW float32 tensor a ViT expects.
+ * PLACEHOLDER for visual UI-element detection.
  *
- * TODO(model): implement
- *   1. resize/letterbox `image` to `inputSize` x `inputSize`,
- *   2. drop alpha, convert to float, apply the model's mean/std normalisation,
- *   3. transpose HWC -> CHW and wrap in `new ort.Tensor("float32", data, [1, 3, S, S])`.
+ * TODO(ui-model): run a fine-tuned UI detector (buttons, inputs, links, icons) and return them
+ * shaped as wire `UIElement`s with ids like "vis_0", so the background can merge them with the
+ * DOM snapshot (useful for canvas apps, images of buttons, and cross-origin iframes the content
+ * script cannot see). Until then this is intentionally an empty list, never fake data.
  */
-export function preprocess(_image: RawImage, _inputSize: number): ort.Tensor {
-  throw new Error("preprocess: not implemented yet (see TODO(model)).");
+export function detectUiElementsPlaceholder(_image: RawImage): UIElement[] {
+  return [];
+}
+
+/** Output for a step where perception was intentionally skipped (e.g. no screenshot taken). */
+export function placeholderOutput(): PerceptionOutput {
+  return { modelId: PLACEHOLDER_MODEL_ID, latencyMs: 0, sensitiveRegions: [], uiElements: [] };
 }
 
 /**
- * Turn raw model outputs into `PerceptionOutput.regions` / `.embedding`.
+ * Run the face detector over a decoded screenshot.
  *
- * TODO(model): implement once the output head is decided (patch-level classification,
- * detection head, or plain CLS embedding). Map any patch/grid coordinates back to
- * *screenshot pixel* space using the original `image` dimensions.
- */
-export function postprocess(
-  _outputs: ort.InferenceSession.OnnxValueMapType,
-  _image: RawImage
-): Pick<PerceptionOutput, "regions" | "embedding"> {
-  throw new Error("postprocess: not implemented yet (see TODO(model)).");
-}
-
-/**
- * Run the on-device model over a decoded screenshot.
- *
- * In placeholder mode (no model loaded) this resolves immediately with an empty result so the
- * capture -> redact -> server -> execute loop can be developed and tested end-to-end.
+ * Throws if no model is loaded: silently returning "no faces" would be a privacy bug, so
+ * callers must either load a model or explicitly opt into `placeholderOutput()`.
  */
 export async function runInference(image: RawImage): Promise<PerceptionOutput> {
+  if (!loaded) {
+    throw new Error(
+      "runInference: no model loaded. Call loadModel({ modelUrl | modelBytes }) first, or use placeholderOutput() when perception is intentionally skipped."
+    );
+  }
   const startedAt = performance.now();
+  const { session, inputName, scoresName, boxesName, inputWidth, inputHeight } = loaded;
 
-  if (!session) {
-    return {
-      modelId: PLACEHOLDER_MODEL_ID,
-      latencyMs: Math.round(performance.now() - startedAt),
-      regions: [],
-    };
+  const inputData = preprocess(image, inputWidth, inputHeight);
+  const input = new ort.Tensor("float32", inputData, [1, 3, inputHeight, inputWidth]);
+  const outputs = await session.run({ [inputName]: input });
+
+  const scores = outputs[scoresName];
+  const boxes = outputs[boxesName];
+  if (!scores || !boxes) {
+    throw new Error(`runInference: model did not return ${scoresName}/${boxesName}`);
   }
 
-  // TODO(model): real forward pass.
-  //   const input = preprocess(image, activeConfig.inputSize);
-  //   const feeds = { [session.inputNames[0]!]: input };
-  //   const outputs = await session.run(feeds);
-  //   const { regions, embedding } = postprocess(outputs, image);
-  //   return { modelId: activeConfig.modelId, latencyMs: ..., regions, embedding };
-  throw new Error("runInference: model session exists but inference is not implemented yet.");
+  const numAnchors = Number(scores.dims[1] ?? 0);
+  const candidates = decodeUltraFace(
+    scores.data as Float32Array,
+    boxes.data as Float32Array,
+    numAnchors,
+    image.width,
+    image.height,
+    activeConfig.scoreThreshold
+  );
+  const faces = nms(candidates, activeConfig.iouThreshold, activeConfig.maxDetections);
+
+  return {
+    modelId: activeConfig.modelId,
+    latencyMs: Math.round(performance.now() - startedAt),
+    sensitiveRegions: toSensitiveRegions(faces, "face"),
+    uiElements: detectUiElementsPlaceholder(image),
+  };
 }
 
-/** Exposed for diagnostics (e.g. an extension options page showing ORT status). */
-export function getRuntimeInfo(): { ortVersion: string; config: PerceptionConfig; loaded: boolean } {
-  return { ortVersion: ort.env.versions.web ?? "unknown", config: activeConfig, loaded: session !== null };
+/** Exposed for diagnostics (e.g. an options page showing detector status). */
+export function getRuntimeInfo(): {
+  ortVersion: string;
+  config: PerceptionConfig;
+  loaded: boolean;
+  input: { name: string; width: number; height: number } | null;
+} {
+  return {
+    ortVersion: ort.env.versions.web ?? "unknown",
+    config: activeConfig,
+    loaded: loaded !== null,
+    input: loaded ? { name: loaded.inputName, width: loaded.inputWidth, height: loaded.inputHeight } : null,
+  };
 }

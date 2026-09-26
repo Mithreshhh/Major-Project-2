@@ -12,9 +12,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-# ML artifacts (models are downloaded/placed locally, never committed)
-perception/models/*.onnx
+# ML artifacts. perception/models/*.onnx IS committed (small, checksummed by scripts/fetch-models.mjs);
+# the extension build copies it into dist/, so nothing needs to live in extension/public/models.
 extension/public/models/*.onnx
+perception/test/output/
 
 # Editor / OS
 .vscode/

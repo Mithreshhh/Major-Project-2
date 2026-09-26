@@ -2,7 +2,7 @@
   "name": "@odpa/perception",
   "version": "0.1.0",
   "private": true,
-  "description": "On-device perception (ONNX Runtime Web + lightweight ViT) and privacy redaction that run inside the browser extension.",
+  "description": "On-device perception (ONNX Runtime Web + UltraFace face detection) and privacy redaction that run inside the browser extension.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -10,12 +10,22 @@
     ".": "./src/index.ts"
   },
   "files": [
-    "src"
+    "src",
+    "models"
   ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "models:fetch": "node scripts/fetch-models.mjs",
+    "fixtures:fetch": "node scripts/fetch-fixtures.mjs",
+    "inspect": "node scripts/inspect-model.mjs"
   },
   "dependencies": {
     "onnxruntime-web": "^1.29.0"
+  },
+  "devDependencies": {
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.23.15"
   }
 }
