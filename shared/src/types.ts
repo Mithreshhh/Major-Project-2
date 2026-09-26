@@ -253,8 +253,10 @@ export type ActionType = ActionCommand["action"];
 export interface HealthResponse {
   status: "ok";
   protocolVersion: string;
-  /** Identifier of the server-side reasoner, e.g. "mock" until a real VLM is wired in. */
+  /** Identifier of the server-side reasoner: "gemma" (Ollama) or "mock". */
   reasoner: string;
+  /** Ollama model tag when the Gemma reasoner is active. */
+  model?: string | null;
 }
 
 /** Shape of every error response from the server (FastAPI default). */

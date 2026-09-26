@@ -180,3 +180,19 @@ class HealthResponse(_Strict):
     status: Literal["ok"] = "ok"
     protocolVersion: str = PROTOCOL_VERSION
     reasoner: str
+    #: Ollama model tag when the Gemma reasoner is active; null for the mock.
+    model: Optional[str] = None
+
+
+class GemmaHealth(_Strict):
+    """Server-side diagnostic for GET /health/gemma (not part of the extension contract)."""
+
+    status: Literal["ok", "unavailable", "model_missing"]
+    ollamaUrl: str
+    model: str
+    reachable: bool
+    modelAvailable: bool
+    modelLoaded: bool
+    ollamaVersion: Optional[str] = None
+    capabilities: list[str] = Field(default_factory=list)
+    detail: str
