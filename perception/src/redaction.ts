@@ -77,7 +77,26 @@ export function padRegion(
 }
 
 /**
- * Black out every region (with margin) on a new copy of `image`.
+ * Margin for boxes with exact geometry (DOM fields, text ranges). Their edges are already
+ * pixel-accurate, so the margin only covers anti-aliasing and focus rings: a fraction of the
+ * box *height* on every side. Scaling by width, as for detector boxes, would spill a wide input
+ * field's mask across the page.
+ */
+export function padExactRegion(
+  bbox: BoundingBox,
+  imageWidth: number,
+  imageHeight: number,
+  padding = DEFAULT_REDACT_OPTIONS.padding,
+  minPaddingPx = DEFAULT_REDACT_OPTIONS.minPaddingPx
+): BoundingBox | null {
+  const pad = Math.max(minPaddingPx, bbox.height * padding);
+  return padRegion(bbox, imageWidth, imageHeight, 0, pad);
+}
+
+/**
+ * Black out every region (with margin) on a new copy of `image`. Detector boxes (method "ml")
+ * are estimates and get `padding` x their own width/height per side; exact DOM/text boxes get
+ * `padExactRegion`.
  *
  * - Never paints into the input buffer. With `wipeSource`, the input buffer is zeroed after
  *   the copy is taken.
@@ -97,7 +116,10 @@ export function redact(
 
   const masked: SensitiveRegion[] = [];
   for (const region of regions) {
-    const bbox = padRegion(region.bbox, width, height, opts.padding, opts.minPaddingPx);
+    const bbox =
+      region.method === "ml"
+        ? padRegion(region.bbox, width, height, opts.padding, opts.minPaddingPx)
+        : padExactRegion(region.bbox, width, height, opts.padding, opts.minPaddingPx);
     if (bbox) masked.push({ ...region, bbox });
   }
   if (masked.length === 0) {
