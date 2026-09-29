@@ -194,7 +194,24 @@ function scanInputValuesForPii(): RedactedRegion[] {
   return regions;
 }
 
-export function captureDom(): DomSnapshot {
+const PAGE_TEXT_MAX = 15_000;
+
+/**
+ * Rendered, visible text of the page (hidden elements excluded by innerText; form values are
+ * never part of innerText, so typed passwords cannot leak). PII is replaced in the background.
+ */
+export function collectPageText(): string {
+  const raw = document.body?.innerText ?? "";
+  const text = raw
+    .split("\n")
+    .map((line) => line.replace(/[ \t ]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text.length > PAGE_TEXT_MAX ? text.slice(0, PAGE_TEXT_MAX) : text;
+}
+
+export function captureDom(includeText = false): DomSnapshot {
   registry = new Map();
   const elements: UIElement[] = [];
 
@@ -239,6 +256,7 @@ export function captureDom(): DomSnapshot {
     },
     elements,
     textRegions: [...scanTextForPii(), ...scanInputValuesForPii()],
+    ...(includeText ? { pageText: collectPageText() } : {}),
   };
 }
 
@@ -264,8 +282,8 @@ function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, text: string
 }
 
 export async function executeAction(command: ActionCommand): Promise<ExecutionResult> {
-  // TODO(agent): add human-in-the-loop confirmation for destructive actions (submit, navigate)
-  // and a visual highlight of the target before acting.
+  // Risky actions (log in, submit, pay, delete...) are confirmed by the user in the background
+  // before they reach this point (see riskyAction in shared/messages.ts).
   switch (command.action) {
     case "click": {
       const el = resolveTarget(command.target);
@@ -326,7 +344,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       case "PING":
         return { type: "PONG" };
       case "CAPTURE_DOM":
-        return { type: "DOM_SNAPSHOT", snapshot: captureDom() };
+        return { type: "DOM_SNAPSHOT", snapshot: captureDom(message.includeText === true) };
       case "EXECUTE_ACTION":
         return { type: "EXECUTION_RESULT", result: await executeAction(message.command) };
       default:

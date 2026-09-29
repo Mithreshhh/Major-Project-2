@@ -3,9 +3,11 @@
  * network, which keeps the "what leaves the device" audit surface small.
  */
 import {
+  ASK_ENDPOINT,
   HEALTH_ENDPOINT,
   PROCESS_ENDPOINT,
   type ActionCommand,
+  type AskResponse,
   type HealthResponse,
   type SanitizedContext,
 } from "@odpa/shared";
@@ -47,6 +49,29 @@ export async function requestAction(context: SanitizedContext): Promise<ActionCo
       throw new Error("/process returned a malformed ActionCommand");
     }
     return command;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** POST a SanitizedContext carrying pageText and get back a text answer. Never an action. */
+export async function requestAnswer(context: SanitizedContext): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CONFIG.requestTimeoutMs);
+  try {
+    const res = await fetch(`${await resolveServerUrl()}${ASK_ENDPOINT}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(context),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`/ask failed: HTTP ${res.status} ${text}`.trim());
+    }
+    const body = (await res.json()) as AskResponse;
+    if (!body || typeof body.answer !== "string") throw new Error("/ask returned a malformed answer");
+    return body.answer;
   } finally {
     clearTimeout(timer);
   }

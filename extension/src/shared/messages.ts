@@ -2,7 +2,7 @@
  * Message protocol inside the extension: background <-> content script, background <-> popup.
  * (The extension <-> server contract lives in @odpa/shared.)
  */
-import type { ActionCommand, PageMeta, RedactedRegion, UIElement, Viewport } from "@odpa/shared";
+import type { ActionCommand, PageMeta, RedactedRegion, SanitizedContext, UIElement, Viewport } from "@odpa/shared";
 
 export interface DomSnapshot {
   page: PageMeta;
@@ -14,6 +14,8 @@ export interface DomSnapshot {
    * cross the message boundary; the matched text stays in the page.
    */
   textRegions: RedactedRegion[];
+  /** Visible page text (document.body.innerText), only when asked for. Redacted in the background. */
+  pageText?: string;
 }
 
 export interface ExecutionResult {
@@ -23,7 +25,7 @@ export interface ExecutionResult {
 
 export type ContentRequest =
   | { type: "PING" }
-  | { type: "CAPTURE_DOM" }
+  | { type: "CAPTURE_DOM"; includeText?: boolean }
   | { type: "EXECUTE_ACTION"; command: ActionCommand };
 
 export type ContentResponse =
@@ -44,6 +46,10 @@ export interface StepResult {
   execution: ExecutionResult;
   /** True when the command was returned by the server but deliberately not executed. */
   skipped: boolean;
+  /** Why it was not executed, and what the task should become. */
+  veto?: Veto;
+  /** Set when a risky action ran after confirmation. */
+  confirmed?: "user" | "auto";
   stepIndex: number;
   sessionId: string;
   redactions: RedactionCounts;
@@ -66,7 +72,21 @@ export interface VisionStats {
 // Popup <-> background
 // ---------------------------------------------------------------------------
 
-export type TaskStatus = "running" | "done" | "needs_user" | "stopped" | "failed" | "max_steps";
+export type TaskStatus =
+  | "running"
+  | "confirm" // waiting for the user to allow a risky action
+  | "done"
+  | "answered" // ask mode: the answer is in `message`
+  | "needs_user"
+  | "stopped"
+  | "failed"
+  | "max_steps";
+
+/** A reason not to execute the model's command. */
+export interface Veto {
+  status: TaskStatus;
+  message: string;
+}
 
 export interface StepLog {
   index: number;
@@ -78,12 +98,19 @@ export interface StepLog {
   redactions: RedactionCounts;
   ms: number;
   vision?: VisionStats;
+  confirmed?: "user" | "auto";
 }
 
 export interface TaskState {
   tabId: number;
   task: string;
+  /** "act" works on the page; "ask" only answers a question about it and never acts. */
+  mode: "act" | "ask";
   status: TaskStatus;
+  /** Ask mode: what was hidden before the page text and screenshot left the device. */
+  hidden?: RedactionCounts;
+  /** Risky action waiting for the user's decision (status "confirm"). */
+  pending?: string;
   steps: StepLog[];
   maxSteps: number;
   /** Final explanation: the model's summary, its question, or why the task stopped. */
@@ -94,6 +121,8 @@ export interface TaskState {
 
 export type PopupRequest =
   | { type: "RUN_TASK"; tabId: number; windowId?: number; task: string; maxSteps?: number }
+  | { type: "ASK"; tabId: number; windowId?: number; question: string }
+  | { type: "CONFIRM"; tabId: number; allow: boolean }
   | { type: "STOP_TASK"; tabId: number }
   | { type: "GET_TASK_STATE"; tabId: number }
   | { type: "RUN_STEP"; tabId: number; windowId?: number };
@@ -119,4 +148,53 @@ export function describeCommand(c: ActionCommand): string {
     case "noop":
       return `Nothing to do: ${c.reason}`;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Safety rules (shared by the background and the popup)
+// ---------------------------------------------------------------------------
+
+const POLITE = /^(hey|hi|hello|ok(ay)?|please|pls|kindly|can you|could you|would you|will you|can u|i want you to|i need you to)[\s,]+/i;
+const ACTION_START =
+  /^(fill|type|enter|input|click|press|tap|submit|log ?in|sign ?(in|up|on)|register|search( for)?|open|go to|navigate|visit|select|choose|tick|check the|uncheck|book|buy|order|pay|send|add|remove|delete|scroll|download|upload|subscribe|clear|reset|save|create|write|reply|post|complete|accept|agree)\b/i;
+const QUESTION =
+  /\?\s*$|^(what|which|who|whom|whose|when|where|why|how|is|are|was|were|does|do|did|can|could|should|will|would|has|have|tell me|explain|describe|summari[sz]e|analy[sz]e|review|list|check (if|whether)|find out|give me|show me)\b|\b(analy[sz]e|analysis|summary|summari[sz]e|explain|describe|overview)\b/i;
+
+/**
+ * True when the text asks for information rather than for work on the page, e.g. "analyze this
+ * login page" or "what does this form ask for?". Such tasks run in ask mode, which cannot act.
+ * Polite prefixes are ignored, so "can you fill the form ..." is still a task.
+ */
+export function looksLikeQuestion(text: string): boolean {
+  let t = text.trim();
+  for (let i = 0; i < 3 && POLITE.test(t); i++) t = t.replace(POLITE, "");
+  if (ACTION_START.test(t)) return false;
+  return QUESTION.test(t) || QUESTION.test(text.trim());
+}
+
+const norm = (s: string) =>
+  s.toLowerCase().replace(/\s+/g, " ").trim().replace(/^["'`]+|["'`.,!?;:]+$/g, "");
+
+/** The agent may only type what the user wrote in the task: never invented names or passwords. */
+export function textComesFromTask(text: string, task: string): boolean {
+  const t = norm(text);
+  return t.length === 0 || norm(task).includes(t);
+}
+
+const RISKY =
+  /\b(log ?in|sign ?(in|up|on)|register|submit|send|pay|payment|buy|purchase|order|checkout|check ?out|delete|remove|confirm|transfer|book|subscribe|publish|post|place)\b/i;
+
+/**
+ * Describes the command when it has consequences outside the page (logging in, submitting,
+ * paying, deleting, sending), so the user can allow or refuse it. Null for harmless actions.
+ */
+export function riskyAction(command: ActionCommand, context: Pick<SanitizedContext, "elements">): string | null {
+  if (command.action === "click") {
+    const el = context.elements.find((e) => e.id === command.target);
+    const words = [el?.label, el?.attributes?.["aria-label"], el?.attributes?.title].filter(Boolean).join(" ");
+    if (RISKY.test(words) || el?.attributes?.type === "submit") return `Click "${el?.label || command.target}"`;
+    return null;
+  }
+  if (command.action === "type" && command.submit) return `Type "${command.text}" and submit the form`;
+  return null;
 }

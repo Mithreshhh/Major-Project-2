@@ -43,6 +43,16 @@
     li.fail .what { color: var(--bad); }
     .warn { color: var(--bad); font-size: 12px; margin-top: 6px; display: none; }
     .warn.show { display: block; }
+    #hint { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 1em; }
+    #status.answered strong { color: var(--accent); }
+    #status.confirm { border-color: var(--warn); }
+    #status.confirm strong { color: var(--warn); }
+    #status-msg { display: block; white-space: pre-wrap; margin-top: 2px; }
+    #status.answered #status-msg { font-size: 13.5px; line-height: 1.5; }
+    #status-meta { display: block; color: var(--muted); font-size: 11.5px; margin-top: 6px; }
+    #confirm { display: none; gap: 8px; margin-top: 8px; }
+    #confirm.show { display: flex; }
+    button.allow { background: var(--warn); border-color: var(--warn); color: #fff; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -53,16 +63,25 @@
   </header>
   <div id="page">…</div>
 
-  <textarea id="task" placeholder="Tell the agent what to do on this page, e.g. Fill the form with name John Doe and email john@example.com, then submit."></textarea>
+  <textarea id="task" placeholder="Tell the agent what to do, e.g. Fill the form with name John Doe and email john@example.com, then submit. Or ask about the page, e.g. What does this page ask for?"></textarea>
   <div class="row">
-    <button class="primary" id="run">Run task</button>
+    <button class="primary" id="run" title="Work on the page. Questions are answered without touching the page.">Run task</button>
+    <button id="ask" title="Only answer a question about this page. Never clicks or types.">Ask about page</button>
     <button id="stop" disabled>Stop</button>
     <span class="spacer"></span>
     <button class="link" id="demo" title="Fill in the demo task for the test page">Demo task</button>
+    <button class="link" id="demo-q" title="Fill in a demo question">Demo question</button>
   </div>
+  <div id="hint"></div>
   <div class="warn" id="warn">This tab is not a normal web page. Chrome does not allow extensions on its own pages; open an http(s) site.</div>
 
-  <div id="status"><strong id="status-title"></strong><span id="status-msg"></span></div>
+  <div id="status">
+    <strong id="status-title"></strong><span id="status-msg"></span><span id="status-meta"></span>
+    <div id="confirm">
+      <button class="allow" id="allow">Allow</button>
+      <button id="deny">Don't allow</button>
+    </div>
+  </div>
   <ol id="steps"></ol>
 
   <div class="row" style="margin-top:12px">

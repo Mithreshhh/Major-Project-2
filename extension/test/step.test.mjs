@@ -62,6 +62,9 @@ function inside(x, y, boxes) {
 // Stubs (installed once; the bundle registers its listeners against them)
 // ---------------------------------------------------------------------------
 
+/** Visible text the content script would return for a question (includeText). */
+const PAGE_TEXT = "Sign in to Acme\nEmail jane.doe@example.com\nPhone +91 98765 43210\nForgot password?";
+
 const calls = { capture: 0, badges: [], sent: [], fetches: [], logs: [], assets: [], encodedAs: null, broadcasts: [] };
 let onClicked = null;
 let onMessage = null;
@@ -100,7 +103,9 @@ globalThis.chrome = {
     },
     sendMessage: async (_tabId, message) => {
       calls.sent.push(message);
-      if (message.type === "CAPTURE_DOM") return { type: "DOM_SNAPSHOT", snapshot };
+      if (message.type === "CAPTURE_DOM") {
+        return { type: "DOM_SNAPSHOT", snapshot: message.includeText ? { ...snapshot, pageText: PAGE_TEXT } : snapshot };
+      }
       if (message.type === "EXECUTE_ACTION") return { type: "EXECUTION_RESULT", result: { ok: true } };
       return { type: "ERROR", message: `unexpected ${message.type}` };
     },
@@ -160,6 +165,9 @@ globalThis.fetch = async (input, init) => {
     return new Response(readFileSync(file), { status: 200, headers: { "content-type": type } });
   }
   calls.fetches.push({ url, body: init?.body ? JSON.parse(init.body) : null });
+  if (url.endsWith("/ask")) {
+    return new Response(JSON.stringify({ answer: "stub answer" }), { status: 200, headers: { "content-type": "application/json" } });
+  }
   const command = serverScript.shift() ?? { action: "click", target: "el_1", reasoning: "stub" };
   return new Response(JSON.stringify(command), {
     status: 200,
@@ -316,14 +324,15 @@ test("a task keeps stepping until the model says done", async () => {
     { action: "click", target: "el_1" },
     { action: "done", summary: "Form submitted." }
   );
-  const state = await globalThis.odpa.runTask(20, 1, "Fill the email and submit");
+  const state = await globalThis.odpa.runTask(20, 1, "Fill the email john@example.com and submit", { autoConfirm: true });
 
   assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
   assert.equal(state.message, "Form submitted.");
   assert.deepEqual(state.steps.map((s) => s.summary), ['Type "john@example.com" into el_0', "Click el_1", "Done: Form submitted."]);
   assert.equal(calls.fetches.length, 3);
   assert.deepEqual(calls.fetches.map((f) => f.body.stepIndex), [0, 1, 2]);
-  assert.ok(calls.fetches.every((f) => f.body.task === "Fill the email and submit"));
+  assert.ok(calls.fetches.every((f) => f.body.task === "Fill the email john@example.com and submit"));
+  assert.equal(state.steps[1].confirmed, "auto", "clicking Submit is a risky action");
   assert.equal(calls.fetches[2].body.history.length, 2);
   assert.ok(state.steps.every((s) => s.redactions.faces >= (screenshotsEnabled ? 1 : 0)));
   assert.equal(calls.badges.at(-1), "OK");
@@ -343,7 +352,7 @@ test("a task stops when the model asks the user, and when it repeats itself", as
   assert.equal(asked.steps.length, 1);
 
   serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "click", target: "el_1" });
-  const looped = await globalThis.odpa.runTask(22, 1, "Click submit");
+  const looped = await globalThis.odpa.runTask(22, 1, "Click submit", { autoConfirm: true });
   assert.equal(looped.status, "stopped");
   assert.match(looped.message, /same action twice/);
   assert.equal(looped.steps.length, 2);
@@ -367,4 +376,79 @@ test("popup messages: RUN_TASK starts a task, GET_TASK_STATE reports it", async 
   });
   assert.equal(state.status, "done");
   assert.equal(state.task, "Check the page");
+});
+
+// ---------------------------------------------------------------------------
+// Safety: questions never act, no invented text, risky clicks need the user's Allow
+// ---------------------------------------------------------------------------
+
+const waitForStatus = async (tabId, status) => {
+  for (let i = 0; i < 200 && sessionStore[`task:${tabId}`]?.status !== status; i++) await new Promise((r) => setTimeout(r, 25));
+  assert.equal(sessionStore[`task:${tabId}`]?.status, status);
+};
+
+test("a question is answered in ask mode: nothing is executed and page PII leaves only as placeholders", async () => {
+  const state = await globalThis.odpa.runTask(30, 1, "Analyze this login page");
+
+  assert.equal(state.mode, "ask");
+  assert.equal(state.status, "answered", `${state.message}; errors: ${errors()}`);
+  assert.equal(state.message, "stub answer");
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0, "ask mode never touches the page");
+  assert.equal(calls.fetches.length, 1);
+  assert.match(calls.fetches[0].url, /\/ask$/);
+
+  const body = calls.fetches[0].body;
+  assert.equal(body.task, "Analyze this login page");
+  assert.equal(body.pageText, "Sign in to Acme\nEmail [HIDDEN EMAIL]\nPhone [HIDDEN PHONE]\nForgot password?");
+  assert.ok(!JSON.stringify(body).includes("jane.doe@example.com"), "raw email appears nowhere in the payload");
+  assert.ok(state.hidden.text >= 2);
+});
+
+test("the agent may only type text that is in the task: invented credentials are refused", async () => {
+  serverScript.push({ action: "type", target: "el_2", text: "hunter2" });
+  const state = await globalThis.odpa.runTask(31, 1, "Log in to my account");
+
+  assert.equal(state.status, "needs_user");
+  assert.match(state.message, /"hunter2", which is not in your task/);
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0, "nothing was typed");
+});
+
+test("a risky click waits for the user's Allow, and does nothing when refused", async () => {
+  serverScript.push({ action: "click", target: "el_1" }, { action: "done", summary: "Submitted." });
+  const running = globalThis.odpa.runTask(32, 1, "Press the submit button");
+  await waitForStatus(32, "confirm");
+  assert.equal(sessionStore["task:32"].pending, 'Click "Submit"');
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0, "nothing happens before Allow");
+  assert.ok(calls.badges.includes("?"));
+
+  const replies = [];
+  onMessage({ type: "CONFIRM", tabId: 32, allow: true }, {}, (r) => replies.push(r));
+  const allowed = await running;
+  assert.deepEqual(replies, [{ ok: true }]);
+  assert.equal(allowed.status, "done", `${allowed.message}; errors: ${errors()}`);
+  assert.equal(allowed.steps[0].confirmed, "user");
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.action === "click").length, 1);
+
+  reset();
+  serverScript.push({ action: "click", target: "el_1" });
+  const refused = globalThis.odpa.runTask(33, 1, "Press the submit button");
+  await waitForStatus(33, "confirm");
+  onMessage({ type: "CONFIRM", tabId: 33, allow: false }, {}, () => {});
+  const state = await refused;
+  assert.equal(state.status, "stopped");
+  assert.match(state.message, /^Not allowed: Click "Submit"/);
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0);
+});
+
+test("question detection and typed-text rules", () => {
+  const { looksLikeQuestion, textComesFromTask } = globalThis.odpa;
+  for (const q of ["analyze this page", "Analyze this login page", "what does this form ask for?", "Summarize the page", "Can you tell me what this page is about"]) {
+    assert.equal(looksLikeQuestion(q), true, q);
+  }
+  for (const t of ["Fill in the contact form with name John Doe", "Can you fill the form with name John", "Log in", "Search for cheap flights", "Click submit"]) {
+    assert.equal(looksLikeQuestion(t), false, t);
+  }
+  assert.equal(textComesFromTask("John Doe", "Fill name John Doe"), true);
+  assert.equal(textComesFromTask("Hello from the agent.", "message Hello from the agent then submit"), true);
+  assert.equal(textComesFromTask("user123", "log in"), false);
 });

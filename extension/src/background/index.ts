@@ -21,6 +21,7 @@ import {
   loadUiDetector,
   placeholderOutput,
   redactText,
+  redactTextLabelled,
   runInference,
   sanitize,
   scrubUrl,
@@ -38,9 +39,10 @@ import type {
   StepLog,
   StepResult,
   TaskState,
+  Veto,
 } from "../shared/messages";
-import { describeCommand } from "../shared/messages";
-import { requestAction } from "./api";
+import { describeCommand, looksLikeQuestion, riskyAction, textComesFromTask } from "../shared/messages";
+import { requestAction, requestAnswer } from "./api";
 import { decodeDataUrl, encodeRawImage } from "./image";
 
 const LOG = "[odpa:bg]";
@@ -147,8 +149,8 @@ async function captureScreenshot(windowId?: number): Promise<RawImage> {
   return decodeDataUrl(dataUrl);
 }
 
-async function captureDom(tabId: number): Promise<DomSnapshot> {
-  const res = await sendToContent(tabId, { type: "CAPTURE_DOM" });
+async function captureDom(tabId: number, includeText = false): Promise<DomSnapshot> {
+  const res = await sendToContent(tabId, includeText ? { type: "CAPTURE_DOM", includeText } : { type: "CAPTURE_DOM" });
   if (res.type !== "DOM_SNAPSHOT") {
     throw new Error(`CAPTURE_DOM failed: ${res.type === "ERROR" ? res.message : res.type}`);
   }
@@ -172,89 +174,121 @@ async function storedTask(): Promise<string> {
   return typeof stored.task === "string" && stored.task ? stored.task : CONFIG.defaultTask;
 }
 
+interface Perceived {
+  context: SanitizedContext;
+  redactions: StepResult["redactions"];
+  perceptionMs: number;
+  vision?: StepResult["vision"];
+}
+
+/**
+ * Capture, detect, redact and build the payload. Everything here happens on the device; the
+ * returned context is the only thing that may leave it. `includeText` adds the visible page
+ * text (for questions), with personal data replaced by "[HIDDEN EMAIL]"-style placeholders.
+ */
+async function perceive(tabId: number, windowId: number | undefined, task: string, includeText: boolean): Promise<Perceived> {
+  const session = getSession(tabId);
+
+  // 1. DOM snapshot (+ boxes around PII found in page text and typed values)
+  const snapshot = await captureDom(tabId, includeText);
+
+  // 2. Screenshot. With sendScreenshot=false this branch is skipped entirely.
+  const rawImage: RawImage | null = CONFIG.sendScreenshot ? await captureScreenshot(windowId) : null;
+
+  // 3. On-device face detection. No screenshot -> nothing to detect, model not loaded.
+  let perception: PerceptionOutput;
+  if (rawImage) {
+    const loaded = await ensurePerception();
+    if (!loaded) throw new Error("screenshot captured but no perception model is configured; refusing to continue unredacted");
+    perception = await runInference(rawImage);
+  } else {
+    perception = placeholderOutput();
+  }
+
+  // 3b. On-device UI detection from pixels, scored live against the DOM. Must run before
+  //     sanitize() zeroes the raw buffer. Optional: a failure here never blocks the step.
+  const summary: PerceptionSummary = { modelId: perception.modelId, latencyMs: perception.latencyMs };
+  let vision: StepResult["vision"];
+  if (rawImage && (await ensureUiDetector())) {
+    try {
+      const ui = await detectUiElements(rawImage);
+      const cmp = compareWithDom(ui.detections, snapshot.elements, snapshot.viewport.devicePixelRatio, snapshot.viewport);
+      summary.uiModelId = ui.modelId;
+      summary.uiLatencyMs = ui.latencyMs;
+      summary.visualElements = cmp.visual;
+      vision = { ms: ui.latencyMs, detections: ui.detections.length, domCount: cmp.domCount, found: cmp.found, recall: cmp.recall, precision: cmp.precision };
+      console.info(LOG, `vision: ${ui.detections.length} UI element(s) in ${ui.latencyMs} ms, found ${cmp.found}/${cmp.domCount} DOM elements, precision ${cmp.precision}`);
+    } catch (err) {
+      console.warn(LOG, "UI detection failed, continuing without it", err);
+    }
+  }
+
+  // 4. Redaction: faces (ml) + password/card fields (dom) + PII text (heuristic) are blacked
+  //    out on a fresh copy; `rawImage`'s buffer is zeroed by sanitize(). Labels are scrubbed.
+  const redacted = await sanitize({
+    screenshot: rawImage,
+    elements: snapshot.elements,
+    perception,
+    textRegions: snapshot.textRegions ?? [],
+    devicePixelRatio: snapshot.viewport.devicePixelRatio,
+  });
+  const counts = countBy(redacted.redactions.map((r) => r.method));
+  console.info(
+    LOG,
+    `redaction: ${redacted.redactions.length} region(s) blacked out (faces ${counts.ml ?? 0}, fields ${counts.dom ?? 0}, text ${counts.heuristic ?? 0})`
+  );
+
+  // 5. Build the wire payload
+  const hiddenText = snapshot.pageText ? redactTextLabelled(snapshot.pageText) : null;
+  const textHidden = hiddenText ? Object.values(hiddenText.counts).reduce((a, b) => a + (b ?? 0), 0) : 0;
+  const context: SanitizedContext = {
+    protocolVersion: PROTOCOL_VERSION,
+    sessionId: session.sessionId,
+    stepIndex: session.stepIndex,
+    task,
+    page: {
+      ...snapshot.page,
+      url: scrubUrl(snapshot.page.url),
+      title: redactText(snapshot.page.title).text,
+    },
+    viewport: snapshot.viewport,
+    elements: redacted.elements,
+    screenshot: redacted.screenshot
+      ? await encodeRawImage(redacted.screenshot, CONFIG.screenshotMimeType, CONFIG.screenshotQuality)
+      : null,
+    redactions: redacted.redactions,
+    history: session.history,
+    perception: summary,
+    ...(hiddenText ? { pageText: hiddenText.text } : {}),
+  };
+
+  return {
+    context,
+    redactions: { faces: counts.ml ?? 0, fields: counts.dom ?? 0, text: Math.max(counts.heuristic ?? 0, textHidden) },
+    perceptionMs: perception.latencyMs,
+    ...(vision ? { vision } : {}),
+  };
+}
+
+/**
+ * Decides whether the model's command may run. Returns a veto to skip it (and end the task with
+ * the veto's status), or null to go ahead. May wait for the user (risky-action confirmation).
+ */
+export type Gate = (command: ActionCommand, context: SanitizedContext) => Veto | null | Promise<Veto | null>;
+
 export async function runStep(
   tabId: number,
   windowId?: number,
   taskOverride?: string,
-  /** Return false to skip executing the returned command (used to refuse repeated actions). */
-  shouldExecute: (command: ActionCommand) => boolean = () => true
-): Promise<StepResult> {
+  gate: Gate = () => null
+): Promise<StepResult & { confirmed?: "user" | "auto" }> {
   if (runningTabs.has(tabId)) throw new Error("a step is already running on this tab");
   runningTabs.add(tabId);
 
   try {
     const session = getSession(tabId);
     const task = taskOverride ?? (await storedTask());
-
-    // 1. DOM snapshot (+ boxes around PII found in page text and typed values)
-    const snapshot = await captureDom(tabId);
-
-    // 2. Screenshot. With sendScreenshot=false this branch is skipped entirely.
-    const rawImage: RawImage | null = CONFIG.sendScreenshot ? await captureScreenshot(windowId) : null;
-
-    // 3. On-device face detection. No screenshot -> nothing to detect, model not loaded.
-    let perception: PerceptionOutput;
-    if (rawImage) {
-      const loaded = await ensurePerception();
-      if (!loaded) throw new Error("screenshot captured but no perception model is configured; refusing to continue unredacted");
-      perception = await runInference(rawImage);
-    } else {
-      perception = placeholderOutput();
-    }
-
-    // 3b. On-device UI detection from pixels, scored live against the DOM. Must run before
-    //     sanitize() zeroes the raw buffer. Optional: a failure here never blocks the step.
-    const summary: PerceptionSummary = { modelId: perception.modelId, latencyMs: perception.latencyMs };
-    let vision: StepResult["vision"];
-    if (rawImage && (await ensureUiDetector())) {
-      try {
-        const ui = await detectUiElements(rawImage);
-        const cmp = compareWithDom(ui.detections, snapshot.elements, snapshot.viewport.devicePixelRatio, snapshot.viewport);
-        summary.uiModelId = ui.modelId;
-        summary.uiLatencyMs = ui.latencyMs;
-        summary.visualElements = cmp.visual;
-        vision = { ms: ui.latencyMs, detections: ui.detections.length, domCount: cmp.domCount, found: cmp.found, recall: cmp.recall, precision: cmp.precision };
-        console.info(LOG, `vision: ${ui.detections.length} UI element(s) in ${ui.latencyMs} ms, found ${cmp.found}/${cmp.domCount} DOM elements, precision ${cmp.precision}`);
-      } catch (err) {
-        console.warn(LOG, "UI detection failed, continuing without it", err);
-      }
-    }
-
-    // 4. Redaction: faces (ml) + password/card fields (dom) + PII text (heuristic) are blacked
-    //    out on a fresh copy; `rawImage`'s buffer is zeroed by sanitize(). Labels are scrubbed.
-    const redacted = await sanitize({
-      screenshot: rawImage,
-      elements: snapshot.elements,
-      perception,
-      textRegions: snapshot.textRegions ?? [],
-      devicePixelRatio: snapshot.viewport.devicePixelRatio,
-    });
-    const counts = countBy(redacted.redactions.map((r) => r.method));
-    console.info(
-      LOG,
-      `redaction: ${redacted.redactions.length} region(s) blacked out (faces ${counts.ml ?? 0}, fields ${counts.dom ?? 0}, text ${counts.heuristic ?? 0})`
-    );
-
-    // 5. Build the wire payload
-    const context: SanitizedContext = {
-      protocolVersion: PROTOCOL_VERSION,
-      sessionId: session.sessionId,
-      stepIndex: session.stepIndex,
-      task,
-      page: {
-        ...snapshot.page,
-        url: scrubUrl(snapshot.page.url),
-        title: redactText(snapshot.page.title).text,
-      },
-      viewport: snapshot.viewport,
-      elements: redacted.elements,
-      screenshot: redacted.screenshot
-        ? await encodeRawImage(redacted.screenshot, CONFIG.screenshotMimeType, CONFIG.screenshotQuality)
-        : null,
-      redactions: redacted.redactions,
-      history: session.history,
-      perception: summary,
-    };
+    const { context, redactions, perceptionMs, vision } = await perceive(tabId, windowId, task, false);
 
     console.info(LOG, `step ${session.stepIndex} -> /process`, {
       elements: context.elements.length,
@@ -265,9 +299,9 @@ export async function runStep(
     const command = await requestAction(context);
     console.info(LOG, "command", command);
 
-    // 6. Execute on the page (unless the caller vetoes it)
-    const skipped = !shouldExecute(command);
-    const execution = skipped ? { ok: true, message: "not executed: same as the previous action" } : await executeOnPage(tabId, command);
+    // 6. Execute on the page, unless the gate vetoes it
+    const veto = await gate(command, context);
+    const execution = veto ? { ok: true, message: `not executed: ${veto.message}` } : await executeOnPage(tabId, command);
 
     session.history.push(command);
     session.stepIndex += 1;
@@ -275,16 +309,53 @@ export async function runStep(
     return {
       command,
       execution,
-      skipped,
+      skipped: veto !== null,
+      ...(veto ? { veto } : {}),
       stepIndex: session.stepIndex - 1,
       sessionId: session.sessionId,
-      redactions: { faces: counts.ml ?? 0, fields: counts.dom ?? 0, text: counts.heuristic ?? 0 },
-      perceptionMs: perception.latencyMs,
+      redactions,
+      perceptionMs,
       ...(vision ? { vision } : {}),
     };
   } finally {
     runningTabs.delete(tabId);
   }
+}
+
+/**
+ * Ask mode: answer a question about the page. Read-only by construction: the server returns
+ * text, and nothing here can execute anything on the page.
+ */
+export async function runAsk(tabId: number, windowId: number | undefined, question: string): Promise<TaskState> {
+  const current = tasks.get(tabId);
+  if (current?.status === "running" || current?.status === "confirm") return current;
+  if (runningTabs.has(tabId)) throw new Error("a step is already running on this tab");
+
+  resetSession(tabId);
+  await chrome.storage.local.set?.({ task: question });
+  const state: TaskState = { tabId, task: question, mode: "ask", status: "running", steps: [], maxSteps: 1, startedAt: Date.now() };
+  await publish(state);
+  await setBadge(tabId, "?", "#6e7781");
+
+  runningTabs.add(tabId);
+  try {
+    const { context, redactions } = await perceive(tabId, windowId, question, true);
+    console.info(LOG, "ask -> /ask", { textChars: context.pageText?.length ?? 0, redactions: context.redactions.length });
+    state.hidden = redactions;
+    state.message = await requestAnswer(context);
+    state.status = "answered";
+  } catch (err) {
+    console.error(LOG, "ask failed", err);
+    state.status = "failed";
+    state.message = err instanceof Error ? err.message : String(err);
+  } finally {
+    runningTabs.delete(tabId);
+  }
+
+  state.finishedAt = Date.now();
+  await publish(state);
+  await setBadge(tabId, state.status === "answered" ? "OK" : "ERR", state.status === "answered" ? "#1a7f37" : "#d1242f");
+  return state;
 }
 
 function countBy(values: string[]): Record<string, number> {
@@ -333,27 +404,96 @@ export async function getTaskState(tabId: number): Promise<TaskState | null> {
   }
 }
 
+/** Resolvers for risky actions waiting on the user's Allow / Stop in the popup. */
+const confirmations = new Map<number, (allow: boolean) => void>();
+const CONFIRM_TIMEOUT_MS = 120_000;
+
+function waitForConfirmation(tabId: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => settle(false), CONFIRM_TIMEOUT_MS);
+    const settle = (allow: boolean) => {
+      clearTimeout(timer);
+      confirmations.delete(tabId);
+      resolve(allow);
+    };
+    confirmations.set(tabId, settle);
+  });
+}
+
+export function confirmAction(tabId: number, allow: boolean): boolean {
+  const settle = confirmations.get(tabId);
+  settle?.(allow);
+  return settle !== undefined;
+}
+
+export interface TaskOptions {
+  maxSteps?: number;
+  /** Allow risky actions without asking (automated runs only). */
+  autoConfirm?: boolean;
+  /** "auto" (default) answers question-like tasks in ask mode; "act" always works on the page. */
+  mode?: "auto" | "act";
+}
+
 /**
  * Run `task` on the tab until it finishes. Resolves with the final state; never throws (a
  * failure becomes status "failed" with a message).
+ *
+ * Safety, in order: questions go to ask mode and never act; a repeated action is refused; the
+ * agent may only type text found in the task; risky clicks (log in, submit, pay, delete, send)
+ * wait for the user's Allow in the popup.
  */
 export async function runTask(
   tabId: number,
   windowId: number | undefined,
   task: string,
-  maxSteps: number = CONFIG.maxTaskSteps
+  options: TaskOptions | number = {}
 ): Promise<TaskState> {
+  const opts: TaskOptions = typeof options === "number" ? { maxSteps: options } : options;
+  const maxSteps = opts.maxSteps ?? CONFIG.maxTaskSteps;
+  if ((opts.mode ?? "auto") === "auto" && looksLikeQuestion(task)) return runAsk(tabId, windowId, task);
+
   const current = tasks.get(tabId);
-  if (current?.status === "running") return current;
+  if (current?.status === "running" || current?.status === "confirm") return current;
 
   stopRequested.delete(tabId);
   resetSession(tabId);
   await chrome.storage.local.set?.({ task });
 
-  const state: TaskState = { tabId, task, status: "running", steps: [], maxSteps, startedAt: Date.now() };
+  const state: TaskState = { tabId, task, mode: "act", status: "running", steps: [], maxSteps, startedAt: Date.now() };
   await publish(state);
 
   let previous: ActionCommand | undefined;
+  let confirmed: "user" | "auto" | undefined;
+  const gate: Gate = async (command, context) => {
+    confirmed = undefined;
+    if (sameCommand(previous, command)) {
+      return { status: "stopped", message: "The agent proposed the same action twice in a row; it was not repeated and the task was stopped." };
+    }
+    if (command.action === "type" && !textComesFromTask(command.text, task)) {
+      return {
+        status: "needs_user",
+        message: `The agent wanted to type "${command.text}", which is not in your task, so nothing was typed. Tell it exactly what to enter.`,
+      };
+    }
+    const risk = riskyAction(command, context);
+    if (!risk) return null;
+    if (opts.autoConfirm) {
+      confirmed = "auto";
+      return null;
+    }
+    state.status = "confirm";
+    state.pending = risk;
+    await publish(state);
+    await setBadge(tabId, "?", "#9a6700");
+    const allow = await waitForConfirmation(tabId);
+    state.status = "running";
+    delete state.pending;
+    await publish(state);
+    if (!allow) return { status: "stopped", message: `Not allowed: ${risk}. Nothing was done.` };
+    confirmed = "user";
+    return null;
+  };
+
   try {
     for (let i = 0; i < maxSteps; i++) {
       if (stopRequested.has(tabId)) {
@@ -364,21 +504,27 @@ export async function runTask(
 
       await setBadge(tabId, `${i + 1}`, "#6e7781");
       const started = Date.now();
-      const result = await runStep(tabId, windowId, task, (command) => !sameCommand(previous, command));
+      const result = await runStep(tabId, windowId, task, gate);
       const log: StepLog = {
         index: i,
         summary: describeCommand(result.command),
         command: result.command,
-        ok: result.execution.ok,
+        ok: result.execution.ok && !result.skipped,
         message: result.execution.message,
         redactions: result.redactions,
         ms: Date.now() - started,
         ...(result.vision ? { vision: result.vision } : {}),
+        ...(confirmed ? { confirmed } : {}),
       };
       state.steps.push(log);
       await publish(state);
 
       const action = result.command.action;
+      if (result.veto) {
+        state.status = result.veto.status;
+        state.message = result.veto.message;
+        break;
+      }
       if (!result.execution.ok) {
         state.status = "failed";
         state.message = result.execution.message ?? "The action could not be performed on the page.";
@@ -397,11 +543,6 @@ export async function runTask(
       if (action === "noop") {
         state.status = "stopped";
         state.message = result.command.reason;
-        break;
-      }
-      if (result.skipped) {
-        state.status = "stopped";
-        state.message = "The agent proposed the same action twice in a row; it was not repeated and the task was stopped.";
         break;
       }
       previous = result.command;
@@ -443,8 +584,9 @@ async function setBadge(tabId: number, text: string, color: string): Promise<voi
 }
 
 /**
- * Only fires when no popup is configured (the popup normally takes the click). Kept as a
- * one-step fallback and for the bundle tests.
+ * Only fires when no popup is configured (the popup normally takes the click), so it is not
+ * reachable from the toolbar in this build. Kept as a one-step fallback for the bundle tests;
+ * it has no confirmation UI, so real use goes through the popup and runTask's safety gate.
  */
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id === undefined) return;
@@ -480,11 +622,19 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   switch (msg.type) {
     case "RUN_TASK":
       // Fire and forget: progress arrives via TASK_UPDATE broadcasts.
-      void runTask(msg.tabId, msg.windowId, msg.task, msg.maxSteps);
+      void runTask(msg.tabId, msg.windowId, msg.task, { maxSteps: msg.maxSteps });
       sendResponse({ ok: true });
+      return false;
+    case "ASK":
+      void runAsk(msg.tabId, msg.windowId, msg.question).catch((err: unknown) => console.error(LOG, "ask failed", err));
+      sendResponse({ ok: true });
+      return false;
+    case "CONFIRM":
+      sendResponse({ ok: confirmAction(msg.tabId, msg.allow) });
       return false;
     case "STOP_TASK":
       stopRequested.add(msg.tabId);
+      confirmAction(msg.tabId, false); // a pending "Allow?" counts as refused
       sendResponse({ ok: true });
       return false;
     case "GET_TASK_STATE":
@@ -501,4 +651,12 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
 });
 
 // Handle for automated end-to-end runs and DevTools: `await odpa.runTask(tabId, windowId, "...")`.
-(globalThis as unknown as { odpa: unknown }).odpa = { runTask, runStep, getTaskState };
+(globalThis as unknown as { odpa: unknown }).odpa = {
+  runTask,
+  runAsk,
+  runStep,
+  getTaskState,
+  confirmAction,
+  looksLikeQuestion,
+  textComesFromTask,
+};
