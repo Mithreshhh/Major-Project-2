@@ -1,20 +1,25 @@
 /**
  * Privacy / redaction layer.
  *
- * Pixel redaction is REAL: `redact()` paints an opaque black box over every sensitive region,
- * plus a safety margin, on a fresh copy of the screenshot. Black boxes rather than blur because
- * blur can be partially inverted; a solid fill destroys the information outright.
+ * Three sources of sensitive regions feed one black-box mask:
+ *   ml         faces from the on-device UltraFace detector          (screenshot px)
+ *   dom        password / payment fields, from the DOM summary      (CSS px)
+ *   heuristic  emails, phones, card and ID numbers found in page
+ *              text and typed input values by the content script    (CSS px)
  *
- * Still TODO (see the tagged stubs at the bottom):
- *   TODO(redaction-dom)   flag password/payment/contact fields from the DOM summary
- *   TODO(redaction-text)  mask emails, phone numbers, card numbers in labels and attributes
+ * `redact()` paints an opaque black box over every region, plus a safety margin, on a fresh
+ * copy of the screenshot. Black boxes rather than blur because blur can be partially inverted.
+ * Element labels and attributes carrying PII are replaced with "[REDACTED]".
  *
  * Coordinate spaces: detector output and `redact()` work in screenshot pixels; the wire
  * `RedactedRegion` is in CSS pixels. `toCssPixels` / `toScreenshotPixels` convert.
  */
 import type { BoundingBox, RedactedRegion, UIElement } from "@odpa/shared";
 
+import { classifyField, redactText } from "./pii";
 import type { PerceptionOutput, RawImage, SensitiveRegion } from "./types";
+
+export { REDACTED_TEXT, redactText } from "./pii";
 
 // ---------------------------------------------------------------------------
 // Pixel masking
@@ -157,6 +162,11 @@ export interface RedactionInput {
   elements: UIElement[];
   /** Output of the on-device detector for this frame (regions in screenshot pixel space). */
   perception: PerceptionOutput;
+  /**
+   * PII found by the content script in visible page text and typed input values, in CSS
+   * pixels. The text itself never leaves the content script; only the boxes do.
+   */
+  textRegions?: RedactedRegion[];
   /** Needed to map CSS-pixel bboxes onto screenshot pixels and back. */
   devicePixelRatio: number;
 }
@@ -164,7 +174,7 @@ export interface RedactionInput {
 export interface RedactionResult {
   /** Masked screenshot (new buffer), the untouched input when nothing needed masking, or null. */
   screenshot: RawImage | null;
-  /** Elements with sensitive labels/attributes replaced by placeholders (still TODO). */
+  /** Elements with PII in labels/attributes replaced by "[REDACTED]". */
   elements: UIElement[];
   /** What was hidden, in CSS pixels, for the server's benefit. */
   redactions: RedactedRegion[];
@@ -180,8 +190,8 @@ export interface RedactionResult {
  */
 export async function sanitize(input: RedactionInput): Promise<RedactionResult> {
   const dpr = input.devicePixelRatio > 0 ? input.devicePixelRatio : 1;
-  const domRegions = detectSensitiveDomRegions(input.elements); // CSS px, TODO(redaction-dom)
-  const mlRegions = input.perception.sensitiveRegions; // screenshot px, real
+  const domRegions = [...detectSensitiveDomRegions(input.elements), ...(input.textRegions ?? [])]; // CSS px
+  const mlRegions = input.perception.sensitiveRegions; // screenshot px
 
   let screenshot = input.screenshot;
   let masked: SensitiveRegion[] = [];
@@ -200,37 +210,54 @@ export async function sanitize(input: RedactionInput): Promise<RedactionResult> 
 }
 
 // ---------------------------------------------------------------------------
-// DOM / text redaction: still stubs
+// DOM / text redaction
 // ---------------------------------------------------------------------------
 
-/** Text used in place of a masked label/attribute value. */
-export const REDACTED_TEXT = "[REDACTED]";
-
 /**
- * TODO(redaction-text): text-level PII detection (emails, phones, card numbers via Luhn,
- * national ids, street addresses). Return the category so callers can populate
- * RedactedRegion.category. Currently a pass-through.
+ * Password, PIN, OTP and payment-card fields, judged from type / autocomplete / label /
+ * placeholder / name (the DOM summary never carries values). One region per field, CSS px.
  */
-export function redactText(text: string): { text: string; redacted: boolean } {
-  return { text, redacted: false };
+export function detectSensitiveDomRegions(elements: UIElement[]): RedactedRegion[] {
+  const regions: RedactedRegion[] = [];
+  for (const el of elements) {
+    if (!el.isVisible) continue;
+    const category = classifyField(el);
+    if (!category) continue;
+    regions.push({ bbox: el.bbox, category, confidence: 1, method: "dom" });
+  }
+  return regions;
 }
 
-/**
- * TODO(redaction-dom): flag input[type=password], input[autocomplete^="cc-"], email/tel inputs
- * and elements whose label/placeholder matches "password", "ssn", "card", ... and emit a
- * RedactedRegion (method "dom", CSS px) per element. Currently returns nothing.
- */
-export function detectSensitiveDomRegions(_elements: UIElement[]): RedactedRegion[] {
-  return [];
-}
+/** Attributes whose values are free text that could carry PII. */
+const TEXT_ATTRIBUTES = ["placeholder", "aria-label", "title", "alt", "name"];
 
 /**
- * TODO(redaction-dom): replace `label` / offending `attributes` with REDACTED_TEXT for elements
- * intersecting a redaction region or tripping `redactText`, and set `redacted: true`.
- * Currently returns the elements unchanged.
+ * Replace PII in element labels and free-text attributes with "[REDACTED]" and mark the element
+ * `redacted: true`. Returns new objects; the input array is not modified.
  */
 export function redactElements(elements: UIElement[], _regions: RedactedRegion[]): UIElement[] {
-  return elements;
+  return elements.map((el) => {
+    const label = redactText(el.label);
+    let changed = label.redacted;
+    let attributes = el.attributes;
+    if (attributes) {
+      const next: Record<string, string> = {};
+      for (const [k, v] of Object.entries(attributes)) {
+        if (TEXT_ATTRIBUTES.includes(k)) {
+          const r = redactText(v);
+          changed ||= r.redacted;
+          next[k] = r.text;
+        } else {
+          next[k] = v;
+        }
+      }
+      attributes = next;
+    }
+    if (!changed) return el;
+    const out: UIElement = { ...el, label: label.text, redacted: true };
+    if (attributes) out.attributes = attributes;
+    return out;
+  });
 }
 
 // ---------------------------------------------------------------------------
