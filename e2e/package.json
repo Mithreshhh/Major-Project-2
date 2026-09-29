@@ -1,0 +1,13 @@
+{
+  "name": "@odpa/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end run of the real extension in Chrome for Testing against the local server and Gemma.",
+  "type": "module",
+  "scripts": {
+    "demo": "node run-demo.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}

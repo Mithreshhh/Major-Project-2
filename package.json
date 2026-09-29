@@ -7,7 +7,8 @@
   "workspaces": [
     "shared",
     "perception",
-    "extension"
+    "extension",
+    "e2e"
   ],
   "scripts": {
     "build": "npm run build --workspace=extension",
@@ -18,7 +19,8 @@
     "server:install": "cd server && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
     "server:dev": "cd server && .venv/Scripts/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "server:test": "cd server && .venv/Scripts/python -m pytest -q",
-    "server:test:gemma": "cd server && set RUN_GEMMA_INTEGRATION=1&& .venv/Scripts/python -m pytest tests/integration -q -s"
+    "server:test:gemma": "cd server && set RUN_GEMMA_INTEGRATION=1&& .venv/Scripts/python -m pytest tests/integration -q -s",
+    "e2e": "npm run build && npm run demo --workspace=e2e"
   },
   "engines": {
     "node": ">=20"
