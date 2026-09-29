@@ -19,7 +19,9 @@ extension's confidence threshold of 0.5:
 
 On 200 held-out generated pages: 97.8% recall, 98.5% precision. Full tables at every threshold:
 [`RESULTS.md`](RESULTS.md). In real Chrome, inside the extension, it found 10/10 elements on
-every step of the demo task in 0.3-0.65 s.
+every step of the demo task in 0.3-0.65 s. After the test page was redesigned (a new layout it
+has never seen, with a nav bar, hero banner and footer) it finds 11 of 12 with about 79% of its
+boxes correct, which is the honest number to expect on unfamiliar designs.
 
 The data fix mattered more than the model. The first round (no hard negatives) had 97% recall
 but only 55% precision on the demo page, because it called short grey labels "links". Adding

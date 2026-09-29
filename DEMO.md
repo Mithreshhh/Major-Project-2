@@ -1,6 +1,6 @@
 # Demo guide
 
-Everything you need to show the project to your mentors. It takes about 7 minutes.
+Everything you need to show the project to your mentors. It takes about 8 minutes.
 
 ## Before the meeting: 10 minutes
 
@@ -27,7 +27,7 @@ Everything you need to show the project to your mentors. It takes about 7 minute
    5. `perception/ui-model/RESULTS.md` on GitHub
    6. The `e2e/proof/` folder, your backup if anything fails live
 
-## The demo: 7 minutes
+## The demo: 8 minutes
 
 **1. The idea, 30 seconds.** Show the architecture diagram.
 > "A browser agent that completes tasks for you, but personal data never leaves your laptop. The
@@ -57,10 +57,17 @@ Go back to the test page, click **Demo question**, then **Ask about page**.
 
 On "What the AI sees", scroll to **Page text the AI read** to show the red `[HIDDEN …]` placeholders.
 
+**3c. A chat app, 40 seconds.** Open <http://127.0.0.1:5500/chat.html> (an Instagram-style inbox)
+and press **Ask about page** with **Summarize this conversation**. On "What the AI sees", every
+avatar and the shared photo are black boxes, even the tiny ones.
+> "Small profile pictures are too small for any face model to see reliably, so the extension
+> also hides every photo, video and canvas it finds in the page code. Here it hid 9 photos; the
+> face model alone would have caught 1."
+
 **4. Show what the AI saw, 1 minute.** Switch to the "What the AI sees" tab. It updates by itself.
-> "This is exactly what the server received. The face, the password field, and all the
-> personal details are black boxes. The labels show why each one was hidden: face from our
-> on-device model, credential from the page structure, email and phone from text rules. The AI
+> "This is exactly what the server received. The face, the photo, the password field, and all
+> the personal details are black boxes. The labels show why each one was hidden: face from our
+> on-device model, photo and credential from the page structure, email and phone from text rules. The AI
 > never saw the real values, and it still completed the task."
 
 Click through the step buttons at the top to show each step's decision.
@@ -82,7 +89,9 @@ the dashed boxes and the "Found from pixels" section.
 > ourselves. Instead of labelling images by hand, we generated 1,700 random web pages and read
 > the exact position of every button from the page code, so the labels were free and perfect.
 > The test page was never used in training. On every step the extension checks the model
-> against the real page, and here it found 10 out of 10 elements."
+> against the real page." Read the number from the screen: on this page it finds about 11 of
+> 12 elements. "On the page layout it was tested on, it scored 97.5%; on this redesigned page
+> it has never seen, it's a bit lower, and the extension measures that live."
 
 Then show `perception/ui-model/RESULTS.md` for the numbers across thresholds.
 > "We also tried Microsoft's OmniParser model first. It was 77 MB and couldn't even load in the
@@ -128,6 +137,11 @@ design.
 **"Why a local Gemma model?"** It keeps everything on your machine, costs nothing per request,
 and shows the design works even with a small 4.6B model. A larger model can be swapped in
 through one setting.
+
+**"What about Instagram or WhatsApp Web?"** Every photo, video and canvas in view is blacked out
+from the page code, so avatars and shared photos never leave, whatever their size. What still
+goes as text is ordinary message text (not emails, phones, card or ID numbers, which are hidden).
+Hiding all chat text is possible but would leave the AI nothing to work with.
 
 **"Can it log in or pay by mistake?"** Three guards. Questions like "analyze this page" go to ask
 mode, which can only answer. The agent may only type text that is in your task, so it can't

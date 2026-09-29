@@ -43,7 +43,8 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
    extension and returns face boxes, ~100-130 ms per screenshot in Chrome. Our UI detector
    (YOLO11n, trained on auto-labelled pages) finds buttons, inputs and links from the same
    pixels, ~0.4-0.8 s, and is scored against the DOM on every step.
-3. **Redact.** Faces (model), password/PIN/card fields (DOM rules) and emails, phones, card,
+3. **Redact.** Faces (model), every photo, video and canvas in view (DOM, so tiny avatars are
+   covered too), password/PIN/card fields (DOM rules) and emails, phones, card,
    Aadhaar, PAN and SSN numbers (text rules) are blacked out on a fresh copy of the screenshot;
    the raw buffer is zeroed. PII in labels, the page title and the URL becomes `[REDACTED]`.
    If detection or redaction fails, the step aborts: raw pixels never leave.
@@ -61,7 +62,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | [`server/`](server/) | `POST /process` and `POST /ask` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
-| [`demo/`](demo/) | Test page with a face photo, sample PII and a form | HTML |
+| [`demo/`](demo/) | Test pages: a product site with a contact form and sample PII, a bank login page, an Instagram-style chat | HTML |
 
 ## Prerequisites
 
