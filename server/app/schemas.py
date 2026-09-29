@@ -179,6 +179,12 @@ class SanitizedContext(_Strict):
     redactions: list[RedactedRegion]
     history: list[ActionCommand]
     perception: PerceptionSummary
+    #: Visible page text for /ask, personal data already replaced on-device ("[HIDDEN EMAIL]").
+    pageText: Optional[str] = Field(default=None, max_length=20000)
+
+
+class AskResponse(_Strict):
+    answer: str
 
 
 # ---------------------------------------------------------------------------

@@ -189,6 +189,16 @@ export interface SanitizedContext {
   /** Commands the client has already executed in this session (most recent last). */
   history: ActionCommand[];
   perception: PerceptionSummary;
+  /**
+   * Visible page text, sent only for questions (POST /ask). Personal data is replaced on-device
+   * by placeholders naming its kind, e.g. "[HIDDEN EMAIL]". Form values are never included.
+   */
+  pageText?: string;
+}
+
+/** Response of POST /ask: an answer about the page. Nothing is executed on the page. */
+export interface AskResponse {
+  answer: string;
 }
 
 // ---------------------------------------------------------------------------

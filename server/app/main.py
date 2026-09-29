@@ -5,6 +5,7 @@ Endpoints
   GET  /health        liveness + protocol version + active reasoner
   GET  /health/gemma  is Ollama reachable, is the model present, is it loaded (add ?warm=true to load it)
   POST /process       SanitizedContext -> ActionCommand
+  POST /ask           SanitizedContext (+ pageText) -> AskResponse; read-only, nothing is executed
 
 Run locally:  uvicorn app.main:app --reload --port 8000
 """
@@ -29,7 +30,7 @@ from .ollama import (
 )
 from .debug import CaptureStore, build_router
 from .reasoning import Reasoner, ReasonerError, build_reasoner
-from .schemas import PROTOCOL_VERSION, ActionCommand, GemmaHealth, HealthResponse, SanitizedContext
+from .schemas import PROTOCOL_VERSION, ActionCommand, AskResponse, GemmaHealth, HealthResponse, SanitizedContext
 from .settings import get_settings
 
 log = logging.getLogger("odpa.server")
@@ -194,6 +195,14 @@ async def health_gemma(warm: bool = False):
     return body
 
 
+def _check_protocol(context: SanitizedContext) -> None:
+    if context.protocolVersion.split(".")[0] != PROTOCOL_VERSION.split(".")[0]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported protocolVersion {context.protocolVersion}; server speaks {PROTOCOL_VERSION}",
+        )
+
+
 @app.post("/process", response_model=ActionCommand, response_model_exclude_none=True)
 async def process(context: SanitizedContext) -> ActionCommand:
     """
@@ -202,11 +211,7 @@ async def process(context: SanitizedContext) -> ActionCommand:
     The payload is assumed to be already redacted on-device; the server never receives raw
     screenshots or PII. Nothing is persisted here.
     """
-    if context.protocolVersion.split(".")[0] != PROTOCOL_VERSION.split(".")[0]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"unsupported protocolVersion {context.protocolVersion}; server speaks {PROTOCOL_VERSION}",
-        )
+    _check_protocol(context)
 
     log.info(
         "process session=%s step=%d elements=%d redactions=%d screenshot=%s",
@@ -231,3 +236,36 @@ async def process(context: SanitizedContext) -> ActionCommand:
             reasoning_ms=int((time.perf_counter() - started) * 1000),
         )
     return command
+
+
+@app.post("/ask", response_model=AskResponse)
+async def ask(context: SanitizedContext) -> AskResponse:
+    """
+    Answer a question about the page (context.task) from its sanitized text and elements.
+
+    Read-only by design: the response is text, never an action, so asking "analyze this login
+    page" can never fill or submit anything.
+    """
+    _check_protocol(context)
+    log.info(
+        "ask session=%s elements=%d redactions=%d text_chars=%d",
+        context.sessionId,
+        len(context.elements),
+        len(context.redactions),
+        len(context.pageText or ""),
+    )
+    started = time.perf_counter()
+    try:
+        answer = await _reasoner().answer(context)
+    except Exception as exc:
+        if captures is not None:
+            detail = getattr(exc, "detail", None) or str(exc)
+            captures.record(context, error=str(detail), reasoning_ms=int((time.perf_counter() - started) * 1000))
+        raise
+    if captures is not None:
+        captures.record(
+            context,
+            command={"action": "answer", "answer": answer},
+            reasoning_ms=int((time.perf_counter() - started) * 1000),
+        )
+    return AskResponse(answer=answer)

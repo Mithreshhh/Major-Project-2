@@ -13,7 +13,14 @@ import logging
 from typing import Optional, Protocol
 
 from .ollama import OllamaClient
-from .prompting import ActionParseError, build_messages, parse_action, retry_prompt
+from .prompting import (
+    ActionParseError,
+    build_ask_messages,
+    build_messages,
+    describe_redactions,
+    parse_action,
+    retry_prompt,
+)
 from .schemas import ActionCommand, ClickAction, DoneAction, NoopAction, SanitizedContext
 from .settings import Settings
 
@@ -41,6 +48,8 @@ class Reasoner(Protocol):
     name: str
 
     async def decide(self, context: SanitizedContext) -> ActionCommand: ...
+
+    async def answer(self, context: SanitizedContext) -> str: ...
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +86,13 @@ class MockReasoner:
             action="noop",
             reason="[mock] no interactive button found in the sanitized context",
             confidence=0.5,
+        )
+
+    async def answer(self, context: SanitizedContext) -> str:
+        words = len((context.pageText or "").split())
+        return (
+            f"[mock] '{context.page.title}' has {len(context.elements)} elements and {words} words of text. "
+            f"Hidden before sending: {describe_redactions(context)}."
         )
 
 
@@ -168,6 +184,18 @@ class GemmaReasoner:
 
         log.info("gemma step=%d -> %s (after retry)", context.stepIndex, command.action)
         return command
+
+    async def answer(self, context: SanitizedContext) -> str:
+        """Plain-text answer about the page. Text only: the page text carries what matters."""
+        options = {**self._options(), "num_predict": max(self._settings.ollama_num_predict, 600)}
+        raw = await self._client.chat(
+            build_ask_messages(context), json_mode=False, think=await self._think_flag(), options=options
+        )
+        text = raw.strip()
+        if not text:
+            raise ModelOutputError(f"model '{self.model}' returned an empty answer", attempts=[raw])
+        log.info("gemma answered (%d chars)", len(text))
+        return text
 
 
 # ---------------------------------------------------------------------------

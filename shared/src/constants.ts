@@ -9,3 +9,6 @@ export const PROCESS_ENDPOINT = "/process";
 
 /** Path of the health endpoint on the server. */
 export const HEALTH_ENDPOINT = "/health";
+
+/** Path of the read-only question endpoint: SanitizedContext (with pageText) -> AskResponse. */
+export const ASK_ENDPOINT = "/ask";

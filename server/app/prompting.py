@@ -58,7 +58,34 @@ Rules:
 4. Read "Page messages" first. If a message confirms the task succeeded (for example "submitted", "thank you", "saved", "success") or every part of the task is already in previous actions, reply with "done".
 5. Use "ask_user" when you need information only the user has. Use "noop" when nothing on this page can move the task forward.
 6. Never type into password fields unless the task gives the password.
-7. Keep "reasoning" under 20 words."""
+7. If the task only asks for information (analyze, summarize, explain, describe, check, or a question), do not click or type anything: reply with "done" and put the answer in "summary".
+8. Only type text that appears in the task. Never invent names, usernames, emails or passwords; use "ask_user" instead.
+9. Do not log in, sign up, pay, buy, delete or send anything unless the task explicitly asks for it.
+10. Keep "reasoning" under 20 words."""
+
+ASK_SYSTEM_PROMPT = """You answer questions about the web page the user is looking at. You cannot click or type; you only answer.
+You get the page title, address, visible text, and its buttons, links and fields.
+Personal data was removed on the user's device before you received anything: values appear as placeholders such as [HIDDEN EMAIL], [HIDDEN PHONE], [HIDDEN CARD NUMBER], [HIDDEN AADHAAR] and [HIDDEN PAN], and faces and password fields were blacked out.
+
+Rules:
+1. Answer only from the page content given. If the page does not contain the answer, say so.
+2. Never guess or reconstruct hidden values. You may say what kind of personal data the page shows and that it was hidden.
+3. If the user wants something done on the page, explain what they would need to do; do not claim you did it.
+4. If asked to analyze, describe, review or summarize the page, answer in 4 to 6 short bullet points ("- "): what the page is for, what it asks the user to enter, the main actions available, important notices or warnings, and which kinds of personal data were hidden.
+5. Otherwise answer directly in at most 4 short sentences. Plain text, no headings, no bold."""
+
+_CATEGORY_WORDS = {
+    "face": "face",
+    "credential": "password or other secret field",
+    "payment_card": "card number",
+    "email": "email address",
+    "phone": "phone number",
+    "pii_text": "ID number",
+    "address": "address",
+    "other": "other sensitive item",
+}
+_ASK_TEXT_MAX = 6000
+_ASK_ELEMENTS_MAX = 40
 
 _LABEL_MAX = 60
 _PROMPT_ATTRS = ("type", "placeholder", "name", "title")
@@ -196,6 +223,50 @@ def build_messages(
     if include_screenshot and context.screenshot is not None:
         user["images"] = [context.screenshot.dataBase64]
     return [{"role": "system", "content": SYSTEM_PROMPT}, user]
+
+
+def describe_redactions(context: SanitizedContext) -> str:
+    """"1 face, 1 password or other secret field, 2 email addresses" from the redaction list."""
+    counts: dict[str, int] = {}
+    for r in context.redactions:
+        counts[r.category] = counts.get(r.category, 0) + 1
+    parts = [f"{n} {_CATEGORY_WORDS.get(cat, cat)}{'' if n == 1 else 's'}" for cat, n in counts.items()]
+    return ", ".join(parts) if parts else "nothing"
+
+
+def build_ask_prompt(context: SanitizedContext) -> str:
+    lines: list[str] = [f"Question: {context.task.strip() or 'Describe this page.'}", ""]
+    lines.append(f'Page: "{_trunc(context.page.title, 80)}" ({context.page.url})')
+    lines.append(f"Hidden on the user's device before sending: {describe_redactions(context)}.")
+
+    controls = [e for e in context.elements if e.isInteractive and e.isVisible][:_ASK_ELEMENTS_MAX]
+    if controls:
+        lines.append("")
+        lines.append("Buttons, links and fields on screen:")
+        for e in controls:
+            kind = e.attributes.get("type") if e.attributes and e.role == "textbox" else None
+            lines.append(f"  - {e.role}{f' ({kind})' if kind else ''}: {_trunc(e.label, _LABEL_MAX) or '(no label)'}")
+
+    text = (context.pageText or "").strip()
+    lines.append("")
+    if text:
+        if len(text) > _ASK_TEXT_MAX:
+            text = text[:_ASK_TEXT_MAX] + "\n[... page text truncated]"
+        lines.append('Visible page text:\n"""')
+        lines.append(text)
+        lines.append('"""')
+    else:
+        lines.append("Visible page text: not provided.")
+    lines.append("")
+    lines.append("Answer the question.")
+    return "\n".join(lines)
+
+
+def build_ask_messages(context: SanitizedContext) -> list[dict[str, Any]]:
+    return [
+        {"role": "system", "content": ASK_SYSTEM_PROMPT},
+        {"role": "user", "content": build_ask_prompt(context)},
+    ]
 
 
 def retry_prompt(error: str) -> str:

@@ -34,7 +34,12 @@
       "type": "array",
       "items": { "$ref": "action-command.schema.json" }
     },
-    "perception": { "$ref": "#/$defs/PerceptionSummary" }
+    "perception": { "$ref": "#/$defs/PerceptionSummary" },
+    "pageText": {
+      "type": "string",
+      "maxLength": 20000,
+      "description": "Visible page text for /ask, with personal data replaced on-device by placeholders such as [HIDDEN EMAIL]."
+    }
   },
   "$defs": {
     "BoundingBox": {

@@ -49,6 +49,7 @@ class Capture:
     command: Optional[dict[str, Any]] = None
     error: Optional[str] = None
     reasoning_ms: Optional[int] = None
+    page_text: Optional[str] = None
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -69,6 +70,7 @@ class Capture:
             "command": self.command,
             "error": self.error,
             "reasoningMs": self.reasoning_ms,
+            "pageText": self.page_text,
         }
 
 
@@ -116,6 +118,7 @@ class CaptureStore:
                 command=command,
                 error=error,
                 reasoning_ms=reasoning_ms,
+                page_text=context.pageText,
             )
             self._items.append(capture)
 
@@ -199,6 +202,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
 .pill.ml{border-color:var(--ml);color:var(--ml)}.pill.dom{border-color:var(--dom);color:var(--dom)}.pill.heuristic{border-color:var(--heuristic);color:var(--heuristic)}
 .history{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}.history button{flex:none;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 8px;cursor:pointer;font:inherit;font-size:12px}
 .history button.on{border-color:var(--fg);font-weight:600}.muted{color:var(--muted)}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+pre#pageText{white-space:pre-wrap;max-height:260px;overflow:auto;font:12px/1.5 ui-monospace,monospace;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin:0}
+.hid{color:#fff;background:var(--ml);border-radius:3px;padding:0 3px}
 h2{font-size:15px;margin:14px 0 6px}h2:first-child{margin-top:0}
 </style></head><body><main>
 <h1>What the AI sees</h1>
@@ -212,6 +217,7 @@ h2{font-size:15px;margin:14px 0 6px}h2:first-child{margin-top:0}
   <h2>Decision</h2><div id="decision"></div>
   <h2>Request</h2><dl class="kv" id="req"></dl>
   <h2>Hidden before sending</h2><div id="pills"></div>
+  <div id="textWrap" hidden><h2>Page text the AI read (personal data replaced on-device)</h2><pre id="pageText"></pre></div>
   <h2>Found from pixels (on-device vision model)</h2><div id="visionInfo"></div>
   <h2>Elements the model was given</h2><table><thead><tr><th>id</th><th>role</th><th>label</th><th>seen by vision</th></tr></thead><tbody id="els"></tbody></table>
  </div>
@@ -221,7 +227,7 @@ h2{font-size:15px;margin:14px 0 6px}h2:first-child{margin-top:0}
 const $=id=>document.getElementById(id);let selected=null,latestId=null,data=[];
 const NAMES={ml:"face (on-device model)",dom:"sensitive field",heuristic:"personal text"};
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
-function describe(c){if(!c)return"";switch(c.action){case"click":return`Click ${c.target}`;case"type":return`Type "${c.text}" into ${c.target}`;case"scroll":return`Scroll ${c.direction}`;case"navigate":return`Go to ${c.url}`;case"wait":return`Wait ${c.ms} ms`;case"done":return`Done: ${c.summary}`;case"ask_user":return`Ask user: ${c.question}`;default:return`No action: ${c.reason}`}}
+function describe(c){if(!c)return"";switch(c.action){case"click":return`Click ${c.target}`;case"type":return`Type "${c.text}" into ${c.target}`;case"scroll":return`Scroll ${c.direction}`;case"navigate":return`Go to ${c.url}`;case"wait":return`Wait ${c.ms} ms`;case"done":return`Done: ${c.summary}`;case"answer":return`Answer: ${c.answer}`;case"ask_user":return`Ask user: ${c.question}`;default:return`No action: ${c.reason}`}}
 function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidden=!!c;$("content").hidden=!c;
  $("count").textContent=data.length?`${data.length} request(s) recorded`:"";
  $("history").innerHTML=data.map(x=>`<button data-id="${x.id}" class="${x.id===(c&&c.id)?"on":""}">#${x.id} · step ${x.stepIndex+1} · ${esc((x.command&&x.command.action)||"error")}</button>`).join("");
@@ -236,10 +242,11 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
   for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}`;const b=v.bbox;
    Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});shot.appendChild(d)}}
  else{shot.hidden=true;$("noshot").hidden=false}
- $("decision").innerHTML=c.error?`<div class="error">${esc(c.error)}</div>`:`<div class="decision">${esc(describe(c.command))}</div><div class="muted">${esc(c.command&&c.command.reasoning)}</div><div class="muted">Gemma took ${((c.reasoningMs||0)/1000).toFixed(1)} s</div>`;
+ $("decision").innerHTML=c.error?`<div class="error">${esc(c.error)}</div>`:`<div class="decision" style="white-space:pre-wrap">${esc(describe(c.command))}</div><div class="muted">${esc(c.command&&c.command.reasoning)}</div><div class="muted">Gemma took ${((c.reasoningMs||0)/1000).toFixed(1)} s</div>`;
  $("req").innerHTML=`<dt>Task</dt><dd>${esc(c.task)}</dd><dt>Step</dt><dd>${c.stepIndex+1}</dd><dt>Page</dt><dd>${esc(c.title)}<br><span class="muted">${esc(c.url)}</span></dd><dt>Screenshot</dt><dd>${c.hasScreenshot?`${c.screenshotSize[0]}×${c.screenshotSize[1]} ${esc(c.screenshotMime)}`:"none"}</dd><dt>On-device model</dt><dd>${esc(c.perception.modelId)} · ${c.perception.latencyMs} ms</dd>`;
  const by={};for(const r of c.redactions)by[r.method]=(by[r.method]||0)+1;
  $("pills").innerHTML=Object.keys(by).length?Object.entries(by).map(([m,n])=>`<span class="pill ${m}">${n} × ${NAMES[m]||m}</span>`).join(""):`<span class="muted">Nothing sensitive found on this screen.</span>`;
+ $("textWrap").hidden=!c.pageText;if(c.pageText)$("pageText").innerHTML=esc(c.pageText).replace(/\\[HIDDEN [A-Z ]+\\]/g,m=>`<span class="hid">${m}</span>`);
  const CMP=new Set(["button","link","textbox","checkbox","radio","select"]),vw2=c.viewport.width,vh2=c.viewport.height;
  const comparable=e=>CMP.has(e.role)&&e.isVisible&&e.bbox.width>=4&&e.bbox.height>=4&&e.bbox.x<vw2&&e.bbox.y<vh2&&e.bbox.x+e.bbox.width>0&&e.bbox.y+e.bbox.height>0;
  if(c.perception.uiModelId){const dom=c.elements.filter(comparable).length,cnt={};for(const v of vis)cnt[v.role]=(cnt[v.role]||0)+1;
