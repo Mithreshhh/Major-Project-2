@@ -54,9 +54,11 @@ Allowed shapes (choose exactly one):
 Rules:
 1. "target" must be an element id copied exactly from the list, such as "el_3". Never invent ids and never use labels as targets.
 2. Only click or type into elements that are interactive.
-3. Do not repeat an action already listed under previous actions unless the page has changed.
-4. Use "done" when the task is complete. Use "ask_user" when you need information only the user has. Use "noop" when nothing on this page can move the task forward.
-5. Keep "reasoning" under 20 words."""
+3. Do not repeat an action already listed under previous actions. Every action in that list has already been carried out successfully.
+4. Read "Page messages" first. If a message confirms the task succeeded (for example "submitted", "thank you", "saved", "success") or every part of the task is already in previous actions, reply with "done".
+5. Use "ask_user" when you need information only the user has. Use "noop" when nothing on this page can move the task forward.
+6. Never type into password fields unless the task gives the password.
+7. Keep "reasoning" under 20 words."""
 
 _LABEL_MAX = 60
 _PROMPT_ATTRS = ("type", "placeholder", "name", "title")
@@ -151,10 +153,17 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
     lines.append(f"Step: {context.stepIndex}")
 
     if context.history:
-        lines.append("Previous actions:")
+        lines.append("Previous actions (all already done successfully):")
         lines.extend(f"  {i + 1}. {describe_command(c)}" for i, c in enumerate(context.history))
     else:
         lines.append("Previous actions: none")
+
+    # Status/alert text ("Form submitted. Thanks!") is the clearest completion signal a small
+    # model gets, so it is listed on its own instead of being buried in the element list.
+    messages = [e.label.strip() for e in context.elements if e.role == "text" and e.label.strip()]
+    if messages:
+        lines.append("Page messages:")
+        lines.extend(f'  "{_trunc(m, 120)}"' for m in messages[:5])
 
     if context.redactions:
         lines.append(

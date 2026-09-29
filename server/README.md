@@ -28,6 +28,7 @@ curl http://127.0.0.1:8000/health/gemma?warm=true
 | `GET /health` | Liveness, protocol version, active reasoner and model |
 | `GET /health/gemma` | Ollama reachable? model tag present? model loaded? `?warm=true` loads it. 503 with the same body when not usable |
 | `POST /process` | `SanitizedContext` in, `ActionCommand` out |
+| `GET /debug/view` | "What the AI sees": every sanitized payload received, with redaction outlines and Gemma's decision. JSON at `/debug/captures`. `ODPA_DEBUG_VIEW=0` disables it |
 
 Error responses from `/process`:
 

@@ -134,6 +134,20 @@ def test_prompt_caps_elements_and_prefers_interactive(example_context):
     assert user.count(" | heading | ") == 4
 
 
+def test_prompt_surfaces_page_messages_for_completion(example_context):
+    status = {
+        "id": "el_9", "role": "text", "label": "Form submitted. Thanks!",
+        "bbox": {"x": 100, "y": 320, "width": 200, "height": 20}, "isVisible": True, "isInteractive": False,
+    }
+    ctx = make_context(example_context, elements=[*example_context["elements"], status],
+                       history=[{"action": "click", "target": "el_1"}], stepIndex=1)
+    messages = build_messages(ctx, max_elements=60, include_screenshot=False)
+    user = messages[1]["content"]
+    assert 'Page messages:\n  "Form submitted. Thanks!"' in user
+    assert "all already done successfully" in user
+    assert '"done"' in messages[0]["content"] and "Page messages" in messages[0]["content"]
+
+
 def test_prompt_lists_history(example_context):
     history = [{"action": "type", "target": "el_0", "text": "a@b.c"}, {"action": "scroll", "direction": "down"}]
     ctx = make_context(example_context, history=history, stepIndex=2)
