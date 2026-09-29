@@ -56,6 +56,10 @@ class Settings:
     send_screenshot: str
     #: Upper bound on UI elements described in one prompt (interactive ones win).
     max_prompt_elements: int
+    #: Record received payloads and serve GET /debug/view ("What the AI sees").
+    debug_view: bool
+    #: Also write each recorded payload to this directory (empty string disables saving).
+    debug_save_dir: str
 
 
 def get_settings() -> Settings:
@@ -70,4 +74,6 @@ def get_settings() -> Settings:
         ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "10m").strip(),
         send_screenshot=os.getenv("GEMMA_SEND_SCREENSHOT", "auto").strip().lower(),
         max_prompt_elements=_int("GEMMA_MAX_ELEMENTS", 60),
+        debug_view=_bool("ODPA_DEBUG_VIEW", True),
+        debug_save_dir=os.getenv("ODPA_DEBUG_SAVE_DIR", "debug_captures").strip(),
     )

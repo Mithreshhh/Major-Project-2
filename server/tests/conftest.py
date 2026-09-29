@@ -5,6 +5,8 @@ from pathlib import Path
 # Unit tests must never depend on a running Ollama: force the deterministic reasoner before the
 # app's lifespan reads the environment. The integration tests build a GemmaReasoner explicitly.
 os.environ["REASONER"] = "mock"
+# Keep the "What the AI sees" recorder in memory only during tests.
+os.environ["ODPA_DEBUG_SAVE_DIR"] = ""
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

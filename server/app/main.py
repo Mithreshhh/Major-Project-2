@@ -11,7 +11,9 @@ Run locally:  uvicorn app.main:app --reload --port 8000
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +27,7 @@ from .ollama import (
     OllamaUnavailableError,
     normalise_tag,
 )
+from .debug import CaptureStore, build_router
 from .reasoning import Reasoner, ReasonerError, build_reasoner
 from .schemas import PROTOCOL_VERSION, ActionCommand, GemmaHealth, HealthResponse, SanitizedContext
 from .settings import get_settings
@@ -70,6 +73,15 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["content-type"],
 )
+
+
+_boot = get_settings()
+#: "What the AI sees" recorder; None when ODPA_DEBUG_VIEW=0.
+captures: CaptureStore | None = (
+    CaptureStore(save_dir=Path(_boot.debug_save_dir) if _boot.debug_save_dir else None) if _boot.debug_view else None
+)
+if captures is not None:
+    app.include_router(build_router(captures))
 
 
 def _reasoner() -> Reasoner:
@@ -204,4 +216,18 @@ async def process(context: SanitizedContext) -> ActionCommand:
         len(context.redactions),
         "yes" if context.screenshot else "no",
     )
-    return await _reasoner().decide(context)
+    started = time.perf_counter()
+    try:
+        command = await _reasoner().decide(context)
+    except Exception as exc:
+        if captures is not None:
+            detail = getattr(exc, "detail", None) or str(exc)
+            captures.record(context, error=str(detail), reasoning_ms=int((time.perf_counter() - started) * 1000))
+        raise
+    if captures is not None:
+        captures.record(
+            context,
+            command=command.model_dump(exclude_none=True),
+            reasoning_ms=int((time.perf_counter() - started) * 1000),
+        )
+    return command
