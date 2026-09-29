@@ -63,7 +63,8 @@ function ensurePerception(): Promise<boolean> {
       modelUrl: CONFIG.perception.modelUrl,
       modelId: CONFIG.perception.modelId,
       scoreThreshold: CONFIG.perception.scoreThreshold,
-      wasmBaseUrl: chrome.runtime.getURL("ort/"),
+      // Must be the exact .wasm the bundled glue expects (see scripts/build.mjs alias).
+      wasmUrl: chrome.runtime.getURL("ort/ort-wasm-simd-threaded.wasm"),
       executionProviders: ["wasm"],
       numThreads: 1,
     }).then((loaded) => {
@@ -144,13 +145,18 @@ export async function runStep(tabId: number, windowId?: number): Promise<StepRes
       perception = placeholderOutput();
     }
 
-    // 4. Redaction (pass-through until TODO(redaction) is done)
+    // 4. Redaction. Faces are blacked out on a fresh copy and `rawImage`'s buffer is zeroed by
+    //    sanitize(); from here on only `redacted.screenshot` holds pixels. DOM/text redaction
+    //    is still TODO(redaction-dom) / TODO(redaction-text).
     const redacted = await sanitize({
       screenshot: rawImage,
       elements: snapshot.elements,
       perception,
       devicePixelRatio: snapshot.viewport.devicePixelRatio,
     });
+    if (rawImage) {
+      console.info(LOG, `redaction: ${redacted.redactions.length} region(s) blacked out`);
+    }
 
     // 5. Build the wire payload
     const context: SanitizedContext = {

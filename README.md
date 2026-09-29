@@ -4,10 +4,11 @@ A privacy-preserving browser agent. Perception and redaction happen **on the use
 inside a browser extension; only a sanitized, PII-free context is sent to a server-side
 vision-language model (VLM) for reasoning; the returned action is executed back in the browser.
 
-> **Status: server reasoning and on-device face detection are real; redaction is not yet.**
-> The client runs an UltraFace face detector through ONNX Runtime Web, the server reasons with a
-> local Gemma model via Ollama, and the redaction layer between them is still a pass-through.
-> Search the code for `TODO(redaction)` and `TODO(ui-model)` for the remaining work.
+> **Status: server reasoning, on-device face detection and pixel redaction are real.**
+> The client runs an UltraFace face detector through ONNX Runtime Web and blacks out every face
+> before the screenshot leaves the browser; the server reasons with a local Gemma model via
+> Ollama. Text/DOM redaction of labels and URLs is still a stub. Search the code for
+> `TODO(redaction-dom)`, `TODO(redaction-text)` and `TODO(ui-model)` for the remaining work.
 
 ## Architecture
 
@@ -31,12 +32,14 @@ vision-language model (VLM) for reasoning; the returned action is executed back 
 ```
 
 1. **Capture.** The content script summarises visible UI elements (role, label, bounding box,
-   whitelisted attributes; never form values). Screenshot capture exists but is switched off
-   (`sendScreenshot: false` in `extension/src/shared/config.ts`) until redaction is implemented.
+   whitelisted attributes; never form values). The background worker screenshots the tab
+   (`sendScreenshot` in `extension/src/shared/config.ts` turns this off entirely).
 2. **Perceive.** An UltraFace face detector runs via ONNX Runtime Web inside the extension and
    reports face boxes as sensitive regions. Visual UI-element detection is a placeholder.
-3. **Redact.** DOM heuristics, text heuristics and model detections mark sensitive regions,
-   which are masked in the pixels and the DOM summary. The client is the trust boundary.
+3. **Redact.** Every detected region is blacked out, with a 15% margin, on a fresh copy of the
+   screenshot; the raw buffer is zeroed. A failure anywhere in detect-or-redact aborts the step,
+   so raw pixels never leave. Text/DOM redaction of labels is still a stub. The client is the
+   trust boundary.
 4. **Reason.** The `SanitizedContext` is POSTed to the server, which returns one `ActionCommand`
    such as `{"action": "click", "target": "el_1"}`.
 5. **Act.** The content script executes the command (click, type, scroll, navigate, ...).
@@ -151,7 +154,7 @@ the JSON Schemas and the Pydantic models, so the two sides can be developed inde
 
 | Marker | File | Work |
 | --- | --- | --- |
-| `TODO(redaction)` | `perception/src/redaction.ts`, `extension/src/content/index.ts` | Consume `sensitiveRegions` (faces are real now), DOM + text detectors, in-place pixel masking, label masking, URL scrubbing |
+| `TODO(redaction-dom)`, `TODO(redaction-text)` | `perception/src/redaction.ts`, `extension/src/content/index.ts` | Flag password/payment/contact fields from the DOM, mask PII in labels and attributes, scrub URLs. Pixel masking of detected faces is done |
 | `TODO(ui-model)` | `perception/src/inference.ts` | Fine-tuned visual UI-element detector to fill the `uiElements` placeholder |
 | `TODO(agent)` | `extension/src/content/index.ts` | Confirmation UI for destructive actions, target highlighting, multi-step loop |
 
@@ -161,11 +164,12 @@ vision-capable model are the natural follow-ups there.
 
 ## Security note
 
-Until `TODO(redaction)` is implemented **nothing is actually redacted**; the pipeline forwards
-the DOM summary (labels, placeholders, page URL and title) as captured. No pixels leave the
-browser while `sendScreenshot` is false, and `npm test` in `extension/` checks that the step
-never calls `captureVisibleTab` in that state. Only run against local or non-sensitive pages,
-and keep the server on `localhost`.
+Faces in the screenshot are blacked out on-device before anything is sent, and `npm test` in
+`extension/` runs the built worker with the real model to check that the pixels reaching the
+server are masked exactly where the detector fired and untouched elsewhere. Everything else is
+forwarded as captured: text in the screenshot, and the DOM summary (labels, placeholders, page
+URL and title). Until `TODO(redaction-text)` and `TODO(redaction-dom)` are done, only run
+against local or non-sensitive pages, and keep the server on `localhost`.
 
 ## License
 

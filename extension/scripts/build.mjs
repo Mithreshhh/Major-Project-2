@@ -71,8 +71,9 @@ async function writeManifest(target, outdir) {
 async function copyOrtAssets(outdir) {
   const dest = path.join(outdir, "ort");
   await mkdir(dest, { recursive: true });
-  // The plain wasm EP loads only this file; .jsep (WebGPU), .jspi and .asyncify variants are not
-  // needed until an offscreen-document/WebGPU path is added. Each is ~20 MB, so skip them.
+  // The wasm-only ORT entry (see the esbuild alias below) loads exactly this file. The .jsep
+  // (WebGPU), .jspi and .asyncify variants are 15-27 MB each and not needed until an
+  // offscreen-document/WebGPU path is added.
   const files = (await readdir(ortDist)).filter((f) => f === "ort-wasm-simd-threaded.wasm");
   await Promise.all(files.map((f) => cp(path.join(ortDist, f), path.join(dest, f))));
   return files.length;
@@ -118,6 +119,11 @@ async function buildTarget(target) {
     minify: false,
     legalComments: "none",
     logLevel: "info",
+    // The service worker only ever uses the wasm execution provider. ORT's wasm-only entry
+    // embeds the plain JS glue (matching ort-wasm-simd-threaded.wasm, 13 MB) instead of the
+    // default WebGPU/JSEP glue (which would need the 26 MB .jsep.wasm). Perception itself
+    // imports the root package so Node tests still get ORT's Node build.
+    alias: { "onnxruntime-web": "onnxruntime-web/wasm" },
     define: {
       "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production"),
       __BROWSER__: JSON.stringify(target),

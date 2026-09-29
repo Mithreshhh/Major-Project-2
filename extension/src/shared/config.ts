@@ -13,11 +13,14 @@ export const CONFIG = {
   defaultTask: "Describe the next reasonable action on this page",
 
   /**
+   * true:  capture the visible tab, run the on-device face detector, black out every detected
+   *        face (with margin) on a fresh copy, zero the raw buffer, and send the masked copy.
+   *        A failure anywhere in that chain aborts the step; raw pixels are never sent.
    * false: the step never calls captureVisibleTab, never decodes or encodes pixels, never loads
-   * the on-device model, and sends `screenshot: null`. Keep it off until TODO(redaction) is
-   * implemented; until then any captured pixels would leave the device unmasked.
+   *        the model, and sends `screenshot: null`.
+   * Text/DOM redaction is still TODO, so labels and the page URL are forwarded as captured.
    */
-  sendScreenshot: false as boolean,
+  sendScreenshot: true as boolean,
   screenshotMimeType: "image/jpeg" as ScreenshotMimeType,
   screenshotQuality: 0.8,
 
