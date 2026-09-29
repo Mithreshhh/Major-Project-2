@@ -181,8 +181,8 @@ VIEW_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>What the AI sees</title>
 <style>
-:root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--ml:#cf222e;--dom:#8250df;--heuristic:#bf8700;--ok:#1a7f37}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#151b23;--fg:#e6edf3;--muted:#9198a1;--border:#3d444d;--ml:#f85149;--dom:#ab7df8;--heuristic:#d29922;--ok:#3fb950}}
+:root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--ml:#cf222e;--dom:#8250df;--heuristic:#bf8700;--photo:#0e7490;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#151b23;--fg:#e6edf3;--muted:#9198a1;--border:#3d444d;--ml:#f85149;--dom:#ab7df8;--heuristic:#d29922;--photo:#22b8cf;--ok:#3fb950}}
 *{box-sizing:border-box}body{margin:0;padding:20px 16px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1200px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 16px}
 .grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px}@media (max-width:900px){.grid{grid-template-columns:1fr}}
@@ -192,6 +192,7 @@ main{max-width:1200px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.sub{color:
 .box span{position:absolute;top:-1px;left:-1px;transform:translateY(-100%);font:600 11px/1.6 system-ui;padding:0 5px;color:#fff;background:var(--ml);white-space:nowrap}
 .box.dom{border-color:var(--dom)}.box.dom span{background:var(--dom)}.box.heuristic{border-color:var(--heuristic)}.box.heuristic span{background:var(--heuristic)}
 .hide-boxes .box:not(.vbox){display:none}
+.box.photo{border-color:var(--photo)}.box.photo span{background:var(--photo)}.pill.photo{border-color:var(--photo);color:var(--photo)}
 .vbox{position:absolute;border:2px dashed #0969da;pointer-events:none}.vbox.textbox{border-color:#1a7f37}.vbox.link{border-color:#bc4c00}.hide-vision .vbox{display:none}
 .pill.v-button{border-color:#0969da;color:#0969da}.pill.v-textbox{border-color:#1a7f37;color:#1a7f37}.pill.v-link{border-color:#bc4c00;color:#bc4c00}
 .big{font-size:22px;font-weight:700}.ok{color:var(--ok);font-weight:600}
@@ -225,7 +226,7 @@ h2{font-size:15px;margin:14px 0 6px}h2:first-child{margin-top:0}
 </main>
 <script>
 const $=id=>document.getElementById(id);let selected=null,latestId=null,data=[];
-const NAMES={ml:"face (on-device model)",dom:"sensitive field",heuristic:"personal text"};
+const NAMES={ml:"face (on-device model)",photo:"photo or video",dom:"sensitive field",heuristic:"personal text"};
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function describe(c){if(!c)return"";switch(c.action){case"click":return`Click ${c.target}`;case"type":return`Type "${c.text}" into ${c.target}`;case"scroll":return`Scroll ${c.direction}`;case"navigate":return`Go to ${c.url}`;case"wait":return`Wait ${c.ms} ms`;case"done":return`Done: ${c.summary}`;case"answer":return`Answer: ${c.answer}`;case"ask_user":return`Ask user: ${c.question}`;default:return`No action: ${c.reason}`}}
 function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidden=!!c;$("content").hidden=!c;
@@ -236,7 +237,7 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
  const vis=c.perception.visualElements||[],seen=new Set(vis.map(v=>v.matchedId).filter(Boolean));
  if(c.hasScreenshot){$("img").src=`/debug/captures/${c.id}/screenshot`;shot.hidden=false;$("noshot").hidden=true;
   const vw=c.viewport.width||1,vh=c.viewport.height||1;
-  for(const r of c.redactions){const d=document.createElement("div");d.className=`box ${r.method}`;const b=r.bbox;
+  for(const r of c.redactions){const d=document.createElement("div");d.className=`box ${r.category==="photo"?"photo":r.method}`;const b=r.bbox;
    Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});
    d.innerHTML=`<span>${esc(r.category.replace("_"," "))}</span>`;shot.appendChild(d)}
   for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}`;const b=v.bbox;
@@ -244,7 +245,7 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
  else{shot.hidden=true;$("noshot").hidden=false}
  $("decision").innerHTML=c.error?`<div class="error">${esc(c.error)}</div>`:`<div class="decision" style="white-space:pre-wrap">${esc(describe(c.command))}</div><div class="muted">${esc(c.command&&c.command.reasoning)}</div><div class="muted">Gemma took ${((c.reasoningMs||0)/1000).toFixed(1)} s</div>`;
  $("req").innerHTML=`<dt>Task</dt><dd>${esc(c.task)}</dd><dt>Step</dt><dd>${c.stepIndex+1}</dd><dt>Page</dt><dd>${esc(c.title)}<br><span class="muted">${esc(c.url)}</span></dd><dt>Screenshot</dt><dd>${c.hasScreenshot?`${c.screenshotSize[0]}×${c.screenshotSize[1]} ${esc(c.screenshotMime)}`:"none"}</dd><dt>On-device model</dt><dd>${esc(c.perception.modelId)} · ${c.perception.latencyMs} ms</dd>`;
- const by={};for(const r of c.redactions)by[r.method]=(by[r.method]||0)+1;
+ const by={};for(const r of c.redactions){const k=r.category==="photo"?"photo":r.method;by[k]=(by[k]||0)+1}
  $("pills").innerHTML=Object.keys(by).length?Object.entries(by).map(([m,n])=>`<span class="pill ${m}">${n} × ${NAMES[m]||m}</span>`).join(""):`<span class="muted">Nothing sensitive found on this screen.</span>`;
  $("textWrap").hidden=!c.pageText;if(c.pageText)$("pageText").innerHTML=esc(c.pageText).replace(/\\[HIDDEN [A-Z ]+\\]/g,m=>`<span class="hid">${m}</span>`);
  const CMP=new Set(["button","link","textbox","checkbox","radio","select"]),vw2=c.viewport.width,vh2=c.viewport.height;

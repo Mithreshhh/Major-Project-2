@@ -65,7 +65,7 @@ class UIElement(_Strict):
 
 
 SensitiveCategory = Literal[
-    "pii_text", "credential", "payment_card", "face", "address", "email", "phone", "other"
+    "pii_text", "credential", "payment_card", "face", "photo", "address", "email", "phone", "other"
 ]
 
 

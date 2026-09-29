@@ -22,6 +22,12 @@ export const CONFIG = {
    * too, and PII in element labels, the page title and the URL is replaced with "[REDACTED]".
    */
   sendScreenshot: true as boolean,
+  /**
+   * Black out every photo, video and canvas on the page (found from the DOM), not only the
+   * faces the model finds. Small avatars (chat lists, comments) are below what the face model
+   * can see, so this is the guarantee; the face model still covers faces in any other pixels.
+   */
+  hidePhotos: true as boolean,
   screenshotMimeType: "image/jpeg" as ScreenshotMimeType,
   screenshotQuality: 0.8,
 

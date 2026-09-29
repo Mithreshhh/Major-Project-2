@@ -76,6 +76,7 @@ Rules:
 
 _CATEGORY_WORDS = {
     "face": "face",
+    "photo": "photo",
     "credential": "password or other secret field",
     "payment_card": "card number",
     "email": "email address",

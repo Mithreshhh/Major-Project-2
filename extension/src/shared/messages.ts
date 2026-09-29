@@ -14,6 +14,8 @@ export interface DomSnapshot {
    * cross the message boundary; the matched text stays in the page.
    */
   textRegions: RedactedRegion[];
+  /** Boxes (CSS px) of every photo, video and canvas in view (category "photo"). */
+  imageRegions?: RedactedRegion[];
   /** Visible page text (document.body.innerText), only when asked for. Redacted in the background. */
   pageText?: string;
 }
@@ -36,6 +38,8 @@ export type ContentResponse =
 
 export interface RedactionCounts {
   faces: number;
+  /** Photos, videos and canvases hidden from the DOM (avatars, posts). */
+  photos: number;
   fields: number;
   text: number;
 }
@@ -50,6 +54,8 @@ export interface StepResult {
   veto?: Veto;
   /** Set when a risky action ran after confirmation. */
   confirmed?: "user" | "auto";
+  /** Redacted label of the element the command targets, for display. */
+  targetLabel?: string;
   stepIndex: number;
   sessionId: string;
   redactions: RedactionCounts;
@@ -129,12 +135,14 @@ export type PopupRequest =
 
 export type BackgroundBroadcast = { type: "TASK_UPDATE"; state: TaskState };
 
-export function describeCommand(c: ActionCommand): string {
+/** Human-readable command. `targetLabel` (already redacted) replaces the element id when known. */
+export function describeCommand(c: ActionCommand, targetLabel?: string): string {
+  const target = (id: string) => (targetLabel ? `"${targetLabel.length > 40 ? `${targetLabel.slice(0, 39)}…` : targetLabel}"` : id);
   switch (c.action) {
     case "click":
-      return `Click ${c.target}`;
+      return `Click ${target(c.target)}`;
     case "type":
-      return `Type "${c.text}" into ${c.target}${c.submit ? " and submit" : ""}`;
+      return `Type "${c.text}" into ${target(c.target)}${c.submit ? " and submit" : ""}`;
     case "scroll":
       return `Scroll ${c.direction}`;
     case "navigate":

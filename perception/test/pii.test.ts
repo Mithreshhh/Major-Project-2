@@ -5,7 +5,7 @@ import { test } from "node:test";
 import type { UIElement } from "@odpa/shared";
 
 import { classifyField, findPii, luhnValid, redactText, redactTextLabelled, scrubUrl } from "../src/pii";
-import { detectSensitiveDomRegions, redactElements, sanitize } from "../src/redaction";
+import { detectSensitiveDomRegions, padExactRegion, redactElements, sanitize } from "../src/redaction";
 
 const kinds = (text: string) => findPii(text).map((m) => `${m.kind}:${text.slice(m.start, m.end)}`);
 
@@ -125,4 +125,11 @@ test("redactTextLabelled names the kind of each hidden value and never keeps the
   );
   assert.deepEqual(counts, { email: 1, phone: 1, card: 1, aadhaar: 1, pan: 1 });
   assert.deepEqual(redactTextLabelled("nothing here").counts, {});
+});
+
+test("exact (DOM) boxes get a small margin: a large photo's mask does not spill onto nearby text", () => {
+  const photo = padExactRegion({ x: 100, y: 100, width: 240, height: 300 }, 1000, 1000)!;
+  assert.deepEqual(photo, { x: 92, y: 92, width: 256, height: 316 }, "8 px cap, not 15% of 300 px");
+  const line = padExactRegion({ x: 10, y: 10, width: 120, height: 18 }, 1000, 1000)!;
+  assert.deepEqual(line, { x: 6, y: 6, width: 128, height: 26 }, "4 px minimum for a text line");
 });

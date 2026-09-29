@@ -99,6 +99,8 @@ export type SensitiveCategory =
   | "credential"
   | "payment_card"
   | "face"
+  /** Any photo, video or canvas on the page (avatars, posts), found from the DOM. */
+  | "photo"
   | "address"
   | "email"
   | "phone"

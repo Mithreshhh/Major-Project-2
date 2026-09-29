@@ -102,7 +102,7 @@
     },
     "SensitiveCategory": {
       "type": "string",
-      "enum": ["pii_text", "credential", "payment_card", "face", "address", "email", "phone", "other"]
+      "enum": ["pii_text", "credential", "payment_card", "face", "photo", "address", "email", "phone", "other"]
     },
     "RedactedRegion": {
       "type": "object",

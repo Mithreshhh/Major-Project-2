@@ -79,17 +79,21 @@ export function padRegion(
 /**
  * Margin for boxes with exact geometry (DOM fields, text ranges). Their edges are already
  * pixel-accurate, so the margin only covers anti-aliasing and focus rings: a fraction of the
- * box *height* on every side. Scaling by width, as for detector boxes, would spill a wide input
- * field's mask across the page.
+ * box *height* on every side, capped at `maxPaddingPx`. Scaling by width, as for detector boxes,
+ * would spill a wide input field's mask across the page; without the cap a large photo's mask
+ * would cover the text next to it.
  */
+export const EXACT_MAX_PADDING_PX = 8;
+
 export function padExactRegion(
   bbox: BoundingBox,
   imageWidth: number,
   imageHeight: number,
   padding = DEFAULT_REDACT_OPTIONS.padding,
-  minPaddingPx = DEFAULT_REDACT_OPTIONS.minPaddingPx
+  minPaddingPx = DEFAULT_REDACT_OPTIONS.minPaddingPx,
+  maxPaddingPx = EXACT_MAX_PADDING_PX
 ): BoundingBox | null {
-  const pad = Math.max(minPaddingPx, bbox.height * padding);
+  const pad = Math.max(minPaddingPx, Math.min(bbox.height * padding, maxPaddingPx));
   return padRegion(bbox, imageWidth, imageHeight, 0, pad);
 }
 

@@ -229,13 +229,13 @@ async function perceive(tabId: number, windowId: number | undefined, task: strin
     screenshot: rawImage,
     elements: snapshot.elements,
     perception,
-    textRegions: snapshot.textRegions ?? [],
+    textRegions: [...(snapshot.textRegions ?? []), ...(CONFIG.hidePhotos ? (snapshot.imageRegions ?? []) : [])],
     devicePixelRatio: snapshot.viewport.devicePixelRatio,
   });
-  const counts = countBy(redacted.redactions.map((r) => r.method));
+  const counts = countBy(redacted.redactions.map((r) => (r.category === "photo" ? "photo" : r.method)));
   console.info(
     LOG,
-    `redaction: ${redacted.redactions.length} region(s) blacked out (faces ${counts.ml ?? 0}, fields ${counts.dom ?? 0}, text ${counts.heuristic ?? 0})`
+    `redaction: ${redacted.redactions.length} region(s) blacked out (faces ${counts.ml ?? 0}, photos ${counts.photo ?? 0}, fields ${counts.dom ?? 0}, text ${counts.heuristic ?? 0})`
   );
 
   // 5. Build the wire payload
@@ -264,7 +264,12 @@ async function perceive(tabId: number, windowId: number | undefined, task: strin
 
   return {
     context,
-    redactions: { faces: counts.ml ?? 0, fields: counts.dom ?? 0, text: Math.max(counts.heuristic ?? 0, textHidden) },
+    redactions: {
+      faces: counts.ml ?? 0,
+      photos: counts.photo ?? 0,
+      fields: counts.dom ?? 0,
+      text: Math.max(counts.heuristic ?? 0, textHidden),
+    },
     perceptionMs: perception.latencyMs,
     ...(vision ? { vision } : {}),
   };
@@ -305,12 +310,14 @@ export async function runStep(
 
     session.history.push(command);
     session.stepIndex += 1;
+    const targetLabel = "target" in command ? context.elements.find((e) => e.id === command.target)?.label : undefined;
 
     return {
       command,
       execution,
       skipped: veto !== null,
       ...(veto ? { veto } : {}),
+      ...(targetLabel ? { targetLabel } : {}),
       stepIndex: session.stepIndex - 1,
       sessionId: session.sessionId,
       redactions,
@@ -507,7 +514,7 @@ export async function runTask(
       const result = await runStep(tabId, windowId, task, gate);
       const log: StepLog = {
         index: i,
-        summary: describeCommand(result.command),
+        summary: describeCommand(result.command, result.targetLabel),
         command: result.command,
         ok: result.execution.ok && !result.skipped,
         message: result.execution.message,

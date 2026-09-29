@@ -194,6 +194,56 @@ function scanInputValuesForPii(): RedactedRegion[] {
   return regions;
 }
 
+/** Smaller than this (CSS px, either side) is an icon, not a photo. */
+const MIN_PHOTO_PX = 20;
+const MAX_BACKGROUND_SCAN = 4000;
+
+/**
+ * Every photo-like thing in the viewport: <img>, <video>, <canvas>, <picture>, [role=img] with a
+ * raster source, and elements with a CSS background image. Catches avatars and posts of any
+ * size, which the face model cannot see when they are tiny (a 32 px avatar is ~13 px at the
+ * model's input). Icons (small, or SVG) are skipped so the page stays readable.
+ */
+function scanImages(): RedactedRegion[] {
+  const regions: RedactedRegion[] = [];
+  if (!document.body) return regions;
+  const seen = new Set<Element>();
+
+  const consider = (el: Element) => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    const r = el.getBoundingClientRect();
+    if (r.width < MIN_PHOTO_PX || r.height < MIN_PHOTO_PX) return;
+    const bbox = { x: r.left, y: r.top, width: r.width, height: r.height };
+    if (!inViewport(bbox)) return;
+    const style = getComputedStyle(el);
+    if (style.visibility === "hidden" || style.display === "none" || style.opacity === "0") return;
+    regions.push({ bbox, category: "photo", confidence: 1, method: "dom" });
+  };
+
+  for (const el of document.querySelectorAll("img, video, canvas, picture, [role=img]")) {
+    if (el instanceof HTMLImageElement) {
+      const src = el.currentSrc || el.src;
+      if (/\.svg(\?|#|$)/i.test(src) || src.startsWith("data:image/svg")) continue; // vector icon
+    }
+    if (el.tagName === "PICTURE" && el.querySelector("img")) continue; // the <img> inside is enough
+    if (el.getAttribute("role") === "img" && el.querySelector("svg") && !el.querySelector("img")) continue;
+    consider(el);
+  }
+
+  // CSS background photos (cover images, avatars drawn as divs). Rect first: it is cheaper than
+  // computed style and rules out most elements.
+  const all = document.body.getElementsByTagName("*");
+  for (let i = 0; i < all.length && i < MAX_BACKGROUND_SCAN; i++) {
+    const el = all[i]!;
+    const r = el.getBoundingClientRect();
+    if (r.width < MIN_PHOTO_PX || r.height < MIN_PHOTO_PX || r.bottom < 0 || r.top > window.innerHeight) continue;
+    const bg = getComputedStyle(el).backgroundImage;
+    if (bg && bg !== "none" && /url\(/i.test(bg) && !/\.svg/i.test(bg) && !/data:image\/svg/i.test(bg)) consider(el);
+  }
+  return regions;
+}
+
 const PAGE_TEXT_MAX = 15_000;
 
 /**
@@ -256,6 +306,7 @@ export function captureDom(includeText = false): DomSnapshot {
     },
     elements,
     textRegions: [...scanTextForPii(), ...scanInputValuesForPii()],
+    imageRegions: scanImages(),
     ...(includeText ? { pageText: collectPageText() } : {}),
   };
 }
