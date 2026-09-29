@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "demo": "node run-demo.mjs",
-    "ask": "node run-ask.mjs"
+    "ask": "node run-ask.mjs",
+    "popup": "node popup-screens.mjs"
   },
   "devDependencies": {
     "puppeteer": "^24.43.1"

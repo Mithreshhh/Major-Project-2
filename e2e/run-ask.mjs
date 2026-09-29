@@ -8,6 +8,9 @@
  *      without the model ever receiving the values.
  *
  * Prerequisites as for run-demo.mjs. Run:  npm run ask --workspace=e2e
+ *   3. On an Instagram-style chat page, every avatar and photo must be blacked out, even the
+ *      26 px ones the face model is too coarse to see.
+ *
  * Saves e2e/proof/ask.json and e2e/proof/5-ask-what-the-ai-read.png.
  */
 import { mkdir, writeFile } from "node:fs/promises";
@@ -26,6 +29,8 @@ const DEMO = process.env.ODPA_DEMO ?? "http://127.0.0.1:5500/";
 const CASES = [
   { url: `${DEMO}login.html`, question: "Analyze this login page" },
   { url: DEMO, question: "What personal information is shown on this page?" },
+  // Instagram-style chat: tiny avatars the face model cannot see must still be hidden.
+  { url: `${DEMO}chat.html`, question: "Summarize this conversation", expectPhotos: 8 },
 ];
 
 const log = (...a) => console.log("[ask]", ...a);
@@ -55,7 +60,7 @@ async function main() {
     const [page] = await browser.pages();
     await page.setViewport({ width: 1280, height: 780 });
 
-    for (const { url, question } of CASES) {
+    for (const { url, question, expectPhotos = 0 } of CASES) {
       await page.goto(url, { waitUntil: "networkidle0" });
       await page.bringToFront();
       const { tabId, windowId } = await worker.evaluate(async (u) => {
@@ -71,7 +76,8 @@ async function main() {
       const state = await worker.evaluate((t, w, q) => globalThis.odpa.runTask(t, w, q), tabId, windowId, question);
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       const untouched = (await readFields()) === before;
-      const ok = state.mode === "ask" && state.status === "answered" && untouched;
+      const photosOk = (state.hidden?.photos ?? 0) >= expectPhotos;
+      const ok = state.mode === "ask" && state.status === "answered" && untouched && photosOk;
       failed ||= !ok;
 
       log(`${ok ? "PASS" : "FAIL"}  ${url}`);
@@ -91,6 +97,11 @@ async function main() {
     await view.goto(`${SERVER}/debug/view`, { waitUntil: "networkidle0" });
     await view.evaluate(() => new Promise((r) => setTimeout(r, 2000)));
     await view.screenshot({ path: path.join(proofDir, "5-ask-what-the-ai-read.png"), fullPage: true });
+    const chatShot = captures.captures[0];
+    if (chatShot?.hasScreenshot) {
+      const img = Buffer.from(await (await fetch(`${SERVER}/debug/captures/${chatShot.id}/screenshot`)).arrayBuffer());
+      await writeFile(path.join(proofDir, "9-chat-ai-saw.jpg"), img);
+    }
 
     await writeFile(path.join(proofDir, "ask.json"), JSON.stringify({ date: new Date().toISOString(), results }, null, 2) + "\n");
     log(`proof written to ${path.relative(root, proofDir)}`);
