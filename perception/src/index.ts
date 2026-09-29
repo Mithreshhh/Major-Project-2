@@ -19,4 +19,4 @@ export * from "./preprocess";
 export * from "./postprocess";
 export * from "./redaction";
 export * from "./ui-detector";
-export { classifyField, findPii, luhnValid, scrubUrl, type PiiMatch } from "./pii";
+export { classifyField, findPii, luhnValid, redactTextLabelled, scrubUrl, type PiiMatch } from "./pii";

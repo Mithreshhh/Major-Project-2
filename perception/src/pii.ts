@@ -115,6 +115,33 @@ export function redactText(text: string): { text: string; redacted: boolean; cat
   return { text: out, redacted: true, categories: [...new Set(matches.map((m) => m.category))] };
 }
 
+const HIDDEN_LABEL: Record<PiiMatch["kind"], string> = {
+  card: "[HIDDEN CARD NUMBER]",
+  email: "[HIDDEN EMAIL]",
+  phone: "[HIDDEN PHONE]",
+  ssn: "[HIDDEN SSN]",
+  aadhaar: "[HIDDEN AADHAAR]",
+  pan: "[HIDDEN PAN]",
+};
+
+/**
+ * Like `redactText`, but each value becomes a placeholder naming its kind ("[HIDDEN EMAIL]").
+ * Used for page text sent to the reasoner, so it can say *what kind* of personal data a page
+ * shows without ever seeing the value. `counts` is per kind.
+ */
+export function redactTextLabelled(text: string): { text: string; counts: Partial<Record<PiiMatch["kind"], number>> } {
+  const matches = findPii(text);
+  const counts: Partial<Record<PiiMatch["kind"], number>> = {};
+  let out = "";
+  let cursor = 0;
+  for (const m of matches) {
+    out += text.slice(cursor, m.start) + HIDDEN_LABEL[m.kind];
+    cursor = m.end;
+    counts[m.kind] = (counts[m.kind] ?? 0) + 1;
+  }
+  return { text: out + text.slice(cursor), counts };
+}
+
 /**
  * Keep scheme, host and path; replace query string and fragment, which routinely carry tokens,
  * emails and session ids. PII in the path itself is replaced too.

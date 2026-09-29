@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import type { UIElement } from "@odpa/shared";
 
-import { classifyField, findPii, luhnValid, redactText, scrubUrl } from "../src/pii";
+import { classifyField, findPii, luhnValid, redactText, redactTextLabelled, scrubUrl } from "../src/pii";
 import { detectSensitiveDomRegions, redactElements, sanitize } from "../src/redaction";
 
 const kinds = (text: string) => findPii(text).map((m) => `${m.kind}:${text.slice(m.start, m.end)}`);
@@ -114,4 +114,15 @@ test("sanitize() blacks out DOM and text regions in the pixels", async () => {
   // Wire regions are back in CSS px.
   const email = result.redactions.find((r) => r.method === "heuristic")!;
   assert.ok(email.bbox.x <= 100 && email.bbox.y <= 60 && email.bbox.x + email.bbox.width >= 180);
+});
+
+test("redactTextLabelled names the kind of each hidden value and never keeps the value", () => {
+  const page = "Email jane.doe@example.com\nPhone +91 98765 43210\nCard 4111 1111 1111 1111\nAadhaar 2345 6789 0123\nPAN ABCDE1234F\nOrder 12345";
+  const { text, counts } = redactTextLabelled(page);
+  assert.equal(
+    text,
+    "Email [HIDDEN EMAIL]\nPhone [HIDDEN PHONE]\nCard [HIDDEN CARD NUMBER]\nAadhaar [HIDDEN AADHAAR]\nPAN [HIDDEN PAN]\nOrder 12345"
+  );
+  assert.deepEqual(counts, { email: 1, phone: 1, card: 1, aadhaar: 1, pan: 1 });
+  assert.deepEqual(redactTextLabelled("nothing here").counts, {});
 });
