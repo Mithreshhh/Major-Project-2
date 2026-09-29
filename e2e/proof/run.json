@@ -1,9 +1,9 @@
 {
-  "date": "2026-09-29T14:19:59.736Z",
+  "date": "2026-09-29T15:17:38.393Z",
   "task": "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.",
   "status": "done",
   "message": "Form submitted successfully",
-  "seconds": 14.2,
+  "seconds": 17.3,
   "steps": [
     {
       "index": 0,
@@ -21,7 +21,15 @@
         "fields": 1,
         "text": 5
       },
-      "ms": 8138
+      "ms": 8765,
+      "vision": {
+        "ms": 331,
+        "detections": 11,
+        "domCount": 10,
+        "found": 10,
+        "recall": 1,
+        "precision": 0.909
+      }
     },
     {
       "index": 1,
@@ -39,7 +47,15 @@
         "fields": 1,
         "text": 5
       },
-      "ms": 830
+      "ms": 1559,
+      "vision": {
+        "ms": 651,
+        "detections": 11,
+        "domCount": 10,
+        "found": 10,
+        "recall": 1,
+        "precision": 0.909
+      }
     },
     {
       "index": 2,
@@ -57,7 +73,15 @@
         "fields": 1,
         "text": 7
       },
-      "ms": 845
+      "ms": 1472,
+      "vision": {
+        "ms": 614,
+        "detections": 11,
+        "domCount": 10,
+        "found": 10,
+        "recall": 1,
+        "precision": 0.909
+      }
     },
     {
       "index": 3,
@@ -73,7 +97,15 @@
         "fields": 1,
         "text": 7
       },
-      "ms": 779
+      "ms": 1395,
+      "vision": {
+        "ms": 602,
+        "detections": 11,
+        "domCount": 10,
+        "found": 10,
+        "recall": 1,
+        "precision": 0.909
+      }
     },
     {
       "index": 4,
@@ -90,7 +122,15 @@
         "fields": 1,
         "text": 8
       },
-      "ms": 714
+      "ms": 1247,
+      "vision": {
+        "ms": 568,
+        "detections": 11,
+        "domCount": 10,
+        "found": 10,
+        "recall": 1,
+        "precision": 0.909
+      }
     }
   ],
   "pageAfter": {
@@ -99,12 +139,12 @@
     "message": "Hello from the agent",
     "status": "Form submitted. Thanks!",
     "log": [
-      "7:49:41 PM  page ready",
-      "7:49:50 PM  input  #name = \"John Doe\"",
-      "7:49:51 PM  input  #email = \"john@example.com\"",
-      "7:49:53 PM  input  #message = \"Hello from the agent\"",
-      "7:49:54 PM  click  <button>  \"Submit\"",
-      "7:49:54 PM  submit {\"name\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"••••\",\"message\":\"Hello from the agent\"}"
+      "8:47:16 PM  page ready",
+      "8:47:26 PM  input  #name = \"John Doe\"",
+      "8:47:28 PM  input  #email = \"john@example.com\"",
+      "8:47:31 PM  input  #message = \"Hello from the agent\"",
+      "8:47:33 PM  click  <button>  \"Submit\"",
+      "8:47:33 PM  submit {\"name\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"••••\",\"message\":\"Hello from the agent\"}"
     ]
   },
   "serverReceived": [
@@ -130,7 +170,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 7610
+      "reasoningMs": 7752
     },
     {
       "step": 2,
@@ -154,7 +194,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 531
+      "reasoningMs": 554
     },
     {
       "step": 3,
@@ -180,7 +220,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 548
+      "reasoningMs": 575
     },
     {
       "step": 4,
@@ -204,7 +244,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 408
+      "reasoningMs": 394
     },
     {
       "step": 5,
@@ -229,7 +269,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 408
+      "reasoningMs": 440
     }
   ]
 }

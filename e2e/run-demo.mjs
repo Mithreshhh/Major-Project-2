@@ -84,7 +84,8 @@ async function main() {
     log(`status=${state.status} after ${state.steps.length} step(s) in ${seconds} s: ${state.message ?? ""}`);
     for (const s of state.steps) {
       const r = s.redactions;
-      log(`  ${s.index + 1}. ${s.summary}  [${(s.ms / 1000).toFixed(1)} s; hid ${r.faces} face(s), ${r.fields} field(s), ${r.text} text]`);
+      const v = s.vision ? `; vision found ${s.vision.found}/${s.vision.domCount}, precision ${s.vision.precision}, ${s.vision.ms} ms` : "; vision did not run";
+      log(`  ${s.index + 1}. ${s.summary}  [${(s.ms / 1000).toFixed(1)} s; hid ${r.faces} face(s), ${r.fields} field(s), ${r.text} text${v}]`);
     }
 
     await page.screenshot({ path: path.join(proofDir, "3-page-after.png") });
