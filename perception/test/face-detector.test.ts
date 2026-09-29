@@ -113,7 +113,7 @@ function report(sample: Sample, image: RawImage, output: PerceptionOutput, annot
   const lines = [
     "",
     `${sample.file}  ${image.width}x${image.height}  ${sample.note}`,
-    `  model=${output.modelId}  latency=${output.latencyMs} ms  faces=${output.sensitiveRegions.length}  uiElements=${output.uiElements.length} (placeholder)`,
+    `  model=${output.modelId}  latency=${output.latencyMs} ms  faces=${output.sensitiveRegions.length}`,
   ];
   output.sensitiveRegions.forEach((r, i) => {
     const b = r.bbox;

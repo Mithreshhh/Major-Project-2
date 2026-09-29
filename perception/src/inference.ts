@@ -10,7 +10,8 @@
  *
  * Output split:
  *   sensitiveRegions  REAL: faces, in screenshot pixel space
- *   uiElements        PLACEHOLDER: empty until a UI-detection model exists (TODO(ui-model))
+ *   uiElements        always empty here. Visual UI detection is a separate model with its own
+ *                     session, see ./ui-detector.ts (sent as perception.visualElements).
  *
  * Runtime notes for MV3 service workers: numThreads 1, proxy false, 'wasm-unsafe-eval' in the
  * manifest CSP, the .wasm shipped inside the extension (the build copies it to /ort), and
@@ -128,12 +129,10 @@ export async function disposeModel(): Promise<void> {
 }
 
 /**
- * PLACEHOLDER for visual UI-element detection.
- *
- * TODO(ui-model): run a fine-tuned UI detector (buttons, inputs, links, icons) and return them
- * shaped as wire `UIElement`s with ids like "vis_0", so the background can merge them with the
- * DOM snapshot (useful for canvas apps, images of buttons, and cross-origin iframes the content
- * script cannot see). Until then this is intentionally an empty list, never fake data.
+ * The face detector does not find UI elements, so its `uiElements` is always empty (never fake
+ * data). Visual UI detection lives in ./ui-detector.ts. Merging its boxes into the element list
+ * (for canvas apps, images of buttons, cross-origin iframes the content script cannot see) is
+ * the next step; today they are sent alongside as `perception.visualElements`.
  */
 export function detectUiElementsPlaceholder(_image: RawImage): UIElement[] {
   return [];

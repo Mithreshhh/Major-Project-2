@@ -36,9 +36,8 @@ export interface PerceptionOutput {
    */
   sensitiveRegions: SensitiveRegion[];
   /**
-   * PLACEHOLDER. Visually detected UI elements, shaped exactly like the wire `UIElement` so
-   * they can be merged with the DOM snapshot later without touching the contract.
-   * Always empty until a fine-tuned UI-detection model exists (see TODO(ui-model)).
+   * Always empty from the face detector. Visual UI detection is ./ui-detector.ts, whose boxes
+   * travel as `PerceptionSummary.visualElements`.
    */
   uiElements: UIElement[];
   /** Optional global embedding of the screen. Not produced by the face detector. */
