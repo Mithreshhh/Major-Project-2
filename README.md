@@ -1,175 +1,140 @@
 # on-device-perception-agent
 
-A privacy-preserving browser agent. Perception and redaction happen **on the user's device**
-inside a browser extension; only a sanitized, PII-free context is sent to a server-side
-vision-language model (VLM) for reasoning; the returned action is executed back in the browser.
+A privacy-preserving browser agent. You type a task in plain English; the extension looks at the
+page, **hides faces, passwords and personal data on your device**, and sends only that sanitized
+view to a local Gemma model, which decides the next action. The extension carries it out and
+repeats until the task is done.
 
-> **Status: server reasoning, on-device face detection and pixel redaction are real.**
-> The client runs an UltraFace face detector through ONNX Runtime Web and blacks out every face
-> before the screenshot leaves the browser; the server reasons with a local Gemma model via
-> Ollama. Text/DOM redaction of labels and URLs is still a stub. Search the code for
-> `TODO(redaction-dom)`, `TODO(redaction-text)` and `TODO(ui-model)` for the remaining work.
+> **Status.** Working end to end in real Chrome (see `e2e/proof/`): on-device face detection with
+> UltraFace on ONNX Runtime Web, redaction of faces, password/card fields and PII text,
+> multi-step tasks driven by Gemma via Ollama, a compression study of the on-device model, and a
+> server page that shows exactly what the AI received. Not yet done: visual (screenshot-based)
+> detection of buttons and inputs, which currently come from the page's DOM. See
+> [Next steps](#next-steps).
+
+For presenting it, see **[DEMO.md](DEMO.md)**.
 
 ## Architecture
 
 ```
-┌──────────────────────────── browser (client) ────────────────────────────┐
-│                                                                          │
-│  content script            background worker                             │
-│  ┌───────────────┐   DOM   ┌──────────────────────────────────────────┐  │
-│  │ DOM capture   │ ──────▶ │ 1. screenshot (captureVisibleTab)        │  │
-│  │ action exec   │ ◀────── │ 2. on-device perception  (ONNX ViT)      │  │
-│  └───────────────┘ action  │ 3. redaction (mask sensitive regions)    │  │
-│                            │ 4. build SanitizedContext                │  │
-│                            └───────────────────┬──────────────────────┘  │
-└────────────────────────────────────────────────┼─────────────────────────┘
-                                 SanitizedContext │ ▲ ActionCommand
-                                   (JSON, HTTPS) ▼ │
-                            ┌──────────────────────┴──────────────────────┐
-                            │  FastAPI  POST /process                     │
-                            │  5. VLM reasoning → next action             │
-                            └─────────────────────────────────────────────┘
+┌──────────────────────────── browser (client, trust boundary) ──────────────────────────────┐
+│                                                                                            │
+│  popup              content script                   background worker                     │
+│  ┌──────────┐ task  ┌──────────────────────┐  DOM +  ┌───────────────────────────────────┐ │
+│  │ Run task ├──────▶│ UI elements (DOM)    │  PII    │ 1. screenshot (captureVisibleTab) │ │
+│  │ progress │◀──────│ PII boxes in text    ├────────▶│ 2. face detection (UltraFace/ONNX)│ │
+│  └──────────┘       │ executes actions     │◀────────┤ 3. black out faces, sensitive     │ │
+│                     └──────────────────────┘ action  │    fields, PII text; scrub labels │ │
+│                                                      │ 4. build SanitizedContext         │ │
+│                                                      └──────────────┬────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┼──────────────────────┘
+                                          SanitizedContext (JSON)     │   ▲ ActionCommand
+                                                                      ▼   │
+                                          ┌───────────────────────────────┴───────────────┐
+                                          │ FastAPI  POST /process → Gemma (Ollama)       │
+                                          │ GET /debug/view  "What the AI sees"           │
+                                          └───────────────────────────────────────────────┘
 ```
 
-1. **Capture.** The content script summarises visible UI elements (role, label, bounding box,
-   whitelisted attributes; never form values). The background worker screenshots the tab
-   (`sendScreenshot` in `extension/src/shared/config.ts` turns this off entirely).
-2. **Perceive.** An UltraFace face detector runs via ONNX Runtime Web inside the extension and
-   reports face boxes as sensitive regions. Visual UI-element detection is a placeholder.
-3. **Redact.** Every detected region is blacked out, with a 15% margin, on a fresh copy of the
-   screenshot; the raw buffer is zeroed. A failure anywhere in detect-or-redact aborts the step,
-   so raw pixels never leave. Text/DOM redaction of labels is still a stub. The client is the
-   trust boundary.
-4. **Reason.** The `SanitizedContext` is POSTed to the server, which returns one `ActionCommand`
-   such as `{"action": "click", "target": "el_1"}`.
-5. **Act.** The content script executes the command (click, type, scroll, navigate, ...).
+1. **Capture.** The content script lists visible UI elements (role, label, box; never form
+   values) and finds PII in visible text and typed values, returning only bounding boxes. The
+   background worker screenshots the tab.
+2. **Perceive.** UltraFace (RFB-640, cleaned graph) runs on ONNX Runtime Web inside the
+   extension and returns face boxes. ~100-130 ms per screenshot in Chrome.
+3. **Redact.** Faces (model), password/PIN/card fields (DOM rules) and emails, phones, card,
+   Aadhaar, PAN and SSN numbers (text rules) are blacked out on a fresh copy of the screenshot;
+   the raw buffer is zeroed. PII in labels, the page title and the URL becomes `[REDACTED]`.
+   If detection or redaction fails, the step aborts: raw pixels never leave.
+4. **Reason.** The sanitized context goes to the server; Gemma returns one action such as
+   `{"action": "type", "target": "el_7", "text": "john@example.com"}`.
+5. **Act.** The content script executes it; the worker loops until Gemma says `done` or
+   `ask_user`, the same action repeats, or 10 steps pass.
 
 ## Repository layout
 
 | Path | What | Stack |
 | --- | --- | --- |
-| [`extension/`](extension/) | Manifest V3 extension (Chrome + Firefox): content script, background worker, build tooling | TypeScript, esbuild |
-| [`perception/`](perception/) | On-device ML: UltraFace face detection via ONNX Runtime Web (`inference.ts`), redaction stubs (`redaction.ts`) | TypeScript, onnxruntime-web |
-| [`server/`](server/) | Reasoning backend: `POST /process` prompts a local Gemma model through Ollama; `GET /health/gemma` diagnoses it | Python, FastAPI, Pydantic, httpx |
-| [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas for `SanitizedContext` and `ActionCommand` | TypeScript, JSON Schema |
-
-The root `package.json` is an npm workspace managing `shared`, `perception`, and `extension`.
-The server is a plain Python project with its own virtualenv.
+| [`extension/`](extension/) | MV3 extension (Chrome + Firefox): popup, content script, background worker, build | TypeScript, esbuild |
+| [`perception/`](perception/) | Face detection, PII detection, redaction, compression study | TypeScript, onnxruntime-web; Python for quantization |
+| [`server/`](server/) | `POST /process` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
+| [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
+| [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
+| [`demo/`](demo/) | Test page with a face photo, sample PII and a form | HTML |
 
 ## Prerequisites
 
-- Node.js 20+ and npm 9+
-- Python 3.11+
-- Chrome 120+ and/or Firefox 128+
-- [Ollama](https://ollama.com) with the model `ledgerguard-gemma4-e2b-q4-0:latest` available
-  (`ollama list` should show it). Another tag can be used via `OLLAMA_MODEL`.
+- Node.js 20+, Python 3.11+, Chrome 120+ (or Firefox 128+)
+- [Ollama](https://ollama.com) with `ledgerguard-gemma4-e2b-q4-0:latest` (`ollama list`), or set `OLLAMA_MODEL`
 
 ## Quick start
 
-### 1. Install and build the extension
+```bash
+npm install
+npm run build                       # -> extension/dist/chrome and extension/dist/firefox
+npm run server:install              # once: creates server/.venv
+npm run server:dev                  # terminal 1: API on http://127.0.0.1:8000
+python -m http.server 5500 --bind 127.0.0.1 --directory demo    # terminal 2: test page
+```
+
+Load the extension: `chrome://extensions` → Developer mode → **Load unpacked** →
+`extension/dist/chrome`. Pin it from the puzzle-piece menu.
+
+Use it: open <http://127.0.0.1:5500>, click the extension icon, press **Demo task** (or type your
+own), then **Run task**. Open <http://127.0.0.1:8000/debug/view> to see what the AI received.
+
+Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → `extension/dist/firefox/manifest.json`,
+then grant the site permissions in `about:addons`.
+
+## Tests and proof
 
 ```bash
-npm install          # installs all workspaces
-npm run typecheck    # tsc across shared, perception, extension
-npm test             # perception: real face detection over sample images; extension: bundle smoke tests
-npm run build        # -> extension/dist/chrome and extension/dist/firefox (models and ORT wasm included)
+npm run typecheck
+npm test                  # perception (face detection, PII, redaction) + extension bundle tests
+npm run server:test       # server unit tests, no Ollama needed
+npm run server:test:gemma # one live Gemma round-trip
+npm run e2e               # real Chrome + real extension + real Gemma on the demo page -> e2e/proof/
 ```
 
-`npm run dev` rebuilds on change (reload the extension in the browser to pick it up).
+| Suite | What it proves |
+| --- | --- |
+| `perception/test/face-detector.test.ts` | Real detections on public-domain photos, annotated images in `test/output/` |
+| `perception/test/redaction.test.ts` | Faces blacked out with margin; detector finds nothing afterwards |
+| `perception/test/pii.test.ts` | PII detection, no false positives on ordinary numbers, field rules |
+| `extension/test/step.test.mjs` | The built worker with the real model sends only masked pixels; multi-step tasks |
+| `server/tests/` | Contract, prompt, parser, retries, error mapping, debug view |
+| `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
 
-### 2. Load the extension in developer mode
+## Compression study
 
-**Chrome / Edge / Brave**
-
-1. Open `chrome://extensions`.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and choose `extension/dist/chrome`.
-4. Open the service-worker console via the **Service worker** link on the extension card to see logs.
-
-**Firefox**
-
-1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on...** and choose `extension/dist/firefox/manifest.json`.
-3. Firefox MV3 treats host permissions as optional: open the add-on's **Permissions** tab in
-   `about:addons` and enable access to `localhost` / `127.0.0.1`, or the server call will be blocked.
-4. Click **Inspect** on the add-on card to see background logs.
-
-### 3. Start the FastAPI server
-
-```bash
-cd server
-python -m venv .venv
-.venv\Scripts\activate            # Windows
-# source .venv/bin/activate       # macOS / Linux
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Check it: <http://127.0.0.1:8000/health> should return
-`{"status":"ok","protocolVersion":"0.1.0","reasoner":"gemma","model":"ledgerguard-gemma4-e2b-q4-0:latest"}`.
-Then <http://127.0.0.1:8000/health/gemma?warm=true> confirms Ollama is reachable, the model tag
-exists, and loads it into memory. Interactive docs live at <http://127.0.0.1:8000/docs>.
-
-Configuration is by environment variable (`REASONER`, `OLLAMA_URL`, `OLLAMA_MODEL`, timeouts,
-element cap). See `server/.env.example`. `REASONER=mock` restores the deterministic stand-in.
-
-Run the tests:
-
-```bash
-pytest -q                                                          # unit tests, no Ollama needed
-$env:RUN_GEMMA_INTEGRATION = "1"; pytest tests/integration -q -s   # one live Gemma round-trip (PowerShell)
-```
-
-From the repo root, `npm run server:install`, `npm run server:dev`, `npm run server:test` and
-`npm run server:test:gemma` wrap the same commands (Windows paths).
-
-### 4. Run one agent step
-
-1. With the server running and the extension loaded, open any `http(s)` page.
-2. Click the extension's toolbar icon. One step runs: capture → perceive → redact → `/process` → execute.
-3. Watch the background console. Gemma picks one action from the element list; the first call
-   also loads the model, so allow around ten seconds for it.
-
-Optional settings via the extension's storage (e.g. from the service-worker console):
-
-```js
-chrome.storage.local.set({ task: "Submit the contact form", serverUrl: "http://127.0.0.1:8000" });
-```
+Eight variants of the face detector (two input sizes × original, cleaned graph, FP16, INT8
+dynamic, INT8 static) measured for size, speed, memory and accuracy with the same runtime the
+extension uses. Full table: [`perception/benchmarks/RESULTS.md`](perception/benchmarks/RESULTS.md).
+Headline: fixing the export's graph gives **1.5x** speed at identical accuracy (now shipped);
+FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slower in WASM.
 
 ## Data contract
 
-Defined once in [`shared/`](shared/) and mirrored in `server/app/schemas.py`.
+Defined in [`shared/`](shared/) and mirrored in `server/app/schemas.py`. Request:
+`SanitizedContext` (task, page, viewport, sanitized elements, redacted screenshot, redacted
+regions, history). Response: `ActionCommand` (`click`, `type`, `scroll`, `navigate`, `wait`,
+`done`, `ask_user`, `noop`). Examples in `shared/examples/` are validated against both sides.
 
-- **Request** `SanitizedContext`: protocol version, session/step ids, the user's task, page and
-  viewport metadata, a list of sanitized `UIElement`s, an optional redacted screenshot, the list
-  of `RedactedRegion`s that were masked, and the action history.
-- **Response** `ActionCommand`: a discriminated union on `action` —
-  `click`, `type`, `scroll`, `navigate`, `wait`, `done`, `ask_user`, `noop` — plus optional
-  `reasoning` and `confidence`.
+## Next steps
 
-Canonical examples are in `shared/examples/`. The server test-suite validates them against both
-the JSON Schemas and the Pydantic models, so the two sides can be developed independently.
-
-## Where the real work goes (next steps)
-
-| Marker | File | Work |
-| --- | --- | --- |
-| `TODO(redaction-dom)`, `TODO(redaction-text)` | `perception/src/redaction.ts`, `extension/src/content/index.ts` | Flag password/payment/contact fields from the DOM, mask PII in labels and attributes, scrub URLs. Pixel masking of detected faces is done |
-| `TODO(ui-model)` | `perception/src/inference.ts` | Fine-tuned visual UI-element detector to fill the `uiElements` placeholder |
-| `TODO(agent)` | `extension/src/content/index.ts` | Confirmation UI for destructive actions, target highlighting, multi-step loop |
-
-Server-side reasoning is implemented in `server/app/prompting.py` and `server/app/reasoning.py`
-(Gemma via Ollama, JSON-mode prompt, lenient parser, one retry). Prompt tuning and a
-vision-capable model are the natural follow-ups there.
+| Item | Why |
+| --- | --- |
+| Visual UI-element detection (`TODO(ui-model)` in `perception/src/inference.ts`) | Buttons/inputs come from the DOM today; a detector trained on web-UI screenshots would fill `uiElements`, which already has the right shape |
+| OCR-based PII detection | PII inside images (a photo of a card) is not caught by text rules |
+| In-browser benchmark page and WebGPU | Measure memory/speed inside Chrome; test GPU execution |
+| Confirmation for risky actions (`TODO(agent)`) | Ask before payments, deletions, sending messages |
+| Frames, big pages, navigation across pages | Needed for real websites beyond the test page |
 
 ## Security note
 
-Faces in the screenshot are blacked out on-device before anything is sent, and `npm test` in
-`extension/` runs the built worker with the real model to check that the pixels reaching the
-server are masked exactly where the detector fired and untouched elsewhere. Everything else is
-forwarded as captured: text in the screenshot, and the DOM summary (labels, placeholders, page
-URL and title). Until `TODO(redaction-text)` and `TODO(redaction-dom)` are done, only run
-against local or non-sensitive pages, and keep the server on `localhost`.
+Redaction is rule- and model-based: it catches faces, sensitive form fields and well-formatted
+PII, and will miss unusual formats and text inside images. The server stores what it receives
+in `server/debug_captures/` for the debug view (disable with `ODPA_DEBUG_VIEW=0`). Keep the
+server on `localhost`.
 
 ## License
 
