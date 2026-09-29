@@ -58,12 +58,35 @@ const TITLES: Record<TaskState["status"], string> = {
   max_steps: "Step limit reached",
 };
 
-function hiddenSummary(r: { faces: number; fields: number; text: number } | undefined): string {
+type Counts = { faces: number; photos?: number; fields: number; text: number };
+
+function hiddenSummary(r: Counts | undefined): string {
   if (!r) return "";
-  const hidden = r.faces + r.fields + r.text;
-  return hidden
-    ? `hidden before sending: ${r.faces} face(s), ${r.fields} field(s), ${r.text} personal text item(s)`
-    : "nothing sensitive found";
+  const parts = [
+    [r.faces, "face"],
+    [r.photos ?? 0, "photo"],
+    [r.fields, "sensitive field"],
+    [r.text, "personal text item"],
+  ].filter(([n]) => (n as number) > 0).map(([n, what]) => `${n} ${what}${n === 1 ? "" : "s"}`);
+  return parts.length ? `Hidden before sending: ${parts.join(", ")}` : "Nothing sensitive found";
+}
+
+function chip(kind: string, text: string): HTMLSpanElement {
+  const el = document.createElement("span");
+  el.className = `chip ${kind}`;
+  el.textContent = text;
+  return el;
+}
+
+/** Coloured chips for what was hidden in one step (same colours as "What the AI sees"). */
+function hiddenChips(r: Counts): HTMLSpanElement[] {
+  const chips = [
+    r.faces ? chip("face", `${r.faces} face${r.faces === 1 ? "" : "s"}`) : null,
+    r.photos ? chip("photo", `${r.photos} photo${r.photos === 1 ? "" : "s"}`) : null,
+    r.fields ? chip("field", `${r.fields} field${r.fields === 1 ? "" : "s"}`) : null,
+    r.text ? chip("text", `${r.text} personal text`) : null,
+  ].filter((c): c is HTMLSpanElement => c !== null);
+  return chips.length ? chips : [chip("none", "nothing sensitive")];
 }
 
 function updateHint(): void {
@@ -97,27 +120,25 @@ function render(state: TaskState | null): void {
   }
   $("status-msg").textContent = state.status === "confirm" ? `The agent wants to: ${state.pending ?? "do something"}` : state.message ?? "";
   $("status-meta").textContent =
-    state.mode === "ask" && state.hidden ? `Ask mode, nothing was clicked or typed · ${hiddenSummary(state.hidden)}` : "";
+    state.mode === "ask" && state.hidden ? `Ask mode: nothing was clicked or typed. ${hiddenSummary(state.hidden)}.` : "";
 
   for (const step of state.steps) {
     const li = document.createElement("li");
     if (!step.ok) li.className = "fail";
     const n = document.createElement("span");
     n.className = "n";
-    n.textContent = `${step.index + 1}.`;
+    n.textContent = `${step.index + 1}`;
     const what = document.createElement("span");
     what.className = "what";
     what.textContent = step.summary + (step.confirmed === "user" ? " (allowed by you)" : "");
+    const chips = document.createElement("span");
+    chips.className = "chips";
+    chips.append(...hiddenChips(step.redactions));
+    if (step.vision) chips.append(chip("vision", `vision ${step.vision.found}/${step.vision.domCount} elements`));
     const meta = document.createElement("span");
     meta.className = "meta";
-    meta.textContent =
-      `${(step.ms / 1000).toFixed(1)} s · ${hiddenSummary(step.redactions)}` +
-      (step.vision
-        ? ` · vision model found ${step.vision.found}/${step.vision.domCount} buttons, inputs and links ` +
-          `(${Math.round(step.vision.precision * 100)}% of its boxes correct, ${step.vision.ms} ms)`
-        : "") +
-      (step.ok ? "" : ` · ${step.message ?? "failed"}`);
-    li.append(n, what, meta);
+    meta.textContent = `${(step.ms / 1000).toFixed(1)} s` + (step.ok ? "" : ` · ${step.message ?? "failed"}`);
+    li.append(n, what, chips, meta);
     steps.append(li);
   }
   steps.scrollTop = steps.scrollHeight;
@@ -128,7 +149,10 @@ function isWebPage(): boolean {
 }
 
 async function init(): Promise<void> {
-  [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // popup.html?tab=<id> targets a given tab (used by e2e/popup-screens.mjs to drive the popup
+  // from its own window); normally the popup acts on the active tab.
+  const forced = Number(new URLSearchParams(location.search).get("tab"));
+  tab = forced ? await chrome.tabs.get(forced) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   $("page").textContent = tab?.url ?? "(no tab)";
   if (!isWebPage()) $("warn").classList.add("show");
 

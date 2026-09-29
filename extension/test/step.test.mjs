@@ -328,7 +328,7 @@ test("a task keeps stepping until the model says done", async () => {
 
   assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
   assert.equal(state.message, "Form submitted.");
-  assert.deepEqual(state.steps.map((s) => s.summary), ['Type "john@example.com" into el_0', "Click el_1", "Done: Form submitted."]);
+  assert.deepEqual(state.steps.map((s) => s.summary), ['Type "john@example.com" into "Email"', 'Click "Submit"', "Done: Form submitted."]);
   assert.equal(calls.fetches.length, 3);
   assert.deepEqual(calls.fetches.map((f) => f.body.stepIndex), [0, 1, 2]);
   assert.ok(calls.fetches.every((f) => f.body.task === "Fill the email john@example.com and submit"));
