@@ -1,6 +1,6 @@
 # Demo guide
 
-Everything you need to show the project to your mentors. It takes about 5 minutes.
+Everything you need to show the project to your mentors. It takes about 6 minutes.
 
 ## Before the meeting: 10 minutes
 
@@ -24,9 +24,10 @@ Everything you need to show the project to your mentors. It takes about 5 minute
    2. <http://127.0.0.1:5500>, the test page
    3. <http://127.0.0.1:8000/debug/view>, the "What the AI sees" page
    4. `perception/benchmarks/RESULTS.md` on GitHub
-   5. The `e2e/proof/` folder, your backup if anything fails live
+   5. `perception/ui-model/RESULTS.md` on GitHub
+   6. The `e2e/proof/` folder, your backup if anything fails live
 
-## The demo: 5 minutes
+## The demo: 6 minutes
 
 **1. The idea, 30 seconds.** Show the architecture diagram.
 > "A browser agent that completes tasks for you, but personal data never leaves your laptop. The
@@ -60,18 +61,29 @@ Click through the step buttons at the top to show each step's decision.
 > "Over 110 automated tests across the extension, the ML module and the server, plus a
 > full real-browser run that saves these screenshots." Show `e2e/proof/`.
 
-**7. Be upfront about the gap, 30 seconds.**
-> "Right now, buttons and inputs are found by reading the page's structure, not by a vision
-> model. We chose that because it's more reliable, and we use vision where correctness matters
-> most, which is privacy. The data format for vision-detected elements is already in place, so
-> adding a UI-detection model is a model swap, not a redesign. That's our next milestone."
+**7. Buttons, inputs and links from the screenshot, 1 minute.** On "What the AI sees", point at
+the dashed boxes and the "Found from pixels" section.
+> "This is our second on-device model. It finds buttons, inputs and links from the screenshot
+> alone: blue dashed boxes are buttons, green are inputs, orange are links. We trained it
+> ourselves. Instead of labelling images by hand, we generated 1,700 random web pages and read
+> the exact position of every button from the page code, so the labels were free and perfect.
+> The test page was never used in training. On every step the extension checks the model
+> against the real page, and here it found 10 out of 10 elements."
+
+Then show `perception/ui-model/RESULTS.md` for the numbers across thresholds.
+> "We also tried Microsoft's OmniParser model first. It was 77 MB and couldn't even load in the
+> browser, so we trained a model 7 times smaller."
+
+If asked what's still missing: the agent still clicks using the page's code, because it's exact.
+The vision boxes are measured and shown, and merging them in (for canvas apps or images of
+buttons) is the next milestone.
 
 ## If something goes wrong live
 
 | Problem | Fix |
 | --- | --- |
 | Popup shows "server offline" | Start the server (`npm run server:dev`) |
-| First step takes 8 to 10 seconds | Normal. The browser loads the face model once. Later steps take under 1 second |
+| First step takes 10 to 20 seconds | Normal. The browser loads both on-device models once and Gemma warms up. Later steps take 2 to 4 seconds |
 | "This tab is not a normal web page" | You're on a Chrome page. Switch to the test page tab |
 | Agent stops with "same action twice" | The loop guard worked. Click **Clear form** on the page and run again |
 | Anything else | Show the saved proof in `e2e/proof/` and `run.json` |
@@ -99,6 +111,15 @@ design.
 **"Why a local Gemma model?"** It keeps everything on your machine, costs nothing per request,
 and shows the design works even with a small 4.6B model. A larger model can be swapped in
 through one setting.
+
+**"Why is the UI model trained on fake pages?"** Labelling thousands of real screenshots by hand
+takes weeks. Generated pages give perfect labels in minutes, and we test on a page it never
+saw. Real sites are harder (icons, custom widgets), which is why the extension measures it
+against the page on every step instead of trusting it blindly.
+
+**"Why does the agent still use the page code to click?"** It's exact and it's free. The vision
+model matters when there is no usable page code: canvas apps, images of buttons, embedded
+frames. That merge is the next step.
 
 **"What does 'on-device' mean here?"** The face model runs inside the browser extension with
 ONNX Runtime on WebAssembly. The only thing that leaves the extension is the sanitized request.

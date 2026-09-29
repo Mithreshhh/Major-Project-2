@@ -9,14 +9,15 @@ On-device ML that runs *inside the extension*, before anything leaves the browse
 | `src/postprocess.ts` | Threshold, pixel mapping, hard NMS | Real |
 | `src/redaction.ts` | Black out faces, sensitive fields and PII text in the pixels; redact labels; `sanitize()` pipeline entry point | **Real** |
 | `src/pii.ts` | Email / phone / card (Luhn) / SSN / Aadhaar / PAN detection, field rules, `scrubUrl` | **Real**, dependency-free (the content script imports it) |
+| `src/ui-detector.ts` | YOLO11n detection of buttons, inputs and links from pixels; `compareWithDom` scores it against the DOM | **Real** |
+| `ui-model/` | Auto-labelled training data, training, evaluation of the UI detector | Results in `ui-model/RESULTS.md`, see `ui-model/README.md` |
 | `benchmarks/` | Compression study: `quantize.py` builds variants, `npm run benchmark` measures them | Results in `benchmarks/RESULTS.md` |
 | `src/types.ts` | `RawImage`, `PerceptionOutput`, `PerceptionConfig` | Done |
-| `models/*.onnx` | UltraFace RFB-320 and RFB-640 | Committed, checksummed |
+| `models/*.onnx` | UltraFace RFB-320 and RFB-640; `ui-detect.onnx` (ours, 10.6 MB) | Committed |
 
-`PerceptionOutput` now has two lists. `sensitiveRegions` is real: faces, in screenshot pixel
-space, shaped like the wire `RedactedRegion` (`bbox`, `category: "face"`, `confidence`,
-`method: "ml"`). `uiElements` is a clearly labelled placeholder: always empty, shaped like the
-wire `UIElement`, until a fine-tuned UI detector exists (`TODO(ui-model)`).
+`PerceptionOutput.sensitiveRegions` holds faces in screenshot pixel space, shaped like the wire
+`RedactedRegion` (`bbox`, `category: "face"`, `confidence`, `method: "ml"`). UI elements come
+from the separate UI detector (`src/ui-detector.ts`), sent as `perception.visualElements`.
 
 ## The model and why
 

@@ -6,11 +6,11 @@ view to a local Gemma model, which decides the next action. The extension carrie
 repeats until the task is done.
 
 > **Status.** Working end to end in real Chrome (see `e2e/proof/`): on-device face detection with
-> UltraFace on ONNX Runtime Web, redaction of faces, password/card fields and PII text,
-> multi-step tasks driven by Gemma via Ollama, a compression study of the on-device model, and a
-> server page that shows exactly what the AI received. Not yet done: visual (screenshot-based)
-> detection of buttons and inputs, which currently come from the page's DOM. See
-> [Next steps](#next-steps).
+> UltraFace on ONNX Runtime Web, redaction of faces, password/card fields and PII text, an
+> on-device UI detector we trained (YOLO11n) that finds buttons, inputs and links from the
+> screenshot, multi-step tasks driven by Gemma via Ollama, a compression study of the face model,
+> and a server page that shows exactly what the AI received. The agent still acts on DOM
+> elements; merging vision-only elements in is next. See [Next steps](#next-steps).
 
 For presenting it, see **[DEMO.md](DEMO.md)**.
 
@@ -40,7 +40,9 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
    values) and finds PII in visible text and typed values, returning only bounding boxes. The
    background worker screenshots the tab.
 2. **Perceive.** UltraFace (RFB-640, cleaned graph) runs on ONNX Runtime Web inside the
-   extension and returns face boxes. ~100-130 ms per screenshot in Chrome.
+   extension and returns face boxes, ~100-130 ms per screenshot in Chrome. Our UI detector
+   (YOLO11n, trained on auto-labelled pages) finds buttons, inputs and links from the same
+   pixels, ~0.4-0.8 s, and is scored against the DOM on every step.
 3. **Redact.** Faces (model), password/PIN/card fields (DOM rules) and emails, phones, card,
    Aadhaar, PAN and SSN numbers (text rules) are blacked out on a fresh copy of the screenshot;
    the raw buffer is zeroed. PII in labels, the page title and the URL becomes `[REDACTED]`.
@@ -55,7 +57,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | Path | What | Stack |
 | --- | --- | --- |
 | [`extension/`](extension/) | MV3 extension (Chrome + Firefox): popup, content script, background worker, build | TypeScript, esbuild |
-| [`perception/`](perception/) | Face detection, PII detection, redaction, compression study | TypeScript, onnxruntime-web; Python for quantization |
+| [`perception/`](perception/) | Face detection, UI detection, PII detection, redaction, compression study, UI-detector training | TypeScript, onnxruntime-web; Python for training and quantization |
 | [`server/`](server/) | `POST /process` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
@@ -100,6 +102,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `perception/test/face-detector.test.ts` | Real detections on public-domain photos, annotated images in `test/output/` |
 | `perception/test/redaction.test.ts` | Faces blacked out with margin; detector finds nothing afterwards |
 | `perception/test/pii.test.ts` | PII detection, no false positives on ordinary numbers, field rules |
+| `perception/test/ui-detector.test.ts` | Our UI detector on held-out demo screenshots, scored against their DOM boxes |
 | `extension/test/step.test.mjs` | The built worker with the real model sends only masked pixels; multi-step tasks |
 | `server/tests/` | Contract, prompt, parser, retries, error mapping, debug view |
 | `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
@@ -112,6 +115,15 @@ extension uses. Full table: [`perception/benchmarks/RESULTS.md`](perception/benc
 Headline: fixing the export's graph gives **1.5x** speed at identical accuracy (now shipped);
 FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slower in WASM.
 
+## UI detector
+
+A YOLO11n model we trained to find buttons, inputs and links **from the screenshot alone**
+(10.6 MB, runs in the extension). Training data is generated: headless Chrome renders 1,700
+random web pages and the DOM gives exact labels for free. On the demo page, which it never saw
+in training, it finds **97.5%** of the elements with **97.5%** precision (buttons 100% / 100%).
+The extension compares its boxes with the DOM on every step and "What the AI sees" draws them.
+Details: [`perception/ui-model/`](perception/ui-model/README.md).
+
 ## Data contract
 
 Defined in [`shared/`](shared/) and mirrored in `server/app/schemas.py`. Request:
@@ -123,7 +135,8 @@ regions, history). Response: `ActionCommand` (`click`, `type`, `scroll`, `naviga
 
 | Item | Why |
 | --- | --- |
-| Visual UI-element detection (`TODO(ui-model)` in `perception/src/inference.ts`) | Buttons/inputs come from the DOM today; a detector trained on web-UI screenshots would fill `uiElements`, which already has the right shape |
+| Act on vision-only elements | The UI detector's boxes are measured and shown; merging unmatched ones into the element list would cover canvas apps, images of buttons and cross-origin frames |
+| Train the UI detector on real sites | Today it is trained on generated pages; screenshots of real sites labelled from their DOM would close the gap on icons and custom widgets |
 | OCR-based PII detection | PII inside images (a photo of a card) is not caught by text rules |
 | In-browser benchmark page and WebGPU | Measure memory/speed inside Chrome; test GPU execution |
 | Confirmation for risky actions (`TODO(agent)`) | Ask before payments, deletions, sending messages |
