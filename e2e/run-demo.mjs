@@ -79,13 +79,20 @@ async function main() {
     log(`running task on tab ${tabId}: ${TASK}`);
 
     const started = Date.now();
-    const state = await worker.evaluate((tabId, windowId, task) => globalThis.odpa.runTask(tabId, windowId, task), tabId, windowId, TASK);
+    // Nobody is here to press "Allow" in the popup, so risky clicks (Submit) are allowed
+    // automatically and marked as such in the log. A person running it clicks Allow instead.
+    const state = await worker.evaluate(
+      (tabId, windowId, task) => globalThis.odpa.runTask(tabId, windowId, task, { autoConfirm: true }),
+      tabId,
+      windowId,
+      TASK
+    );
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     log(`status=${state.status} after ${state.steps.length} step(s) in ${seconds} s: ${state.message ?? ""}`);
     for (const s of state.steps) {
       const r = s.redactions;
       const v = s.vision ? `; vision found ${s.vision.found}/${s.vision.domCount}, precision ${s.vision.precision}, ${s.vision.ms} ms` : "; vision did not run";
-      log(`  ${s.index + 1}. ${s.summary}  [${(s.ms / 1000).toFixed(1)} s; hid ${r.faces} face(s), ${r.fields} field(s), ${r.text} text${v}]`);
+      log(`  ${s.index + 1}. ${s.summary}${s.confirmed ? " (risky: confirmed " + s.confirmed + ")" : ""}  [${(s.ms / 1000).toFixed(1)} s; hid ${r.faces} face(s), ${r.fields} field(s), ${r.text} text${v}]`);
     }
 
     await page.screenshot({ path: path.join(proofDir, "3-page-after.png") });

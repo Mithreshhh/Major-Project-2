@@ -5,7 +5,8 @@
   "description": "End-to-end run of the real extension in Chrome for Testing against the local server and Gemma.",
   "type": "module",
   "scripts": {
-    "demo": "node run-demo.mjs"
+    "demo": "node run-demo.mjs",
+    "ask": "node run-ask.mjs"
   },
   "devDependencies": {
     "puppeteer": "^24.43.1"

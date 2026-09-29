@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-29T17:57:04.337Z",
+  "results": [
+    {
+      "url": "http://127.0.0.1:5500/login.html",
+      "question": "Analyze this login page",
+      "mode": "ask",
+      "status": "answered",
+      "seconds": 11.3,
+      "fieldsUntouched": true,
+      "hidden": {
+        "faces": 0,
+        "fields": 1,
+        "text": 2
+      },
+      "answer": "- The page is a login page for Acme Bank's online banking.\n- It asks the user to enter a Customer ID or email and a Password.\n- Available actions include logging in, remembering the user, and resetting a forgotten password.\n- Important notices state that OTP or full password will never be requested by phone or email, and two-step verification is required for payments over ₹10,000.\n- Hidden personal data includes a password, a phone number, and an email address."
+    },
+    {
+      "url": "http://127.0.0.1:5500/",
+      "question": "What personal information is shown on this page?",
+      "mode": "ask",
+      "status": "answered",
+      "seconds": 1.5,
+      "fieldsUntouched": true,
+      "hidden": {
+        "faces": 1,
+        "fields": 1,
+        "text": 5
+      },
+      "answer": "The page shows fields for Name, Email, Account password (optional), Message, and a checkbox to subscribe to the newsletter. Hidden personal information includes an email address, a phone number, a card number, an Aadhaar number, and a PAN."
+    }
+  ]
+}

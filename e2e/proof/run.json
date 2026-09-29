@@ -1,15 +1,15 @@
 {
-  "date": "2026-09-29T15:17:38.393Z",
+  "date": "2026-09-29T17:57:56.653Z",
   "task": "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.",
   "status": "done",
-  "message": "Form submitted successfully",
-  "seconds": 17.3,
+  "message": "Contact form filled and submitted successfully.",
+  "seconds": 19.2,
   "steps": [
     {
       "index": 0,
       "summary": "Type \"John Doe\" into el_6",
       "command": {
-        "reasoning": "Fill in the name field",
+        "reasoning": "Fill in the name field.",
         "action": "type",
         "target": "el_6",
         "text": "John Doe",
@@ -21,9 +21,9 @@
         "fields": 1,
         "text": 5
       },
-      "ms": 8765,
+      "ms": 11282,
       "vision": {
-        "ms": 331,
+        "ms": 425,
         "detections": 11,
         "domCount": 10,
         "found": 10,
@@ -35,7 +35,7 @@
       "index": 1,
       "summary": "Type \"john@example.com\" into el_7",
       "command": {
-        "reasoning": "Fill in the email field.",
+        "reasoning": "Fill in the email address.",
         "action": "type",
         "target": "el_7",
         "text": "john@example.com",
@@ -47,9 +47,9 @@
         "fields": 1,
         "text": 5
       },
-      "ms": 1559,
+      "ms": 1192,
       "vision": {
-        "ms": 651,
+        "ms": 399,
         "detections": 11,
         "domCount": 10,
         "found": 10,
@@ -61,7 +61,7 @@
       "index": 2,
       "summary": "Type \"Hello from the agent\" into el_9",
       "command": {
-        "reasoning": "Type the message into the message field.",
+        "reasoning": "Fill in the message field.",
         "action": "type",
         "target": "el_9",
         "text": "Hello from the agent",
@@ -73,9 +73,9 @@
         "fields": 1,
         "text": 7
       },
-      "ms": 1472,
+      "ms": 1359,
       "vision": {
-        "ms": 614,
+        "ms": 431,
         "detections": 11,
         "domCount": 10,
         "found": 10,
@@ -97,23 +97,24 @@
         "fields": 1,
         "text": 7
       },
-      "ms": 1395,
+      "ms": 1210,
       "vision": {
-        "ms": 602,
+        "ms": 394,
         "detections": 11,
         "domCount": 10,
         "found": 10,
         "recall": 1,
         "precision": 0.909
-      }
+      },
+      "confirmed": "auto"
     },
     {
       "index": 4,
-      "summary": "Done: Form submitted successfully",
+      "summary": "Done: Contact form filled and submitted successfully.",
       "command": {
-        "reasoning": "Page message confirms submission.",
+        "reasoning": "Task completed as the page message confirms submission.",
         "action": "done",
-        "summary": "Form submitted successfully"
+        "summary": "Contact form filled and submitted successfully."
       },
       "ok": true,
       "message": "done: nothing to execute on the page",
@@ -122,14 +123,14 @@
         "fields": 1,
         "text": 8
       },
-      "ms": 1247,
+      "ms": 1227,
       "vision": {
-        "ms": 568,
-        "detections": 11,
+        "ms": 379,
+        "detections": 12,
         "domCount": 10,
         "found": 10,
         "recall": 1,
-        "precision": 0.909
+        "precision": 0.833
       }
     }
   ],
@@ -139,19 +140,19 @@
     "message": "Hello from the agent",
     "status": "Form submitted. Thanks!",
     "log": [
-      "8:47:16 PM  page ready",
-      "8:47:26 PM  input  #name = \"John Doe\"",
-      "8:47:28 PM  input  #email = \"john@example.com\"",
-      "8:47:31 PM  input  #message = \"Hello from the agent\"",
-      "8:47:33 PM  click  <button>  \"Submit\"",
-      "8:47:33 PM  submit {\"name\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"••••\",\"message\":\"Hello from the agent\"}"
+      "11:27:32 PM  page ready",
+      "11:27:45 PM  input  #name = \"John Doe\"",
+      "11:27:47 PM  input  #email = \"john@example.com\"",
+      "11:27:49 PM  input  #message = \"Hello from the agent\"",
+      "11:27:51 PM  click  <button>  \"Submit\"",
+      "11:27:51 PM  submit {\"name\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"••••\",\"message\":\"Hello from the agent\"}"
     ]
   },
   "serverReceived": [
     {
       "step": 1,
       "command": {
-        "reasoning": "Fill in the name field",
+        "reasoning": "Fill in the name field.",
         "action": "type",
         "target": "el_6",
         "text": "John Doe",
@@ -170,12 +171,12 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 7752
+      "reasoningMs": 9962
     },
     {
       "step": 2,
       "command": {
-        "reasoning": "Fill in the email field.",
+        "reasoning": "Fill in the email address.",
         "action": "type",
         "target": "el_7",
         "text": "john@example.com",
@@ -194,12 +195,12 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 554
+      "reasoningMs": 541
     },
     {
       "step": 3,
       "command": {
-        "reasoning": "Type the message into the message field.",
+        "reasoning": "Fill in the message field.",
         "action": "type",
         "target": "el_9",
         "text": "Hello from the agent",
@@ -220,7 +221,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 575
+      "reasoningMs": 687
     },
     {
       "step": 4,
@@ -244,14 +245,14 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 394
+      "reasoningMs": 543
     },
     {
       "step": 5,
       "command": {
-        "reasoning": "Page message confirms submission.",
+        "reasoning": "Task completed as the page message confirms submission.",
         "action": "done",
-        "summary": "Form submitted successfully"
+        "summary": "Contact form filled and submitted successfully."
       },
       "error": null,
       "redactions": [
@@ -269,7 +270,7 @@
       "elementsWithRedactedLabels": [
         "el_7 \"Email\""
       ],
-      "reasoningMs": 440
+      "reasoningMs": 629
     }
   ]
 }

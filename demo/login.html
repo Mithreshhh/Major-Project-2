@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acme Bank - Sign in</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #eef2f7; color: #1b1f24; }
+    header { background: #0b3d91; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 24px; }
+    header strong { font-size: 19px; }
+    header a { color: #cfe0ff; margin-right: 14px; }
+    main { max-width: 980px; margin: 32px auto; padding: 0 16px; display: grid; grid-template-columns: 380px 1fr; gap: 28px; }
+    @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 22px; }
+    h1 { font-size: 20px; margin: 0 0 14px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    input[type=text], input[type=password] { width: 100%; padding: 9px 11px; border: 1px solid #b6c2cf; border-radius: 6px; font: inherit; margin-bottom: 14px; }
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-size: 14px; }
+    button { width: 100%; padding: 10px; border: none; border-radius: 6px; background: #0b3d91; color: #fff; font: 600 15px system-ui; cursor: pointer; }
+    #status { margin-top: 12px; font-weight: 600; color: #b42318; min-height: 1.4em; }
+    .info h2 { font-size: 16px; margin: 0 0 8px; }
+    .info ul { padding-left: 18px; margin: 0 0 14px; }
+    .muted { color: #57606a; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Acme Bank</strong>
+    <nav><a href="#">Personal</a><a href="#">Business</a><a href="#">Loans</a><a href="#">Help</a></nav>
+  </header>
+  <main>
+    <form class="card" id="login" aria-label="Sign in">
+      <h1>Sign in to online banking</h1>
+      <label for="user">Customer ID or email</label>
+      <input id="user" name="user" type="text" autocomplete="username" placeholder="e.g. 12345678" />
+      <label for="pass">Password</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password" />
+      <div class="row">
+        <label style="font-weight:400;margin:0"><input type="checkbox" id="remember" /> Remember me</label>
+        <a href="#">Forgot password?</a>
+      </div>
+      <button type="submit">Log in</button>
+      <div id="status" role="status"></div>
+    </form>
+
+    <section class="card info">
+      <h2>Before you sign in</h2>
+      <ul>
+        <li>We will never ask for your OTP or full password by phone or email.</li>
+        <li>Two-step verification is required for payments above ₹10,000.</li>
+        <li>Sessions end automatically after 5 minutes of inactivity.</li>
+      </ul>
+      <h2>Need help?</h2>
+      <p>Call customer care on +91 22 4000 1234 or write to support@acmebank.example.</p>
+      <p class="muted">Registered office: Acme Bank Ltd. Last login from this device: 12 Sep 2026.</p>
+    </section>
+  </main>
+  <script>
+    document.getElementById("login").addEventListener("submit", (e) => {
+      e.preventDefault();
+      document.getElementById("status").textContent = "Signed in (test page).";
+    });
+  </script>
+</body>
+</html>
