@@ -3,90 +3,157 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agent test page</title>
+  <title>Nimbus - Contact support</title>
   <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 20px 16px; background: #f6f7f9; color: #1b1f24; }
-    main { max-width: 1060px; margin: 0 auto; }
-    header { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
-    h1 { font-size: 22px; margin: 0; }
-    p.hint { margin: 0; color: #57606a; font-size: 13px; }
-    nav a { margin-right: 14px; }
-    .grid { display: grid; grid-template-columns: 300px 1fr; gap: 18px; }
-    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; }
-    .profile img { width: 100%; max-width: 268px; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
-    .profile h2 { font-size: 16px; margin: 10px 0 6px; }
-    .profile dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 14px; }
-    .profile dt { color: #57606a; }
-    .profile dd { margin: 0; font-variant-numeric: tabular-nums; }
-    .sample { font-size: 12px; color: #57606a; margin-top: 8px; }
-    label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 14px; }
-    input[type=text], input[type=email], input[type=password], textarea {
-      width: 100%; padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; margin-bottom: 10px;
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb; --card: #ffffff; --ink: #0f172a; --muted: #5b6475; --line: #e3e8f0;
+      --brand: #4f46e5; --brand-ink: #ffffff; --brand-soft: #eef2ff; --ok: #15803d; --ok-soft: #ecfdf3;
     }
-    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
-    button { font: inherit; padding: 7px 16px; border-radius: 6px; border: 1px solid #1f6feb; background: #1f6feb; color: #fff; cursor: pointer; }
-    button.secondary { background: #fff; color: #1f6feb; }
-    #status { font-weight: 600; color: #1a7f37; min-height: 1.4em; }
-    #log-panel { margin-top: 18px; }
-    #log { margin: 6px 0 0; padding: 0; list-style: none; font-family: ui-monospace, monospace; font-size: 12.5px; max-height: 200px; overflow: auto; }
-    #log li { padding: 2px 0; border-bottom: 1px dashed #eaeef2; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 15px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Top bar */
+    .topbar { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+    .topbar .inner { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 28px; }
+    .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; color: var(--ink); }
+    .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #06b6d4); display: grid; place-items: center; color: #fff; font-size: 15px; }
+    nav a { color: var(--muted); margin-right: 20px; font-weight: 500; }
+    nav a:hover { color: var(--ink); text-decoration: none; }
+    .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 14px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(120deg, #312e81, #4f46e5 55%, #0891b2); color: #fff; }
+    .hero .inner { max-width: 1120px; margin: 0 auto; padding: 34px 20px 70px; }
+    .crumbs { font-size: 13px; opacity: .8; margin-bottom: 6px; }
+    .hero h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -.01em; }
+    .hero p { margin: 0; max-width: 620px; opacity: .9; }
+
+    /* Layout */
+    main { max-width: 1120px; margin: -44px auto 0; padding: 0 20px 40px; display: grid; grid-template-columns: 320px 1fr; gap: 22px; }
+    @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 6px 24px rgba(15, 23, 42, .06); }
+    .card h2 { font-size: 17px; margin: 0 0 4px; }
+    .card .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+    /* Account card */
+    .account { padding: 20px; align-self: start; }
+    .account .photo { width: 100%; height: 230px; border-radius: 10px; object-fit: cover; object-position: 50% 15%; display: block; margin-bottom: 14px; }
+    .account .who { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+    .account .name { font-weight: 700; font-size: 16px; }
+    .badge { display: inline-block; font-size: 12px; font-weight: 600; color: var(--brand); background: var(--brand-soft); border-radius: 99px; padding: 1px 9px; margin-top: 2px; }
+    .account dl { display: grid; grid-template-columns: 78px 1fr; gap: 8px 10px; margin: 0; font-size: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .account dt { color: var(--muted); }
+    .account dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .note { font-size: 12px; color: var(--muted); margin: 14px 0 0; }
+
+    /* Contact form */
+    form.card { padding: 24px; }
+    label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 5px; }
+    .opt { font-weight: 400; color: var(--muted); }
+    input[type=text], input[type=email], input[type=password], textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #cfd6e3; border-radius: 9px; font: inherit; background: #fbfcfe; margin-bottom: 14px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79, 70, 229, .15); background: #fff; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+    .check { display: flex; align-items: center; gap: 9px; margin: 2px 0 18px; }
+    .check input { width: 17px; height: 17px; accent-color: var(--brand); margin: 0; }
+    .check label { margin: 0; font-weight: 400; }
+    .actions { display: flex; gap: 12px; align-items: center; }
+    button { font: 600 15px "Segoe UI", system-ui, sans-serif; padding: 10px 20px; border-radius: 9px; border: 1px solid var(--brand); background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+    button:hover { filter: brightness(1.07); }
+    button.secondary { background: #fff; color: var(--brand); }
+    .reply { color: var(--muted); font-size: 13px; margin-left: auto; }
+    #status { min-height: 1.5em; margin-top: 16px; font-weight: 600; color: var(--ok); }
+    #status:not(:empty) { background: var(--ok-soft); border: 1px solid #b7ebc6; border-radius: 9px; padding: 9px 12px; }
+
+    /* Activity */
+    .activity { grid-column: 1 / -1; padding: 18px 20px; }
+    .activity h2 { font-size: 15px; }
+    #log { margin: 8px 0 0; padding: 0; list-style: none; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12.5px; max-height: 180px; overflow: auto; }
+    #log li { padding: 4px 0; border-bottom: 1px dashed var(--line); color: #334155; }
+
+    footer { border-top: 1px solid var(--line); background: var(--card); }
+    footer .inner { max-width: 1120px; margin: 0 auto; padding: 18px 20px; display: flex; gap: 22px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+    footer .inner span { margin-right: auto; }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Agent test page</h1>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="#"><span class="logo-mark">N</span>Nimbus</a>
       <nav><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a></nav>
-      <p class="hint">A harmless page for exercising the extension. Nothing is sent anywhere; every event is logged below.</p>
-    </header>
-
-    <div class="grid">
-      <section class="card profile" aria-label="Your account">
-        <img src="profile.jpg" alt="Profile photo" />
-        <h2>Your account</h2>
-        <dl>
-          <dt>Email</dt><dd>jane.doe@example.com</dd>
-          <dt>Phone</dt><dd>+91 98765 43210</dd>
-          <dt>Card</dt><dd>4111 1111 1111 1111</dd>
-          <dt>Aadhaar</dt><dd>2345 6789 0123</dd>
-          <dt>PAN</dt><dd>ABCDE1234F</dd>
-        </dl>
-        <p class="sample">Sample data for testing redaction. The photo is a public-domain NASA portrait.</p>
-      </section>
-
-      <form id="contact" class="card" aria-label="Contact form">
-        <div class="two">
-          <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" /></div>
-          <div><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" /></div>
-        </div>
-        <label for="password">Account password <span style="font-weight:400;color:#57606a">(optional)</span></label>
-        <input id="password" name="password" type="password" value="hunter2-secret" autocomplete="off" />
-
-        <label for="message">Message</label>
-        <textarea id="message" name="message" rows="3" placeholder="How can we help?"></textarea>
-
-        <div class="row">
-          <input id="newsletter" name="newsletter" type="checkbox" />
-          <label for="newsletter" style="margin:0;font-weight:400">Subscribe to the newsletter</label>
-        </div>
-
-        <div class="row">
-          <button type="submit">Submit</button>
-          <button type="button" class="secondary" id="clear">Clear form</button>
-        </div>
-        <div id="status" role="status"></div>
-      </form>
+      <div class="right"><a href="login.html">Log in</a></div>
     </div>
+  </header>
 
-    <section id="log-panel" class="card">
-      <strong>Event log</strong>
+  <section class="hero">
+    <div class="inner">
+      <div class="crumbs">Help centre / Contact</div>
+      <h1>Contact our support team</h1>
+      <p>Tell us what you need and we will get back to you within one working day. This is a test page: nothing is sent anywhere, and every event is logged below.</p>
+    </div>
+  </section>
+
+  <main>
+    <section class="card account" aria-label="Your account">
+      <img class="photo" src="profile.jpg" alt="Profile photo" />
+      <div class="who">
+        <div class="name">Jane Doe</div>
+        <span class="badge">Pro plan</span>
+      </div>
+      <dl>
+        <dt>Email</dt><dd>jane.doe@example.com</dd>
+        <dt>Phone</dt><dd>+91 98765 43210</dd>
+        <dt>Card</dt><dd>4111 1111 1111 1111</dd>
+        <dt>Aadhaar</dt><dd>2345 6789 0123</dd>
+        <dt>PAN</dt><dd>ABCDE1234F</dd>
+      </dl>
+      <p class="note">Sample data for testing redaction. The photo is a public-domain NASA portrait.</p>
+    </section>
+
+    <form id="contact" class="card" aria-label="Contact form">
+      <h2>Send us a message</h2>
+      <p class="sub">All fields except the password are required.</p>
+      <div class="two">
+        <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" /></div>
+        <div><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" /></div>
+      </div>
+      <label for="password">Account password <span class="opt">(optional)</span></label>
+      <input id="password" name="password" type="password" value="hunter2-secret" autocomplete="off" />
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" rows="4" placeholder="How can we help?"></textarea>
+
+      <div class="check">
+        <input id="newsletter" name="newsletter" type="checkbox" />
+        <label for="newsletter">Subscribe to the newsletter</label>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Submit</button>
+        <button type="button" class="secondary" id="clear">Clear form</button>
+        <span class="reply">Typical reply: under 24 hours</span>
+      </div>
+      <div id="status" role="status"></div>
+    </form>
+
+    <section id="log-panel" class="card activity">
+      <h2>Activity log</h2>
       <ul id="log"></ul>
     </section>
   </main>
+
+  <footer>
+    <div class="inner">
+      <span>© 2026 Nimbus Labs (test page)</span>
+      <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Status</a>
+    </div>
+  </footer>
 
   <script>
     const log = document.getElementById("log");
