@@ -1,0 +1,1092 @@
+{
+  "runs": 30,
+  "node": "v24.13.0",
+  "date": "2026-09-29T14:18:50.533Z",
+  "rows": [
+    {
+      "label": "RFB-320 FP32 original export",
+      "model": "models/version-RFB-320.onnx",
+      "sizeKb": 1241,
+      "sizeVsFp32": 100,
+      "loadMs": 287,
+      "latency": {
+        "mean": 25.9,
+        "p50": 25.4,
+        "p95": 31,
+        "runs": 30
+      },
+      "speedupVsFp32": 1,
+      "memory": {
+        "loadDelta": 56.8,
+        "peakDelta": 92.2,
+        "peakRss": 182.9
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 2,
+      "iouVsFp32": 0.9999999999999996,
+      "minConfidence": 0.999
+    },
+    {
+      "label": "RFB-320 FP32 cleaned graph",
+      "model": "models/compressed/version-RFB-320.fp32-clean.onnx",
+      "sizeKb": 1238,
+      "sizeVsFp32": 100,
+      "loadMs": 273,
+      "latency": {
+        "mean": 19.6,
+        "p50": 19.1,
+        "p95": 22.3,
+        "runs": 30
+      },
+      "speedupVsFp32": 1.33,
+      "memory": {
+        "loadDelta": 58.8,
+        "peakDelta": 84.3,
+        "peakRss": 179.5
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 2,
+      "iouVsFp32": 0.9999999999999996,
+      "minConfidence": 0.999
+    },
+    {
+      "label": "RFB-320 FP16",
+      "model": "models/compressed/version-RFB-320.fp16.onnx",
+      "sizeKb": 638,
+      "sizeVsFp32": 51,
+      "loadMs": 314,
+      "latency": {
+        "mean": 20.4,
+        "p50": 20.2,
+        "p95": 22.7,
+        "runs": 30
+      },
+      "speedupVsFp32": 1.26,
+      "memory": {
+        "loadDelta": 63.7,
+        "peakDelta": 274,
+        "peakRss": 366.6
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 2,
+      "iouVsFp32": 0.9947461331380738,
+      "minConfidence": 0.999
+    },
+    {
+      "label": "RFB-320 INT8 dynamic",
+      "model": "models/compressed/version-RFB-320.int8-dynamic.onnx",
+      "sizeKb": 480,
+      "sizeVsFp32": 39,
+      "loadMs": 321,
+      "latency": {
+        "mean": 31.6,
+        "p50": 30.5,
+        "p95": 39.5,
+        "runs": 30
+      },
+      "speedupVsFp32": 0.83,
+      "memory": {
+        "loadDelta": 74.2,
+        "peakDelta": 162.2,
+        "peakRss": 255
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 2,
+      "iouVsFp32": 0.9817502132863186,
+      "minConfidence": 0.998
+    },
+    {
+      "label": "RFB-320 INT8 static",
+      "model": "models/compressed/version-RFB-320.int8-static.onnx",
+      "sizeKb": 550,
+      "sizeVsFp32": 44,
+      "loadMs": 373,
+      "latency": {
+        "mean": 27.4,
+        "p50": 24.7,
+        "p95": 35.7,
+        "runs": 30
+      },
+      "speedupVsFp32": 1.03,
+      "memory": {
+        "loadDelta": 74.7,
+        "peakDelta": 82.2,
+        "peakRss": 175.8
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 2,
+      "iouVsFp32": 0.9359984885683434,
+      "minConfidence": 0.996
+    },
+    {
+      "label": "RFB-640 FP32 original export",
+      "model": "models/version-RFB-640.onnx",
+      "sizeKb": 1551,
+      "sizeVsFp32": 100,
+      "loadMs": 272,
+      "latency": {
+        "mean": 101,
+        "p50": 81.5,
+        "p95": 192.1,
+        "runs": 30
+      },
+      "speedupVsFp32": 1,
+      "memory": {
+        "loadDelta": 52.1,
+        "peakDelta": 114.2,
+        "peakRss": 210
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 1,
+      "iouVsFp32": 1,
+      "minConfidence": 0.998
+    },
+    {
+      "label": "RFB-640 FP32 cleaned graph",
+      "model": "models/compressed/version-RFB-640.fp32-clean.onnx",
+      "sizeKb": 1547,
+      "sizeVsFp32": 100,
+      "loadMs": 277,
+      "latency": {
+        "mean": 55.1,
+        "p50": 54.3,
+        "p95": 61.6,
+        "runs": 30
+      },
+      "speedupVsFp32": 1.5,
+      "memory": {
+        "loadDelta": 59.3,
+        "peakDelta": 118.1,
+        "peakRss": 212.3
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 1,
+      "iouVsFp32": 1,
+      "minConfidence": 0.998
+    },
+    {
+      "label": "RFB-640 FP16",
+      "model": "models/compressed/version-RFB-640.fp16.onnx",
+      "sizeKb": 793,
+      "sizeVsFp32": 51,
+      "loadMs": 312,
+      "latency": {
+        "mean": 56.2,
+        "p50": 55.6,
+        "p95": 62.5,
+        "runs": 30
+      },
+      "speedupVsFp32": 1.47,
+      "memory": {
+        "loadDelta": 64,
+        "peakDelta": 218.9,
+        "peakRss": 313.2
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 1,
+      "iouVsFp32": 0.9956216126272793,
+      "minConfidence": 0.998
+    },
+    {
+      "label": "RFB-640 INT8 dynamic",
+      "model": "models/compressed/version-RFB-640.int8-dynamic.onnx",
+      "sizeKb": 790,
+      "sizeVsFp32": 51,
+      "loadMs": 315,
+      "latency": {
+        "mean": 123.9,
+        "p50": 102.5,
+        "p95": 181.9,
+        "runs": 30
+      },
+      "speedupVsFp32": 0.8,
+      "memory": {
+        "loadDelta": 73.5,
+        "peakDelta": 134.9,
+        "peakRss": 229.1
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 1,
+      "iouVsFp32": 0.9855351006516746,
+      "minConfidence": 0.998
+    },
+    {
+      "label": "RFB-640 INT8 static",
+      "model": "models/compressed/version-RFB-640.int8-static.onnx",
+      "sizeKb": 860,
+      "sizeVsFp32": 55,
+      "loadMs": 343,
+      "latency": {
+        "mean": 163.7,
+        "p50": 173.5,
+        "p95": 234.8,
+        "runs": 30
+      },
+      "speedupVsFp32": 0.47,
+      "memory": {
+        "loadDelta": 75.1,
+        "peakDelta": 124.3,
+        "peakRss": 217.1
+      },
+      "recall": "4/4",
+      "falsePositives": 0,
+      "catDetections": 0,
+      "iouVsFp32": 0.9299302619932068,
+      "minConfidence": 0.996
+    }
+  ],
+  "raw": [
+    {
+      "model": "models/version-RFB-320.onnx",
+      "sizeBytes": 1270727,
+      "loadMs": 287,
+      "latencyMs": {
+        "mean": 25.9,
+        "p50": 25.4,
+        "p95": 31,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 56.8,
+        "peakDelta": 92.2,
+        "peakRss": 182.9
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179,
+              "y": 63.2,
+              "width": 90.2,
+              "height": 110.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 429,
+              "y": 122.6,
+              "width": 70.4,
+              "height": 99.5
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 656.8,
+              "y": 268.7,
+              "width": 75.4,
+              "height": 105.5
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 199.4,
+              "y": 255.1,
+              "width": 83.4,
+              "height": 113.1
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 60.1,
+              "y": 42.2,
+              "width": 166.3,
+              "height": 160.2
+            },
+            "category": "face",
+            "confidence": 0.888,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 235,
+              "y": 0,
+              "width": 165.8,
+              "height": 242.2
+            },
+            "category": "face",
+            "confidence": 0.694,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-320.fp32-clean.onnx",
+      "sizeBytes": 1267323,
+      "loadMs": 273,
+      "latencyMs": {
+        "mean": 19.6,
+        "p50": 19.1,
+        "p95": 22.3,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 58.8,
+        "peakDelta": 84.3,
+        "peakRss": 179.5
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179,
+              "y": 63.2,
+              "width": 90.2,
+              "height": 110.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 429,
+              "y": 122.6,
+              "width": 70.4,
+              "height": 99.5
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 656.8,
+              "y": 268.7,
+              "width": 75.4,
+              "height": 105.5
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 199.4,
+              "y": 255.1,
+              "width": 83.4,
+              "height": 113.1
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 60.1,
+              "y": 42.2,
+              "width": 166.3,
+              "height": 160.2
+            },
+            "category": "face",
+            "confidence": 0.888,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 235,
+              "y": 0,
+              "width": 165.8,
+              "height": 242.2
+            },
+            "category": "face",
+            "confidence": 0.694,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-320.fp16.onnx",
+      "sizeBytes": 653316,
+      "loadMs": 314,
+      "latencyMs": {
+        "mean": 20.4,
+        "p50": 20.2,
+        "p95": 22.7,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 63.7,
+        "peakDelta": 274,
+        "peakRss": 366.6
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179,
+              "y": 63.3,
+              "width": 90.3,
+              "height": 110.2
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 429.1,
+              "y": 122.6,
+              "width": 70.5,
+              "height": 99.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 657.2,
+              "y": 268.8,
+              "width": 75,
+              "height": 105.3
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 199.2,
+              "y": 255.1,
+              "width": 83.4,
+              "height": 113
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 60.7,
+              "y": 42.1,
+              "width": 165.7,
+              "height": 160.9
+            },
+            "category": "face",
+            "confidence": 0.878,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 234.7,
+              "y": 0,
+              "width": 166,
+              "height": 241.3
+            },
+            "category": "face",
+            "confidence": 0.69,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-320.int8-dynamic.onnx",
+      "sizeBytes": 491634,
+      "loadMs": 321,
+      "latencyMs": {
+        "mean": 31.6,
+        "p50": 30.5,
+        "p95": 39.5,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 74.2,
+        "peakDelta": 162.2,
+        "peakRss": 255
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 178.8,
+              "y": 62.3,
+              "width": 90.6,
+              "height": 112
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 428.7,
+              "y": 122.7,
+              "width": 70.1,
+              "height": 99.5
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 657,
+              "y": 269.1,
+              "width": 74.6,
+              "height": 105.9
+            },
+            "category": "face",
+            "confidence": 0.999,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 198.9,
+              "y": 254.4,
+              "width": 83.4,
+              "height": 113.8
+            },
+            "category": "face",
+            "confidence": 0.998,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 57.8,
+              "y": 43.9,
+              "width": 164.2,
+              "height": 165.9
+            },
+            "category": "face",
+            "confidence": 0.979,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 239.5,
+              "y": 0,
+              "width": 167.8,
+              "height": 240.5
+            },
+            "category": "face",
+            "confidence": 0.891,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-320.int8-static.onnx",
+      "sizeBytes": 563597,
+      "loadMs": 373,
+      "latencyMs": {
+        "mean": 27.4,
+        "p50": 24.7,
+        "p95": 35.7,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 74.7,
+        "peakDelta": 82.2,
+        "peakRss": 175.8
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 180.4,
+              "y": 63.1,
+              "width": 87.2,
+              "height": 111.3
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 428.5,
+              "y": 124,
+              "width": 73.3,
+              "height": 97.4
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 197.3,
+              "y": 256.8,
+              "width": 84.6,
+              "height": 115.1
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 659.6,
+              "y": 270.1,
+              "width": 73.3,
+              "height": 106.3
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 58.3,
+              "y": 49.3,
+              "width": 164.2,
+              "height": 151.5
+            },
+            "category": "face",
+            "confidence": 0.894,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 235.7,
+              "y": 0,
+              "width": 174.8,
+              "height": 260.8
+            },
+            "category": "face",
+            "confidence": 0.804,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/version-RFB-640.onnx",
+      "sizeBytes": 1588012,
+      "loadMs": 272,
+      "latencyMs": {
+        "mean": 101,
+        "p50": 81.5,
+        "p95": 192.1,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 52.1,
+        "peakDelta": 114.2,
+        "peakRss": 210
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179,
+              "y": 52.4,
+              "width": 90.1,
+              "height": 122.1
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 426.2,
+              "y": 120.2,
+              "width": 74.9,
+              "height": 103.2
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 202.8,
+              "y": 256.5,
+              "width": 76.1,
+              "height": 113.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 658.1,
+              "y": 269.9,
+              "width": 77.6,
+              "height": 106.9
+            },
+            "category": "face",
+            "confidence": 0.998,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 30,
+              "y": 109.2,
+              "width": 142.7,
+              "height": 111.6
+            },
+            "category": "face",
+            "confidence": 0.631,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-640.fp32-clean.onnx",
+      "sizeBytes": 1584632,
+      "loadMs": 277,
+      "latencyMs": {
+        "mean": 55.1,
+        "p50": 54.3,
+        "p95": 61.6,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 59.3,
+        "peakDelta": 118.1,
+        "peakRss": 212.3
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179,
+              "y": 52.4,
+              "width": 90.1,
+              "height": 122.1
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 426.2,
+              "y": 120.2,
+              "width": 74.9,
+              "height": 103.2
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 202.8,
+              "y": 256.5,
+              "width": 76.1,
+              "height": 113.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 658.1,
+              "y": 269.9,
+              "width": 77.6,
+              "height": 106.9
+            },
+            "category": "face",
+            "confidence": 0.998,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 30,
+              "y": 109.2,
+              "width": 142.7,
+              "height": 111.6
+            },
+            "category": "face",
+            "confidence": 0.631,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-640.fp16.onnx",
+      "sizeBytes": 811987,
+      "loadMs": 312,
+      "latencyMs": {
+        "mean": 56.2,
+        "p50": 55.6,
+        "p95": 62.5,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 64,
+        "peakDelta": 218.9,
+        "peakRss": 313.2
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179.1,
+              "y": 52.4,
+              "width": 90.1,
+              "height": 122.1
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 426.3,
+              "y": 120.2,
+              "width": 74.8,
+              "height": 103.3
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 202.9,
+              "y": 256.6,
+              "width": 76.1,
+              "height": 113.4
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 657.7,
+              "y": 270,
+              "width": 77.8,
+              "height": 106.8
+            },
+            "category": "face",
+            "confidence": 0.998,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 30.1,
+              "y": 109.3,
+              "width": 141.7,
+              "height": 111.9
+            },
+            "category": "face",
+            "confidence": 0.644,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-640.int8-dynamic.onnx",
+      "sizeBytes": 808936,
+      "loadMs": 315,
+      "latencyMs": {
+        "mean": 123.9,
+        "p50": 102.5,
+        "p95": 181.9,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 73.5,
+        "peakDelta": 134.9,
+        "peakRss": 229.1
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 178.5,
+              "y": 53.9,
+              "width": 90.7,
+              "height": 120.5
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 426.3,
+              "y": 119.8,
+              "width": 74.6,
+              "height": 103.5
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 202.7,
+              "y": 256.1,
+              "width": 76.4,
+              "height": 113.3
+            },
+            "category": "face",
+            "confidence": 1,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 658.2,
+              "y": 269.2,
+              "width": 77.3,
+              "height": 106.8
+            },
+            "category": "face",
+            "confidence": 0.998,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": [
+          {
+            "bbox": {
+              "x": 31.5,
+              "y": 108.6,
+              "width": 142.5,
+              "height": 115.8
+            },
+            "category": "face",
+            "confidence": 0.669,
+            "method": "ml"
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/compressed/version-RFB-640.int8-static.onnx",
+      "sizeBytes": 880894,
+      "loadMs": 343,
+      "latencyMs": {
+        "mean": 163.7,
+        "p50": 173.5,
+        "p95": 234.8,
+        "runs": 30
+      },
+      "memoryMb": {
+        "loadDelta": 75.1,
+        "peakDelta": 124.3,
+        "peakRss": 217.1
+      },
+      "detections": {
+        "astronaut.jpg": [
+          {
+            "bbox": {
+              "x": 179.6,
+              "y": 52.5,
+              "width": 96.7,
+              "height": 124.3
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          }
+        ],
+        "apollo11-crew.jpg": [
+          {
+            "bbox": {
+              "x": 424.8,
+              "y": 122.1,
+              "width": 77.7,
+              "height": 101.7
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 202,
+              "y": 256.3,
+              "width": 82.9,
+              "height": 113.9
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          },
+          {
+            "bbox": {
+              "x": 657.9,
+              "y": 268.5,
+              "width": 77.7,
+              "height": 105.8
+            },
+            "category": "face",
+            "confidence": 0.996,
+            "method": "ml"
+          }
+        ],
+        "coffee.jpg": [],
+        "chelsea-cat.jpg": []
+      }
+    }
+  ]
+}

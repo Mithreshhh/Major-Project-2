@@ -7,7 +7,9 @@ On-device ML that runs *inside the extension*, before anything leaves the browse
 | `src/inference.ts` | ONNX Runtime Web session + UltraFace face detection | **Real** |
 | `src/preprocess.ts` | RGBA bitmap -> normalised NCHW float32 tensor | Real |
 | `src/postprocess.ts` | Threshold, pixel mapping, hard NMS | Real |
-| `src/redaction.ts` | Black out sensitive regions in the pixels; `sanitize()` pipeline entry point | **Real** for pixels; DOM/text stubs `TODO(redaction-dom)`, `TODO(redaction-text)` |
+| `src/redaction.ts` | Black out faces, sensitive fields and PII text in the pixels; redact labels; `sanitize()` pipeline entry point | **Real** |
+| `src/pii.ts` | Email / phone / card (Luhn) / SSN / Aadhaar / PAN detection, field rules, `scrubUrl` | **Real**, dependency-free (the content script imports it) |
+| `benchmarks/` | Compression study: `quantize.py` builds variants, `npm run benchmark` measures them | Results in `benchmarks/RESULTS.md` |
 | `src/types.ts` | `RawImage`, `PerceptionOutput`, `PerceptionConfig` | Done |
 | `models/*.onnx` | UltraFace RFB-320 and RFB-640 | Committed, checksummed |
 
@@ -106,3 +108,28 @@ Two details matter there:
   package keeps the root import so Node tests get ORT's Node build.
 
 The build copies `models/*.onnx` into `dist/<browser>/models/`.
+
+## Compression study
+
+`benchmarks/quantize.py` builds, for both input sizes, a cleaned-graph FP32, an FP16, an INT8
+dynamic and an INT8 static (calibrated) variant into `models/compressed/`. `npm run benchmark`
+measures each one in a fresh process with the runtime the extension ships and writes
+`benchmarks/RESULTS.md` and `benchmarks/results.json`.
+
+Findings on this machine (single-threaded WASM):
+
+- **Graph cleanup is the biggest win.** The upstream export lists every weight as a graph input,
+  which blocks ONNX Runtime's constant folding and Conv+BatchNorm fusion. Fixing only that makes
+  RFB-640 1.5x faster (median 81 -> 54 ms) with identical boxes. The extension now ships it.
+- **FP16 halves the file** (1.5 MB -> 0.8 MB) at 99.6% box overlap and the same speed, but uses
+  more memory because WASM computes in FP32 and inserts casts.
+- **INT8 shrinks the file 45-60% but is slower** in WASM: dynamic quantization adds per-call
+  overhead and the WASM backend has limited int8 convolution kernels. Static INT8 also loses
+  the most box precision (IoU 0.93). INT8 is the right choice on native CPUs, not in the browser.
+- Every variant finds all 4 test faces with zero false positives on the true-negative image.
+
+```bash
+python -m venv benchmarks/.venv && benchmarks/.venv/Scripts/pip install -r benchmarks/requirements.txt
+benchmarks/.venv/Scripts/python benchmarks/quantize.py
+npm run benchmark
+```

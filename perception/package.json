@@ -19,7 +19,8 @@
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "models:fetch": "node scripts/fetch-models.mjs",
     "fixtures:fetch": "node scripts/fetch-fixtures.mjs",
-    "inspect": "node scripts/inspect-model.mjs"
+    "inspect": "node scripts/inspect-model.mjs",
+    "benchmark": "node --import tsx benchmarks/benchmark.ts"
   },
   "dependencies": {
     "onnxruntime-web": "^1.29.0"
