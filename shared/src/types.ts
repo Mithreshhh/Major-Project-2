@@ -138,6 +138,19 @@ export interface SanitizedScreenshot {
 // Perception summary
 // ---------------------------------------------------------------------------
 
+/**
+ * A UI element found by the on-device vision model in the (unredacted) screenshot. CSS pixels.
+ * Carries no text: the model sees shapes, not labels.
+ */
+export interface VisualElement {
+  role: "button" | "textbox" | "link";
+  bbox: BoundingBox;
+  /** 0..1 detector confidence. */
+  confidence: number;
+  /** `UIElement.id` of the DOM element this box overlaps best (IoU >= 0.5), if any. */
+  matchedId?: string;
+}
+
 /** Small summary of what the on-device model produced, for observability/debugging. */
 export interface PerceptionSummary {
   /** Identifier of the on-device model that ran, e.g. "vit-tiny-ui-v0" or "placeholder". */
@@ -145,6 +158,11 @@ export interface PerceptionSummary {
   latencyMs: number;
   /** Optional compact embedding of the screen (may be omitted to save bandwidth). */
   embedding?: number[];
+  /** Identifier of the on-device UI detector, when it ran. */
+  uiModelId?: string;
+  uiLatencyMs?: number;
+  /** Buttons, inputs and links detected from pixels alone. */
+  visualElements?: VisualElement[];
 }
 
 // ---------------------------------------------------------------------------

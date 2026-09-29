@@ -61,3 +61,28 @@ def test_view_page_and_missing_screenshot(client, example_context):
     assert "What the AI sees" in page.text
     cap_id = client.get("/debug/captures").json()["captures"][0]["id"]
     assert client.get(f"/debug/captures/{cap_id}/screenshot").status_code == 404
+
+
+def test_vision_detections_are_accepted_and_recorded(client, example_context):
+    captures.clear()
+    perception = {
+        **example_context["perception"],
+        "uiModelId": "ui-detect-yolo11n",
+        "uiLatencyMs": 312,
+        "visualElements": [
+            {"role": "button", "bbox": {"x": 10, "y": 20, "width": 80, "height": 30}, "confidence": 0.93, "matchedId": "el_0"},
+            {"role": "link", "bbox": {"x": 5, "y": 5, "width": 40, "height": 14}, "confidence": 0.51},
+        ],
+    }
+    res = client.post("/process", json={**example_context, "perception": perception})
+    assert res.status_code == 200
+    cap = client.get("/debug/captures").json()["captures"][0]
+    assert cap["perception"]["visualElements"][0]["matchedId"] == "el_0"
+    assert "matchedId" not in cap["perception"]["visualElements"][1]
+
+
+def test_vision_detections_with_unknown_role_are_rejected(client, example_context):
+    bad = {**example_context["perception"], "visualElements": [
+        {"role": "icon", "bbox": {"x": 0, "y": 0, "width": 1, "height": 1}, "confidence": 0.5},
+    ]}
+    assert client.post("/process", json={**example_context, "perception": bad}).status_code == 422

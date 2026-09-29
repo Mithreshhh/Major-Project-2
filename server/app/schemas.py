@@ -83,10 +83,20 @@ class SanitizedScreenshot(_Strict):
     height: int = Field(ge=1)
 
 
+class VisualElement(_Strict):
+    role: Literal["button", "textbox", "link"]
+    bbox: BoundingBox
+    confidence: float = Field(ge=0, le=1)
+    matchedId: Optional[str] = None
+
+
 class PerceptionSummary(_Strict):
     modelId: str
     latencyMs: float = Field(ge=0)
     embedding: Optional[list[float]] = None
+    uiModelId: Optional[str] = None
+    uiLatencyMs: Optional[float] = Field(default=None, ge=0)
+    visualElements: Optional[list[VisualElement]] = None
 
 
 # ---------------------------------------------------------------------------
