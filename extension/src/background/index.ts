@@ -15,7 +15,10 @@
  * Everything before step 5 happens on-device. Step 5 is the only network egress.
  */
 import {
+  compareWithDom,
+  detectUiElements,
   loadModel,
+  loadUiDetector,
   placeholderOutput,
   redactText,
   runInference,
@@ -24,7 +27,7 @@ import {
   type PerceptionOutput,
   type RawImage,
 } from "@odpa/perception";
-import { PROTOCOL_VERSION, type ActionCommand, type SanitizedContext } from "@odpa/shared";
+import { PROTOCOL_VERSION, type ActionCommand, type PerceptionSummary, type SanitizedContext } from "@odpa/shared";
 
 import { BROWSER, CONFIG } from "../shared/config";
 import type {
@@ -97,6 +100,29 @@ function ensurePerception(): Promise<boolean> {
       });
   }
   return perceptionReady;
+}
+
+let uiDetectorReady: Promise<boolean> | null = null;
+
+/** Loads the UI detector after the face detector (which configures the runtime). Never throws. */
+function ensureUiDetector(): Promise<boolean> {
+  if (!CONFIG.uiDetector.enabled) return Promise.resolve(false);
+  if (!uiDetectorReady) {
+    uiDetectorReady = loadUiDetector({
+      modelUrl: CONFIG.uiDetector.modelUrl,
+      modelId: CONFIG.uiDetector.modelId,
+      scoreThreshold: CONFIG.uiDetector.scoreThreshold,
+    })
+      .then((loaded) => {
+        console.info(LOG, `UI detector loaded (${CONFIG.uiDetector.modelId})`);
+        return loaded;
+      })
+      .catch((err: unknown) => {
+        console.warn(LOG, "UI detector unavailable, continuing without it", err);
+        return false;
+      });
+  }
+  return uiDetectorReady;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +202,24 @@ export async function runStep(
       perception = placeholderOutput();
     }
 
+    // 3b. On-device UI detection from pixels, scored live against the DOM. Must run before
+    //     sanitize() zeroes the raw buffer. Optional: a failure here never blocks the step.
+    const summary: PerceptionSummary = { modelId: perception.modelId, latencyMs: perception.latencyMs };
+    let vision: StepResult["vision"];
+    if (rawImage && (await ensureUiDetector())) {
+      try {
+        const ui = await detectUiElements(rawImage);
+        const cmp = compareWithDom(ui.detections, snapshot.elements, snapshot.viewport.devicePixelRatio, snapshot.viewport);
+        summary.uiModelId = ui.modelId;
+        summary.uiLatencyMs = ui.latencyMs;
+        summary.visualElements = cmp.visual;
+        vision = { ms: ui.latencyMs, detections: ui.detections.length, domCount: cmp.domCount, found: cmp.found, recall: cmp.recall, precision: cmp.precision };
+        console.info(LOG, `vision: ${ui.detections.length} UI element(s) in ${ui.latencyMs} ms, found ${cmp.found}/${cmp.domCount} DOM elements, precision ${cmp.precision}`);
+      } catch (err) {
+        console.warn(LOG, "UI detection failed, continuing without it", err);
+      }
+    }
+
     // 4. Redaction: faces (ml) + password/card fields (dom) + PII text (heuristic) are blacked
     //    out on a fresh copy; `rawImage`'s buffer is zeroed by sanitize(). Labels are scrubbed.
     const redacted = await sanitize({
@@ -209,7 +253,7 @@ export async function runStep(
         : null,
       redactions: redacted.redactions,
       history: session.history,
-      perception: { modelId: perception.modelId, latencyMs: perception.latencyMs },
+      perception: summary,
     };
 
     console.info(LOG, `step ${session.stepIndex} -> /process`, {
@@ -236,6 +280,7 @@ export async function runStep(
       sessionId: session.sessionId,
       redactions: { faces: counts.ml ?? 0, fields: counts.dom ?? 0, text: counts.heuristic ?? 0 },
       perceptionMs: perception.latencyMs,
+      ...(vision ? { vision } : {}),
     };
   } finally {
     runningTabs.delete(tabId);
@@ -328,6 +373,7 @@ export async function runTask(
         message: result.execution.message,
         redactions: result.redactions,
         ms: Date.now() - started,
+        ...(result.vision ? { vision: result.vision } : {}),
       };
       state.steps.push(log);
       await publish(state);

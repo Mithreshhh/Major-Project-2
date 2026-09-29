@@ -199,6 +199,16 @@ test(
     assert.equal(body.perception.modelId, "ultraface-rfb-640-clean");
     assert.ok(body.perception.latencyMs >= 0);
 
+    // The UI detector ran on-device on the same frame and only boxes left (no text, no pixels).
+    assert.ok(calls.assets.includes("models/ui-detect.onnx"), `UI model loaded from dist: ${calls.assets}`);
+    assert.equal(body.perception.uiModelId, "ui-detect-yolo11n");
+    assert.ok(body.perception.uiLatencyMs >= 0);
+    assert.ok(Array.isArray(body.perception.visualElements));
+    for (const v of body.perception.visualElements) {
+      assert.deepEqual(Object.keys(v).filter((k) => !["role", "bbox", "confidence", "matchedId"].includes(k)), []);
+      assert.ok(["button", "textbox", "link"].includes(v.role));
+    }
+
     const faces = body.redactions.filter((r) => r.category === "face" && r.method === "ml");
     assert.ok(faces.length >= 1, `expected a face redaction, got ${JSON.stringify(body.redactions)}`);
     const boxes = body.redactions.map((r) => r.bbox);

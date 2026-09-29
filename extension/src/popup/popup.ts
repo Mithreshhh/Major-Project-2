@@ -84,6 +84,10 @@ function render(state: TaskState | null): void {
     meta.textContent =
       `${(step.ms / 1000).toFixed(1)} s · hidden before sending: ` +
       (hidden ? `${r.faces} face(s), ${r.fields} field(s), ${r.text} text item(s)` : "nothing sensitive found") +
+      (step.vision
+        ? ` · vision model found ${step.vision.found}/${step.vision.domCount} buttons, inputs and links ` +
+          `(${Math.round(step.vision.precision * 100)}% of its boxes correct, ${step.vision.ms} ms)`
+        : "") +
       (step.ok ? "" : ` · ${step.message ?? "failed"}`);
     li.append(n, what, meta);
     steps.append(li);

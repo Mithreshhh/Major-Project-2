@@ -48,6 +48,18 @@ export interface StepResult {
   sessionId: string;
   redactions: RedactionCounts;
   perceptionMs: number;
+  /** Vision-based UI detection, scored against the DOM. Absent when the UI model did not run. */
+  vision?: VisionStats;
+}
+
+export interface VisionStats {
+  ms: number;
+  detections: number;
+  /** DOM buttons/inputs/links in view, and how many of them vision found. */
+  domCount: number;
+  found: number;
+  recall: number;
+  precision: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +77,7 @@ export interface StepLog {
   message?: string;
   redactions: RedactionCounts;
   ms: number;
+  vision?: VisionStats;
 }
 
 export interface TaskState {

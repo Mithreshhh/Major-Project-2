@@ -51,4 +51,17 @@ export const CONFIG = {
     modelId: "ultraface-rfb-640-clean",
     scoreThreshold: 0.6,
   },
+
+  uiDetector: {
+    /**
+     * YOLO11n trained by perception/ui-model on synthetic pages labelled from the DOM. Finds
+     * buttons, inputs and links from pixels. Runs on the raw screenshot before redaction; only
+     * boxes leave the device. Optional: if it fails to load or run, the step continues without it.
+     */
+    enabled: true as boolean,
+    modelUrl: chrome.runtime.getURL("models/ui-detect.onnx") as string,
+    modelId: "ui-detect-yolo11n",
+    /** 0.5: 97.5% recall and 97.5% precision on the held-out demo page (ui-model/RESULTS.md). */
+    scoreThreshold: 0.5,
+  },
 } as const;
