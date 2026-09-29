@@ -42,6 +42,8 @@ export interface RedactionCounts {
 export interface StepResult {
   command: ActionCommand;
   execution: ExecutionResult;
+  /** True when the command was returned by the server but deliberately not executed. */
+  skipped: boolean;
   stepIndex: number;
   sessionId: string;
   redactions: RedactionCounts;

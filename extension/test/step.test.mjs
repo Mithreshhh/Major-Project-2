@@ -191,12 +191,12 @@ test(
 
     assert.equal(calls.badges.at(-1), "OK", `badges: ${calls.badges.join(" -> ")}; errors: ${errors()}`);
     assert.equal(calls.capture, 1, "captureVisibleTab called exactly once");
-    assert.ok(calls.assets.includes("models/version-RFB-640.onnx"), `real model loaded from dist: ${calls.assets}`);
+    assert.ok(calls.assets.includes("models/version-RFB-640.fp32-clean.onnx"), `real model loaded from dist: ${calls.assets}`);
     assert.ok(calls.assets.some((a) => a.startsWith("ort/") && a.endsWith(".wasm")), `real ORT wasm loaded from dist: ${calls.assets}`);
     assert.equal(calls.fetches.length, 1, `expected only the /process POST, got ${JSON.stringify(calls.fetches.map((f) => f.url))}`);
 
     const body = calls.fetches[0].body;
-    assert.equal(body.perception.modelId, "ultraface-rfb-640");
+    assert.equal(body.perception.modelId, "ultraface-rfb-640-clean");
     assert.ok(body.perception.latencyMs >= 0);
 
     const faces = body.redactions.filter((r) => r.category === "face" && r.method === "ml");
@@ -335,8 +335,10 @@ test("a task stops when the model asks the user, and when it repeats itself", as
   serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "click", target: "el_1" });
   const looped = await globalThis.odpa.runTask(22, 1, "Click submit");
   assert.equal(looped.status, "stopped");
-  assert.match(looped.message, /repeated the same action/);
+  assert.match(looped.message, /same action twice/);
   assert.equal(looped.steps.length, 2);
+  // The repeated click was refused, not executed: only one EXECUTE_ACTION reached the page.
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.target === "el_1").length, 1);
 });
 
 test("popup messages: RUN_TASK starts a task, GET_TASK_STATE reports it", async () => {

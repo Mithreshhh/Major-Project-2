@@ -42,11 +42,13 @@ export const CONFIG = {
   perception: {
     /**
      * UltraFace face detector, copied from perception/models into dist/<browser>/models by the
-     * build. RFB-640 for recall on small faces; swap to version-RFB-320.onnx for ~4x less compute.
+     * build. RFB-640 for recall on small faces, cleaned-graph FP32: the winner of the
+     * compression study (perception/benchmarks/RESULTS.md), 1.5x faster than the original
+     * export with identical boxes. Swap to version-RFB-320.fp32-clean.onnx for ~3x less compute.
      * Only loaded when sendScreenshot is true (there is nothing to look at otherwise).
      */
-    modelUrl: chrome.runtime.getURL("models/version-RFB-640.onnx") as string | null,
-    modelId: "ultraface-rfb-640",
+    modelUrl: chrome.runtime.getURL("models/version-RFB-640.fp32-clean.onnx") as string | null,
+    modelId: "ultraface-rfb-640-clean",
     scoreThreshold: 0.6,
   },
 } as const;

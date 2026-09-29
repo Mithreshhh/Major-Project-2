@@ -91,15 +91,23 @@ async function copyPublic(outdir) {
   }
 }
 
-/** ONNX models are owned by the perception package; ship them at <outdir>/models/. */
+/**
+ * ONNX models are owned by the perception package; ship them at <outdir>/models/.
+ * The original exports plus the cleaned-graph FP32 variants from the compression study
+ * (perception/benchmarks/RESULTS.md), which are what the extension actually loads.
+ */
 async function copyModels(outdir) {
   const modelsDir = path.resolve(extensionRoot, "../perception/models");
   if (!(await exists(modelsDir))) return 0;
   const dest = path.join(outdir, "models");
   await mkdir(dest, { recursive: true });
-  const files = (await readdir(modelsDir)).filter((f) => f.endsWith(".onnx"));
-  await Promise.all(files.map((f) => cp(path.join(modelsDir, f), path.join(dest, f))));
-  return files.length;
+  const sources = (await readdir(modelsDir)).filter((f) => f.endsWith(".onnx")).map((f) => path.join(modelsDir, f));
+  const compressed = path.join(modelsDir, "compressed");
+  if (await exists(compressed)) {
+    for (const f of await readdir(compressed)) if (f.endsWith(".fp32-clean.onnx")) sources.push(path.join(compressed, f));
+  }
+  await Promise.all(sources.map((src) => cp(src, path.join(dest, path.basename(src)))));
+  return sources.length;
 }
 
 async function buildTarget(target) {

@@ -146,7 +146,13 @@ async function storedTask(): Promise<string> {
   return typeof stored.task === "string" && stored.task ? stored.task : CONFIG.defaultTask;
 }
 
-export async function runStep(tabId: number, windowId?: number, taskOverride?: string): Promise<StepResult> {
+export async function runStep(
+  tabId: number,
+  windowId?: number,
+  taskOverride?: string,
+  /** Return false to skip executing the returned command (used to refuse repeated actions). */
+  shouldExecute: (command: ActionCommand) => boolean = () => true
+): Promise<StepResult> {
   if (runningTabs.has(tabId)) throw new Error("a step is already running on this tab");
   runningTabs.add(tabId);
 
@@ -215,8 +221,9 @@ export async function runStep(tabId: number, windowId?: number, taskOverride?: s
     const command = await requestAction(context);
     console.info(LOG, "command", command);
 
-    // 6. Execute on the page
-    const execution = await executeOnPage(tabId, command);
+    // 6. Execute on the page (unless the caller vetoes it)
+    const skipped = !shouldExecute(command);
+    const execution = skipped ? { ok: true, message: "not executed: same as the previous action" } : await executeOnPage(tabId, command);
 
     session.history.push(command);
     session.stepIndex += 1;
@@ -224,6 +231,7 @@ export async function runStep(tabId: number, windowId?: number, taskOverride?: s
     return {
       command,
       execution,
+      skipped,
       stepIndex: session.stepIndex - 1,
       sessionId: session.sessionId,
       redactions: { faces: counts.ml ?? 0, fields: counts.dom ?? 0, text: counts.heuristic ?? 0 },
@@ -311,7 +319,7 @@ export async function runTask(
 
       await setBadge(tabId, `${i + 1}`, "#6e7781");
       const started = Date.now();
-      const result = await runStep(tabId, windowId, task);
+      const result = await runStep(tabId, windowId, task, (command) => !sameCommand(previous, command));
       const log: StepLog = {
         index: i,
         summary: describeCommand(result.command),
@@ -345,9 +353,9 @@ export async function runTask(
         state.message = result.command.reason;
         break;
       }
-      if (sameCommand(previous, result.command)) {
+      if (result.skipped) {
         state.status = "stopped";
-        state.message = "The agent repeated the same action, so it was stopped to avoid a loop.";
+        state.message = "The agent proposed the same action twice in a row; it was not repeated and the task was stopped.";
         break;
       }
       previous = result.command;
