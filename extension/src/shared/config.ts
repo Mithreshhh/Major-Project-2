@@ -18,7 +18,8 @@ export const CONFIG = {
    *        A failure anywhere in that chain aborts the step; raw pixels are never sent.
    * false: the step never calls captureVisibleTab, never decodes or encodes pixels, never loads
    *        the model, and sends `screenshot: null`.
-   * Text/DOM redaction is still TODO, so labels and the page URL are forwarded as captured.
+   * Password/card fields and PII text (emails, phones, card and ID numbers) are blacked out
+   * too, and PII in element labels, the page title and the URL is replaced with "[REDACTED]".
    */
   sendScreenshot: true as boolean,
   screenshotMimeType: "image/jpeg" as ScreenshotMimeType,
@@ -27,8 +28,16 @@ export const CONFIG = {
   /** Upper bound on UI elements included in one snapshot. */
   maxElements: 200,
 
-  /** Network timeout for /process. */
-  requestTimeoutMs: 30_000,
+  /** Network timeout for /process. The first call may include loading Gemma (~10 s). */
+  requestTimeoutMs: 60_000,
+
+  /** A task from the popup stops after this many steps even if the model has not said "done". */
+  maxTaskSteps: 10,
+  /** Pause between steps so the page can react (animations, validation messages). */
+  stepDelayMs: 700,
+
+  /** Server page that shows the last sanitized screenshots it received. */
+  debugViewPath: "/debug/view",
 
   perception: {
     /**

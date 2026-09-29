@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>On-Device Perception Agent</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --soft: #f6f8fa;
+      --accent: #0969da; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --soft: #151b23;
+              --accent: #4493f8; --ok: #3fb950; --warn: #d29922; --bad: #f85149; }
+    }
+    * { box-sizing: border-box; }
+    body { width: 380px; margin: 0; padding: 14px; background: var(--bg); color: var(--fg);
+           font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    header h1 { font-size: 14px; margin: 0; flex: 1; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+    .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+    #server { color: var(--muted); font-size: 12px; }
+    #page { color: var(--muted); font-size: 12px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    textarea { width: 100%; min-height: 68px; resize: vertical; padding: 8px; border: 1px solid var(--border);
+               border-radius: 6px; background: var(--soft); color: var(--fg); font: inherit; }
+    .row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+    button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+             background: var(--soft); color: var(--fg); cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    button:disabled { opacity: .5; cursor: default; }
+    button.link { border: none; background: none; color: var(--accent); padding: 0; }
+    .spacer { flex: 1; }
+    #status { margin-top: 12px; padding: 8px 10px; border-radius: 6px; background: var(--soft); border: 1px solid var(--border); display: none; }
+    #status.show { display: block; }
+    #status strong { display: block; }
+    #status.done strong { color: var(--ok); } #status.failed strong { color: var(--bad); }
+    #status.needs_user strong, #status.stopped strong, #status.max_steps strong { color: var(--warn); }
+    ol { margin: 10px 0 0; padding: 0; list-style: none; max-height: 260px; overflow: auto; }
+    li { padding: 6px 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 22px 1fr; gap: 4px 6px; }
+    li .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+    li .meta { grid-column: 2; color: var(--muted); font-size: 11.5px; }
+    li.fail .what { color: var(--bad); }
+    .warn { color: var(--bad); font-size: 12px; margin-top: 6px; display: none; }
+    .warn.show { display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1>On-Device Perception Agent</h1>
+    <span id="server">checking server…</span>
+  </header>
+  <div id="page">…</div>
+
+  <textarea id="task" placeholder="Tell the agent what to do on this page, e.g. Fill the form with name John Doe and email john@example.com, then submit."></textarea>
+  <div class="row">
+    <button class="primary" id="run">Run task</button>
+    <button id="stop" disabled>Stop</button>
+    <span class="spacer"></span>
+    <button class="link" id="demo" title="Fill in the demo task for the test page">Demo task</button>
+  </div>
+  <div class="warn" id="warn">This tab is not a normal web page. Chrome does not allow extensions on its own pages; open an http(s) site.</div>
+
+  <div id="status"><strong id="status-title"></strong><span id="status-msg"></span></div>
+  <ol id="steps"></ol>
+
+  <div class="row" style="margin-top:12px">
+    <button class="link" id="seen">Open “What the AI sees” →</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

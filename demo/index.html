@@ -6,58 +6,83 @@
   <title>Agent test page</title>
   <style>
     :root { color-scheme: light; }
-    body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 16px; background: #f6f7f9; color: #1b1f24; }
-    main { max-width: 720px; margin: 0 auto; display: grid; gap: 24px; }
+    * { box-sizing: border-box; }
+    body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 20px 16px; background: #f6f7f9; color: #1b1f24; }
+    main { max-width: 1060px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
     h1 { font-size: 22px; margin: 0; }
-    p.hint { margin: 0; color: #57606a; }
-    form, #log-panel { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px; }
-    label { display: block; font-weight: 600; margin-bottom: 4px; }
-    input[type=text], input[type=email], textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; margin-bottom: 14px; }
-    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
-    button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #1f6feb; background: #1f6feb; color: #fff; cursor: pointer; }
+    p.hint { margin: 0; color: #57606a; font-size: 13px; }
+    nav a { margin-right: 14px; }
+    .grid { display: grid; grid-template-columns: 300px 1fr; gap: 18px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; }
+    .profile img { width: 100%; max-width: 268px; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
+    .profile h2 { font-size: 16px; margin: 10px 0 6px; }
+    .profile dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 14px; }
+    .profile dt { color: #57606a; }
+    .profile dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .sample { font-size: 12px; color: #57606a; margin-top: 8px; }
+    label { display: block; font-weight: 600; margin-bottom: 3px; font-size: 14px; }
+    input[type=text], input[type=email], input[type=password], textarea {
+      width: 100%; padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; margin-bottom: 10px;
+    }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+    button { font: inherit; padding: 7px 16px; border-radius: 6px; border: 1px solid #1f6feb; background: #1f6feb; color: #fff; cursor: pointer; }
     button.secondary { background: #fff; color: #1f6feb; }
-    nav a { margin-right: 16px; }
-    #log { margin: 0; padding: 0; list-style: none; font-family: ui-monospace, monospace; font-size: 13px; max-height: 240px; overflow: auto; }
+    #status { font-weight: 600; color: #1a7f37; min-height: 1.4em; }
+    #log-panel { margin-top: 18px; }
+    #log { margin: 6px 0 0; padding: 0; list-style: none; font-family: ui-monospace, monospace; font-size: 12.5px; max-height: 200px; overflow: auto; }
     #log li { padding: 2px 0; border-bottom: 1px dashed #eaeef2; }
-    #status { font-weight: 600; color: #1a7f37; min-height: 1.5em; }
   </style>
 </head>
 <body>
   <main>
-    <div>
+    <header>
       <h1>Agent test page</h1>
-      <p class="hint">A harmless form for exercising the extension. Nothing is sent anywhere; every event is logged below.</p>
+      <nav><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a></nav>
+      <p class="hint">A harmless page for exercising the extension. Nothing is sent anywhere; every event is logged below.</p>
+    </header>
+
+    <div class="grid">
+      <section class="card profile" aria-label="Your account">
+        <img src="profile.jpg" alt="Profile photo" />
+        <h2>Your account</h2>
+        <dl>
+          <dt>Email</dt><dd>jane.doe@example.com</dd>
+          <dt>Phone</dt><dd>+91 98765 43210</dd>
+          <dt>Card</dt><dd>4111 1111 1111 1111</dd>
+          <dt>Aadhaar</dt><dd>2345 6789 0123</dd>
+          <dt>PAN</dt><dd>ABCDE1234F</dd>
+        </dl>
+        <p class="sample">Sample data for testing redaction. The photo is a public-domain NASA portrait.</p>
+      </section>
+
+      <form id="contact" class="card" aria-label="Contact form">
+        <div class="two">
+          <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" /></div>
+          <div><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" /></div>
+        </div>
+        <label for="password">Account password <span style="font-weight:400;color:#57606a">(optional)</span></label>
+        <input id="password" name="password" type="password" value="hunter2-secret" autocomplete="off" />
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="3" placeholder="How can we help?"></textarea>
+
+        <div class="row">
+          <input id="newsletter" name="newsletter" type="checkbox" />
+          <label for="newsletter" style="margin:0;font-weight:400">Subscribe to the newsletter</label>
+        </div>
+
+        <div class="row">
+          <button type="submit">Submit</button>
+          <button type="button" class="secondary" id="clear">Clear form</button>
+        </div>
+        <div id="status" role="status"></div>
+      </form>
     </div>
 
-    <nav>
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#contact">Contact</a>
-    </nav>
-
-    <form id="contact" aria-label="Contact form">
-      <label for="name">Name</label>
-      <input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" />
-
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" />
-
-      <label for="message">Message</label>
-      <textarea id="message" name="message" rows="3" placeholder="How can we help?"></textarea>
-
-      <div class="row">
-        <input id="newsletter" name="newsletter" type="checkbox" />
-        <label for="newsletter" style="margin:0;font-weight:400">Subscribe to the newsletter</label>
-      </div>
-
-      <div class="row">
-        <button type="submit">Submit</button>
-        <button type="button" class="secondary" id="clear">Clear form</button>
-      </div>
-      <div id="status" role="status"></div>
-    </form>
-
-    <section id="log-panel">
+    <section id="log-panel" class="card">
       <strong>Event log</strong>
       <ul id="log"></ul>
     </section>
@@ -79,7 +104,8 @@
       if (el) record(`click  <${el.tagName.toLowerCase()}> ${el.id ? "#" + el.id : ""} "${(el.textContent || el.value || "").trim().slice(0, 40)}"`);
     });
     document.addEventListener("input", (e) => {
-      record(`input  #${e.target.id} = "${String(e.target.value).slice(0, 60)}"`);
+      const shown = e.target.type === "password" ? "••••" : String(e.target.value).slice(0, 60);
+      record(`input  #${e.target.id} = "${shown}"`);
     });
     document.addEventListener("change", (e) => {
       if (e.target.type === "checkbox") record(`change #${e.target.id} checked=${e.target.checked}`);
@@ -88,6 +114,7 @@
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
+      if (data.password) data.password = "••••";
       record(`submit ${JSON.stringify(data)}`);
       status.textContent = "Form submitted. Thanks!";
     });

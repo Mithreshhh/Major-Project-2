@@ -29,7 +29,11 @@ const targets = ["chrome", "firefox"];
 const entryPoints = {
   background: path.join(extensionRoot, "src/background/index.ts"),
   content: path.join(extensionRoot, "src/content/index.ts"),
+  popup: path.join(extensionRoot, "src/popup/popup.ts"),
 };
+
+/** Non-script files copied verbatim from src/ into each bundle. */
+const staticFiles = { "popup.html": path.join(extensionRoot, "src/popup/popup.html") };
 
 /** Directory of onnxruntime-web's prebuilt artifacts (.wasm + .mjs glue). */
 // (package.json is not in the package's `exports`, so resolve the main entry, which lives in dist/)
@@ -105,6 +109,7 @@ async function buildTarget(target) {
 
   await writeManifest(target, outdir);
   await copyPublic(outdir);
+  for (const [name, src] of Object.entries(staticFiles)) await cp(src, path.join(outdir, name));
   const modelFiles = await copyModels(outdir);
   const ortFiles = await copyOrtAssets(outdir);
 

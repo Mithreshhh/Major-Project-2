@@ -23,3 +23,8 @@ perception/test/output/
 .DS_Store
 Thumbs.db
 .env
+
+# "What the AI sees" captures written by the server
+server/debug_captures/
+# e2e proof screenshots are committed; scratch runs are not
+e2e/.chrome/

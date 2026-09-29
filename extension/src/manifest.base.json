@@ -5,7 +5,8 @@
   "description": "Privacy-preserving browser agent: perception and redaction happen on-device; only sanitized context is sent to the reasoning server.",
   "minimum_chrome_version": "120",
   "action": {
-    "default_title": "Run one agent step on this tab"
+    "default_title": "On-Device Perception Agent",
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
@@ -18,7 +19,7 @@
     }
   ],
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"],
+  "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }

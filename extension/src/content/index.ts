@@ -9,15 +9,17 @@
  * never forwards form *values*. Labels are still raw here; redaction happens in the background
  * worker via @odpa/perception before anything leaves the device.
  */
-import type { ActionCommand, BoundingBox, ElementRole, UIElement } from "@odpa/shared";
+import { findPii } from "@odpa/perception/pii";
+import type { ActionCommand, BoundingBox, ElementRole, RedactedRegion, UIElement } from "@odpa/shared";
 
 import type { ContentRequest, ContentResponse, DomSnapshot, ExecutionResult } from "../shared/messages";
 
 const LOG = "[odpa:content]";
 const MAX_ELEMENTS = 200;
+const MAX_TEXT_NODES = 5000;
 
 /** Attributes that are safe to forward. Everything else (value, href, data-*) is dropped. */
-const ATTRIBUTE_WHITELIST = ["type", "placeholder", "aria-label", "role", "title", "name", "alt"];
+const ATTRIBUTE_WHITELIST = ["type", "placeholder", "aria-label", "role", "title", "name", "alt", "autocomplete"];
 
 /** `UIElement.id` -> live DOM node, for the most recent snapshot. */
 let registry = new Map<string, Element>();
@@ -40,6 +42,10 @@ const CANDIDATE_SELECTOR = [
   "[contenteditable=true]",
   "h1, h2, h3",
   "img[alt]",
+  // Live status text ("Form submitted", error messages) so the reasoner can tell it is done.
+  "[role=status]",
+  "[role=alert]",
+  "[aria-live]",
 ].join(",");
 
 function roleOf(el: Element): ElementRole {
@@ -55,6 +61,7 @@ function roleOf(el: Element): ElementRole {
   if (tag === "textarea" || el.getAttribute("contenteditable") === "true") return "textbox";
   if (tag === "img") return "image";
   if (/^h[1-6]$/.test(tag)) return "heading";
+  if (aria === "status" || aria === "alert" || el.hasAttribute("aria-live")) return "text";
   if (tag === "input") {
     const type = (el as HTMLInputElement).type;
     if (type === "checkbox") return "checkbox";
@@ -122,6 +129,71 @@ function safeAttributes(el: Element): Record<string, string> | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+// ---------------------------------------------------------------------------
+// On-page PII scan. Runs entirely in the page; only bounding boxes leave this function.
+// ---------------------------------------------------------------------------
+
+function inViewport(b: BoundingBox): boolean {
+  return b.width > 0 && b.height > 0 && b.x + b.width > 0 && b.y + b.height > 0 && b.x < window.innerWidth && b.y < window.innerHeight;
+}
+
+/** Visible text nodes containing an email, phone, card or ID number -> one box per rendered line. */
+function scanTextForPii(): RedactedRegion[] {
+  const regions: RedactedRegion[] = [];
+  if (!document.body) return regions;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || !node.nodeValue || node.nodeValue.trim().length < 6) return NodeFilter.FILTER_REJECT;
+      if (parent.closest("script, style, noscript, textarea, [contenteditable=true]")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  let visited = 0;
+  for (let node = walker.nextNode(); node && visited < MAX_TEXT_NODES; node = walker.nextNode(), visited++) {
+    const text = node.nodeValue ?? "";
+    const matches = findPii(text);
+    if (matches.length === 0) continue;
+    const style = getComputedStyle(node.parentElement!);
+    if (style.visibility === "hidden" || style.display === "none") continue;
+    for (const m of matches) {
+      const range = document.createRange();
+      range.setStart(node, m.start);
+      range.setEnd(node, m.end);
+      for (const r of range.getClientRects()) {
+        const bbox = { x: r.left, y: r.top, width: r.width, height: r.height };
+        if (inViewport(bbox)) regions.push({ bbox, category: m.category, confidence: 0.99, method: "heuristic" });
+      }
+      range.detach();
+    }
+  }
+  return regions;
+}
+
+/**
+ * Input fields whose current *value* is sensitive: any value containing PII, and any non-empty
+ * email/tel field. The value is inspected here and never forwarded; the whole field is masked.
+ */
+function scanInputValuesForPii(): RedactedRegion[] {
+  const regions: RedactedRegion[] = [];
+  for (const el of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")) {
+    if (el instanceof HTMLInputElement && ["password", "hidden", "checkbox", "radio", "submit", "button", "reset", "image", "file"].includes(el.type)) {
+      continue; // password fields are handled by the DOM rules; the rest carry no typed text
+    }
+    const value = el.value;
+    if (!value) continue;
+    const matches = findPii(value);
+    const typed = el instanceof HTMLInputElement && (el.type === "email" || el.type === "tel");
+    if (matches.length === 0 && !typed) continue;
+    const bbox = bboxOf(el);
+    if (!inViewport(bbox)) continue;
+    const category = matches[0]?.category ?? ((el as HTMLInputElement).type === "tel" ? "phone" : "email");
+    regions.push({ bbox, category, confidence: 0.99, method: "heuristic" });
+  }
+  return regions;
+}
+
 export function captureDom(): DomSnapshot {
   registry = new Map();
   const elements: UIElement[] = [];
@@ -134,6 +206,7 @@ export function captureDom(): DomSnapshot {
     if (!visible) continue; // off-screen elements are not useful to a screenshot-grounded VLM
 
     const role = roleOf(el);
+    if (role === "text" && !(el.textContent ?? "").trim()) continue; // empty status region
     const id = `el_${elements.length}`;
     registry.set(id, el);
 
@@ -165,6 +238,7 @@ export function captureDom(): DomSnapshot {
       devicePixelRatio: window.devicePixelRatio,
     },
     elements,
+    textRegions: [...scanTextForPii(), ...scanInputValuesForPii()],
   };
 }
 

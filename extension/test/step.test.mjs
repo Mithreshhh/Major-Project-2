@@ -37,8 +37,17 @@ const snapshot = {
   elements: [
     { id: "el_0", role: "textbox", label: "Email", bbox: { x: 100, y: 200, width: 300, height: 32 }, isVisible: true, isInteractive: true },
     { id: "el_1", role: "button", label: "Submit", bbox: { x: 100, y: 260, width: 120, height: 40 }, isVisible: true, isInteractive: true },
+    // Password field -> DOM rule should black it out.
+    { id: "el_2", role: "textbox", label: "Account password", attributes: { type: "password" }, bbox: { x: 300, y: 440, width: 180, height: 30 }, isVisible: true, isInteractive: true },
+    // A link whose label is an email -> label must arrive as [REDACTED].
+    { id: "el_3", role: "link", label: "jane.doe@example.com", bbox: { x: 20, y: 20, width: 150, height: 18 }, isVisible: true, isInteractive: true },
   ],
+  // PII found by the content script in page text (only the box crosses over).
+  textRegions: [{ bbox: { x: 40, y: 470, width: 150, height: 18 }, category: "phone", confidence: 0.99, method: "heuristic" }],
 };
+
+/** Commands the stubbed /process returns, in order; when empty it answers "click el_1". */
+const serverScript = [];
 
 function decodeJpeg(bytes) {
   const img = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true });
@@ -53,8 +62,10 @@ function inside(x, y, boxes) {
 // Stubs (installed once; the bundle registers its listeners against them)
 // ---------------------------------------------------------------------------
 
-const calls = { capture: 0, badges: [], sent: [], fetches: [], logs: [], assets: [], encodedAs: null };
+const calls = { capture: 0, badges: [], sent: [], fetches: [], logs: [], assets: [], encodedAs: null, broadcasts: [] };
 let onClicked = null;
+let onMessage = null;
+const sessionStore = {};
 
 function reset() {
   calls.capture = 0;
@@ -62,7 +73,9 @@ function reset() {
   calls.sent.length = 0;
   calls.fetches.length = 0;
   calls.logs.length = 0;
+  calls.broadcasts.length = 0;
   calls.encodedAs = null;
+  serverScript.length = 0;
   // calls.assets is cumulative on purpose: the model loads once and is cached across steps.
 }
 
@@ -70,7 +83,8 @@ globalThis.self = globalThis;
 globalThis.chrome = {
   runtime: {
     onInstalled: { addListener() {} },
-    onMessage: { addListener() {} },
+    onMessage: { addListener(fn) { onMessage = fn; } },
+    sendMessage: async (msg) => { calls.broadcasts.push(msg); },
     getURL: (p) => `chrome-extension://test/${p}`,
   },
   action: {
@@ -94,7 +108,13 @@ globalThis.chrome = {
   scripting: {
     executeScript: async () => { throw new Error("content script injection not expected here"); },
   },
-  storage: { local: { get: async () => ({}) } },
+  storage: {
+    local: { get: async () => ({}), set: async () => {} },
+    session: {
+      get: async (key) => ({ [key]: sessionStore[key] }),
+      set: async (items) => { Object.assign(sessionStore, structuredClone(items)); },
+    },
+  },
 };
 
 // Just enough canvas for src/background/image.ts. convertToBlob emits raw RGBA instead of a
@@ -140,7 +160,8 @@ globalThis.fetch = async (input, init) => {
     return new Response(readFileSync(file), { status: 200, headers: { "content-type": type } });
   }
   calls.fetches.push({ url, body: init?.body ? JSON.parse(init.body) : null });
-  return new Response(JSON.stringify({ action: "click", target: "el_1", reasoning: "stub" }), {
+  const command = serverScript.shift() ?? { action: "click", target: "el_1", reasoning: "stub" };
+  return new Response(JSON.stringify(command), {
     status: 200,
     headers: { "content-type": "application/json" },
   });
@@ -182,6 +203,19 @@ test(
     assert.ok(faces.length >= 1, `expected a face redaction, got ${JSON.stringify(body.redactions)}`);
     const boxes = body.redactions.map((r) => r.bbox);
     assert.ok(inside(FACE_CENTRE.x, FACE_CENTRE.y, boxes), `face centre not covered: ${JSON.stringify(boxes)}`);
+
+    // Password field (dom) and PII text (heuristic) are blacked out alongside the face.
+    const methods = new Set(body.redactions.map((r) => r.method));
+    assert.deepEqual([...methods].sort(), ["dom", "heuristic", "ml"]);
+    assert.ok(body.redactions.some((r) => r.method === "dom" && r.category === "credential"));
+    assert.ok(inside(390, 455, boxes), "password field covered");
+    assert.ok(inside(115, 479, boxes), "PII text covered");
+
+    // PII in element labels never leaves as text.
+    const link = body.elements.find((e) => e.id === "el_3");
+    assert.equal(link.label, "[REDACTED]");
+    assert.equal(link.redacted, true);
+    assert.ok(!JSON.stringify(body).includes("jane.doe@example.com"), "raw email appears nowhere in the payload");
 
     const shot = body.screenshot;
     assert.ok(shot, "screenshot present in payload");
@@ -260,4 +294,65 @@ test("a second step on the same tab carries the first command in history", async
   assert.equal(calls.fetches[1].body.stepIndex, 1);
   assert.deepEqual(calls.fetches[1].body.history, [{ action: "click", target: "el_1", reasoning: "stub" }]);
   assert.equal(calls.capture, screenshotsEnabled ? 2 : 0);
+});
+
+// ---------------------------------------------------------------------------
+// Multi-step tasks (popup "Run task")
+// ---------------------------------------------------------------------------
+
+test("a task keeps stepping until the model says done", async () => {
+  serverScript.push(
+    { action: "type", target: "el_0", text: "john@example.com" },
+    { action: "click", target: "el_1" },
+    { action: "done", summary: "Form submitted." }
+  );
+  const state = await globalThis.odpa.runTask(20, 1, "Fill the email and submit");
+
+  assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+  assert.equal(state.message, "Form submitted.");
+  assert.deepEqual(state.steps.map((s) => s.summary), ['Type "john@example.com" into el_0', "Click el_1", "Done: Form submitted."]);
+  assert.equal(calls.fetches.length, 3);
+  assert.deepEqual(calls.fetches.map((f) => f.body.stepIndex), [0, 1, 2]);
+  assert.ok(calls.fetches.every((f) => f.body.task === "Fill the email and submit"));
+  assert.equal(calls.fetches[2].body.history.length, 2);
+  assert.ok(state.steps.every((s) => s.redactions.faces >= (screenshotsEnabled ? 1 : 0)));
+  assert.equal(calls.badges.at(-1), "OK");
+
+  // Progress was broadcast to the popup and persisted for when it re-opens.
+  const updates = calls.broadcasts.filter((m) => m.type === "TASK_UPDATE");
+  assert.ok(updates.length >= 4, `expected start + 3 steps + finish, got ${updates.length}`);
+  assert.equal(updates[0].state.status, "running");
+  assert.equal(sessionStore["task:20"].status, "done");
+});
+
+test("a task stops when the model asks the user, and when it repeats itself", async () => {
+  serverScript.push({ action: "ask_user", question: "Which email should I use?" });
+  const asked = await globalThis.odpa.runTask(21, 1, "Sign me up");
+  assert.equal(asked.status, "needs_user");
+  assert.equal(asked.message, "Which email should I use?");
+  assert.equal(asked.steps.length, 1);
+
+  serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "click", target: "el_1" });
+  const looped = await globalThis.odpa.runTask(22, 1, "Click submit");
+  assert.equal(looped.status, "stopped");
+  assert.match(looped.message, /repeated the same action/);
+  assert.equal(looped.steps.length, 2);
+});
+
+test("popup messages: RUN_TASK starts a task, GET_TASK_STATE reports it", async () => {
+  serverScript.push({ action: "done", summary: "Nothing left to do." });
+  const replies = [];
+  const keepOpen = onMessage({ type: "RUN_TASK", tabId: 23, windowId: 1, task: "Check the page" }, {}, (r) => replies.push(r));
+  assert.equal(keepOpen, false);
+  assert.deepEqual(replies, [{ ok: true }]);
+
+  // Wait for the fire-and-forget task to finish.
+  for (let i = 0; i < 100 && sessionStore["task:23"]?.status !== "done"; i++) await new Promise((r) => setTimeout(r, 50));
+
+  const state = await new Promise((resolve) => {
+    const open = onMessage({ type: "GET_TASK_STATE", tabId: 23 }, {}, (r) => resolve(r.state));
+    assert.equal(open, true);
+  });
+  assert.equal(state.status, "done");
+  assert.equal(state.task, "Check the page");
 });
