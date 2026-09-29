@@ -58,7 +58,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | --- | --- | --- |
 | [`extension/`](extension/) | MV3 extension (Chrome + Firefox): popup, content script, background worker, build | TypeScript, esbuild |
 | [`perception/`](perception/) | Face detection, UI detection, PII detection, redaction, compression study, UI-detector training | TypeScript, onnxruntime-web; Python for training and quantization |
-| [`server/`](server/) | `POST /process` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
+| [`server/`](server/) | `POST /process` and `POST /ask` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
 | [`demo/`](demo/) | Test page with a face photo, sample PII and a form | HTML |
@@ -106,6 +106,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `extension/test/step.test.mjs` | The built worker with the real model sends only masked pixels; multi-step tasks |
 | `server/tests/` | Contract, prompt, parser, retries, error mapping, debug view |
 | `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
+| `e2e/run-ask.mjs` | Questions go to ask mode in real Chrome: "Analyze this login page" changes no field |
 
 ## Compression study
 
@@ -114,6 +115,18 @@ dynamic, INT8 static) measured for size, speed, memory and accuracy with the sam
 extension uses. Full table: [`perception/benchmarks/RESULTS.md`](perception/benchmarks/RESULTS.md).
 Headline: fixing the export's graph gives **1.5x** speed at identical accuracy (now shipped);
 FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slower in WASM.
+
+## Safety: asking vs acting
+
+| Guard | What it prevents |
+| --- | --- |
+| **Ask mode** | Questions ("analyze this login page", "what does this form ask for?") are answered from the page's visible text and never click or type. `POST /ask` returns text, not actions. Personal data in that text is replaced on-device by placeholders such as `[HIDDEN EMAIL]`. |
+| **Typed text must come from the task** | The agent cannot invent names, usernames or passwords. Anything not in the task is refused and the user is asked. |
+| **Confirm risky clicks** | Log in, submit, pay, buy, delete, send and similar actions wait for **Allow** in the popup (2-minute timeout, Stop refuses). |
+| **No repeats** | The same action twice in a row is refused and the task stops. |
+
+Proof: `npm run ask --workspace=e2e` runs "Analyze this login page" on `demo/login.html` in real
+Chrome and checks that no field changed (`e2e/proof/ask.json`).
 
 ## UI detector
 
@@ -139,7 +152,6 @@ regions, history). Response: `ActionCommand` (`click`, `type`, `scroll`, `naviga
 | Train the UI detector on real sites | Today it is trained on generated pages; screenshots of real sites labelled from their DOM would close the gap on icons and custom widgets |
 | OCR-based PII detection | PII inside images (a photo of a card) is not caught by text rules |
 | In-browser benchmark page and WebGPU | Measure memory/speed inside Chrome; test GPU execution |
-| Confirmation for risky actions (`TODO(agent)`) | Ask before payments, deletions, sending messages |
 | Frames, big pages, navigation across pages | Needed for real websites beyond the test page |
 
 ## Security note
