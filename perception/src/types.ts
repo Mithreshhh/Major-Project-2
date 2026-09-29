@@ -1,4 +1,4 @@
-import type { BoundingBox, SensitiveCategory, UIElement } from "@odpa/shared";
+import type { BoundingBox, RedactionMethod, SensitiveCategory, UIElement } from "@odpa/shared";
 
 /**
  * Decoded RGBA bitmap. `data.length === width * height * 4`.
@@ -22,7 +22,8 @@ export interface SensitiveRegion {
   category: SensitiveCategory;
   /** 0..1 detector confidence. */
   confidence: number;
-  method: "ml";
+  /** "ml" for detector output; "dom"/"heuristic" once DOM and text detectors feed the mask too. */
+  method: RedactionMethod;
 }
 
 export interface PerceptionOutput {
@@ -57,10 +58,16 @@ export interface PerceptionConfig {
   /** Reported in `PerceptionOutput.modelId`. */
   modelId: string;
   /**
-   * Directory URL holding the ONNX Runtime .wasm files (must end with "/"). `null` lets the
-   * runtime resolve them itself, which is what you want under Node.
+   * Full URL of `ort-wasm-simd-threaded.wasm`, e.g. chrome.runtime.getURL("ort/ort-wasm-simd-threaded.wasm").
+   *
+   * It is passed to ONNX Runtime as `wasmPaths: { wasm: url }`. That object form (together with
+   * numThreads 1) is what makes ORT use the JS glue embedded in its bundle instead of a dynamic
+   * `import()`, and dynamic import is not available inside an MV3 service worker. A directory
+   * prefix string would force the import and fail there.
+   *
+   * `null` lets the runtime find the binary itself, which is what you want under Node.
    */
-  wasmBaseUrl: string | null;
+  wasmUrl: string | null;
   /** Preferred execution providers, in order. */
   executionProviders: ExecutionProvider[];
   /** WASM thread count. Keep at 1 inside MV3 service workers (no SharedArrayBuffer). */
@@ -79,7 +86,7 @@ export interface PerceptionConfig {
 export const DEFAULT_PERCEPTION_CONFIG: PerceptionConfig = {
   modelUrl: null,
   modelId: "ultraface-rfb-640",
-  wasmBaseUrl: null,
+  wasmUrl: null,
   executionProviders: ["wasm"],
   numThreads: 1,
   scoreThreshold: 0.6,

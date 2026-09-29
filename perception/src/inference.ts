@@ -13,7 +13,10 @@
  *   uiElements        PLACEHOLDER: empty until a UI-detection model exists (TODO(ui-model))
  *
  * Runtime notes for MV3 service workers: numThreads 1, proxy false, 'wasm-unsafe-eval' in the
- * manifest CSP, and the .wasm shipped inside the extension (the build copies it to /ort).
+ * manifest CSP, the .wasm shipped inside the extension (the build copies it to /ort), and
+ * `wasmPaths` given as `{ wasm: url }` so ORT uses its embedded JS glue rather than a dynamic
+ * import() (unavailable in service workers). The extension build also aliases onnxruntime-web
+ * to its wasm-only entry point so the embedded glue matches ort-wasm-simd-threaded.wasm.
  */
 import type { UIElement } from "@odpa/shared";
 import * as ort from "onnxruntime-web";
@@ -40,8 +43,9 @@ let activeConfig: PerceptionConfig = DEFAULT_PERCEPTION_CONFIG;
 /** Apply runtime-wide ONNX Runtime settings. Safe to call more than once. */
 export function configureRuntime(config: Partial<PerceptionConfig> = {}): PerceptionConfig {
   activeConfig = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
-  if (activeConfig.wasmBaseUrl) {
-    ort.env.wasm.wasmPaths = activeConfig.wasmBaseUrl;
+  if (activeConfig.wasmUrl) {
+    // Object form on purpose: see PerceptionConfig.wasmUrl.
+    ort.env.wasm.wasmPaths = { wasm: activeConfig.wasmUrl };
   }
   ort.env.wasm.numThreads = activeConfig.numThreads;
   ort.env.wasm.proxy = false;

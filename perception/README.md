@@ -7,7 +7,7 @@ On-device ML that runs *inside the extension*, before anything leaves the browse
 | `src/inference.ts` | ONNX Runtime Web session + UltraFace face detection | **Real** |
 | `src/preprocess.ts` | RGBA bitmap -> normalised NCHW float32 tensor | Real |
 | `src/postprocess.ts` | Threshold, pixel mapping, hard NMS | Real |
-| `src/redaction.ts` | Mask sensitive regions in pixels and DOM summary | Pass-through stubs, `TODO(redaction)` |
+| `src/redaction.ts` | Black out sensitive regions in the pixels; `sanitize()` pipeline entry point | **Real** for pixels; DOM/text stubs `TODO(redaction-dom)`, `TODO(redaction-text)` |
 | `src/types.ts` | `RawImage`, `PerceptionOutput`, `PerceptionConfig` | Done |
 | `models/*.onnx` | UltraFace RFB-320 and RFB-640 | Committed, checksummed |
 
@@ -66,19 +66,43 @@ The cat result is typical for compact human-face detectors and is the safe failu
 redaction (an extra masked region rather than a missed face). Expect the same on pet photos
 and some cartoon avatars.
 
+## Redaction
+
+`redact(image, regions)` paints an opaque black box over each region on a **new** buffer and
+never touches the input; `wipeSource: true` additionally zeroes the input afterwards, which is
+what the `sanitize()` pipeline does so unmasked pixels stop existing as soon as possible. Each
+box is grown by 15% of its own size per side (4 px minimum) and snapped outward to whole
+pixels, because detector boxes hug the face and an under-redacted edge defeats the purpose.
+With no regions the input object comes back unchanged and `changed` is false: a real "nothing
+sensitive found" result, since `runInference` throws when no model ran.
+
+Black boxes, not blur: blur can be partially inverted; a solid fill destroys the information.
+
 ## Test
 
 ```bash
-npm test                                          # runs the real detector over test/fixtures/
+npm test                                          # detector + redaction over test/fixtures/
 PERCEPTION_MODEL=version-RFB-320.onnx npm test     # same, with the smaller export
 ```
 
-The test prints every detected box with its confidence and writes annotated copies to
-`test/output/*.detections.jpg` for visual checking. Fixtures are public-domain or CC0 images
-(see `test/fixtures/README.md`); `npm run fixtures:fetch` regenerates them.
+`face-detector.test.ts` prints every detected box with its confidence and writes annotated
+copies to `test/output/*.detections.jpg`. `redaction.test.ts` feeds those detections into
+`redact()`, writes `test/output/*.redacted.jpg`, checks every pixel inside the padded boxes is
+black and every pixel outside is untouched, and finally runs the detector on the redacted
+image to confirm no face survives. Fixtures are public-domain or CC0 images (see
+`test/fixtures/README.md`); `npm run fixtures:fetch` regenerates them.
 
 ## Runtime constraints (MV3)
 
 The extension hosts this code in the background service worker: single-threaded WASM, no proxy
 worker, `'wasm-unsafe-eval'` in the manifest CSP, and the `.wasm` shipped inside the extension.
-All already configured. The build copies `models/*.onnx` into `dist/<browser>/models/`.
+Two details matter there:
+
+- `wasmUrl` must be passed and ORT receives it as `wasmPaths: { wasm: url }`. That object form
+  (with one thread) makes ORT use the JS glue embedded in its bundle. A directory prefix string
+  makes it dynamic-`import()` the glue instead, which service workers do not allow.
+- The extension build aliases `onnxruntime-web` to `onnxruntime-web/wasm`, so the embedded glue
+  matches `ort-wasm-simd-threaded.wasm` (13 MB) rather than the WebGPU variant (26 MB). This
+  package keeps the root import so Node tests get ORT's Node build.
+
+The build copies `models/*.onnx` into `dist/<browser>/models/`.
