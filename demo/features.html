@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus - Features</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    .hero { padding: 34px 0 36px; margin-bottom: 26px; }
+    .hero h1 { font-size: 44px; }
+    .cta { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+    a.btn { font-weight: 600; padding: 10px 20px; border-radius: 9px; color: #fff; background: var(--brand); border: 1px solid var(--brand); }
+    a.btn.secondary { background: #fff; color: var(--ink); border-color: #d1d5db; }
+    a.btn:hover { text-decoration: none; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 34px; }
+    @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat { padding: 18px; }
+    .stat b { display: block; font-size: 30px; letter-spacing: -.03em; line-height: 1.1; color: var(--ink); }
+    .stat span { color: var(--muted); font-size: 13.5px; }
+    h2.title { font-size: 24px; letter-spacing: -.02em; margin: 0 0 6px; }
+    p.lead { color: var(--muted); margin: 0 0 18px; max-width: 640px; }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 38px; }
+    @media (max-width: 900px) { .features { grid-template-columns: 1fr; } }
+    .feature { padding: 22px; }
+    .icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--brand); font-weight: 800; margin-bottom: 14px; background: var(--brand-soft); }
+    .feature h3 { margin: 0 0 6px; font-size: 17px; letter-spacing: -.01em; }
+    .feature p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .feature .who { display: block; margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--brand); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 38px; }
+    @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+    .split .card { padding: 24px; }
+    .split h3 { margin: 0 0 10px; font-size: 18px; }
+    .split ul { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 6px; }
+    .news { padding: 26px; display: flex; gap: 18px; align-items: end; flex-wrap: wrap; }
+    .news div { flex: 1; min-width: 240px; }
+    .news h3 { margin: 0 0 4px; font-size: 18px; }
+    .news p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .news form { display: flex; gap: 10px; flex: 1; min-width: 280px; }
+    .news input { margin: 0; }
+    #status { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="index.html">Contact</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Features</span>
+      <h1>One calm place for <em>all your team's work.</em></h1>
+      <p>Nimbus keeps projects, files and conversations together, so nothing gets lost between apps. This is a test page for the agent.</p>
+      <div class="cta">
+        <a class="btn" href="pricing.html">See pricing</a>
+        <a class="btn secondary" href="index.html">Talk to us</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <section class="stats" aria-label="Nimbus in numbers">
+      <div class="card stat"><b>12,000+</b><span>teams use Nimbus</span></div>
+      <div class="card stat"><b>99.95%</b><span>uptime last year</span></div>
+      <div class="card stat"><b>4 hours</b><span>priority support reply time</span></div>
+      <div class="card stat"><b>38 countries</b><span>with customers</span></div>
+    </section>
+
+    <h2 class="title">What you get</h2>
+    <p class="lead">Six features, each built for a different kind of work.</p>
+    <section class="features">
+      <article class="card feature"><div class="icon" style="--a:#5b4bff;--b:#4338ca">P</div><h3>Projects</h3><p>Boards, lists and timelines for the same tasks. Switch views without re-entering anything.</p><span class="who">Best for: planning a launch</span></article>
+      <article class="card feature"><div class="icon" style="--a:#06b6d4;--b:#0e7490">F</div><h3>Files</h3><p>Every file is versioned for 90 days. Restore any earlier version with one click.</p><span class="who">Best for: design and documents</span></article>
+      <article class="card feature"><div class="icon" style="--a:#10b981;--b:#047857">C</div><h3>Chat</h3><p>Conversations live next to the task they are about, so decisions are easy to find later.</p><span class="who">Best for: remote teams</span></article>
+      <article class="card feature"><div class="icon" style="--a:#f59e0b;--b:#b45309">A</div><h3>Automations</h3><p>Rules like “when a task is done, tell the channel”. No code. Up to 500 runs a month on Pro.</p><span class="who">Best for: repeated chores</span></article>
+      <article class="card feature"><div class="icon" style="--a:#e11d48;--b:#9f1239">R</div><h3>Reports</h3><p>Weekly summaries of what shipped, what slipped and who is overloaded.</p><span class="who">Best for: managers</span></article>
+      <article class="card feature"><div class="icon" style="--a:#7c3aed;--b:#5b21b6">S</div><h3>Security</h3><p>Two-step sign-in for everyone, single sign-on and audit logs on the Team plan.</p><span class="who">Best for: companies with compliance rules</span></article>
+    </section>
+
+    <section class="split">
+      <div class="card"><h3>Good fit</h3><ul><li>Teams of 2 to 200 people</li><li>Work that moves through clear stages</li><li>People in different time zones</li></ul></div>
+      <div class="card"><h3>Not a good fit</h3><ul><li>Accounting or payroll (Nimbus does not do invoices)</li><li>Teams that need to work fully offline</li><li>Source code hosting</li></ul></div>
+    </section>
+
+    <section class="card news">
+      <div><h3>Get product updates</h3><p>One email a month. No spam, unsubscribe any time.</p></div>
+      <form id="news"><input id="news-email" type="email" placeholder="you@example.com" aria-label="Email for product updates" autocomplete="off" /><button type="submit">Subscribe</button></form>
+    </section>
+    <div id="status" role="status"></div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <span class="copy">© 2026 Nimbus Labs · test site</span>
+      <a href="apply.html">Careers</a><a href="chat.html">Messages</a><a href="#">Privacy</a><a href="#">Terms</a>
+    </div>
+  </footer>
+  <script>
+    document.getElementById("news").addEventListener("submit", (e) => {
+      e.preventDefault();
+      document.getElementById("status").textContent = "Subscribed. Thanks! (test page)";
+    });
+  </script>
+</body>
+</html>

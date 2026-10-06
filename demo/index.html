@@ -6,16 +6,16 @@
   <title>Nimbus - Contact support</title>
   <link rel="stylesheet" href="site.css" />
   <style>
-    .hero { padding: 28px 0 78px; }
+    .hero { padding: 26px 0 26px; margin-bottom: 22px; }
     .hero h1 { font-size: 40px; margin: 12px 0 6px; }
     .hero p { max-width: 760px; font-size: 16px; }
     .chips { margin-top: 14px; }
-    main { display: grid; grid-template-columns: 340px 1fr; gap: 24px; margin-top: -56px; }
+    main { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
     @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
 
     /* Account card */
     .account { padding: 18px; align-self: start; }
-    .account .photo { width: 100%; height: 210px; border-radius: 14px; object-fit: cover; object-position: 50% 15%; display: block; margin-bottom: 16px; }
+    .account .photo { width: 100%; height: 210px; border-radius: 10px; object-fit: cover; object-position: 50% 15%; display: block; margin-bottom: 16px; }
     .account .who { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .account .name { font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
     .badge { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft); border-radius: 99px; padding: 3px 11px; }
@@ -28,20 +28,20 @@
     form.card .sub { margin-bottom: 14px; }
 
     /* Activity log, styled as a console */
-    .activity { grid-column: 1 / -1; padding: 0; overflow: hidden; background: #0b1020; border-color: #1b2340; }
-    .activity .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1b2340; color: #c7d0e6; font-weight: 600; font-size: 13.5px; }
+    .activity { grid-column: 1 / -1; padding: 0; overflow: hidden; background: #111827; border-color: #111827; }
+    .activity .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1f2937; color: #e5e7eb; font-weight: 600; font-size: 13.5px; }
     .activity .bar i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
     .activity .bar i:nth-child(2) { background: #febc2e; } .activity .bar i:nth-child(3) { background: #28c840; margin-right: 6px; }
     #log { margin: 0; padding: 10px 16px 14px; list-style: none; font: 12.5px/1.7 ui-monospace, "Cascadia Code", Consolas, monospace; max-height: 190px; overflow: auto; }
-    #log li { color: #9fb0d4; border-bottom: 1px dashed #18203a; padding: 2px 0; }
-    #log li:first-child { color: #e6ecfb; }
+    #log li { color: #9ca3af; border-bottom: 1px dashed #1f2937; padding: 2px 0; }
+    #log li:first-child { color: #f3f4f6; }
   </style>
 </head>
 <body>
   <header class="nav">
     <div class="container">
       <a class="logo" href="#"><span class="logo-mark">N</span>Nimbus</a>
-      <nav><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a></nav>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="index.html">Contact</a></nav>
       <div class="right"><a href="login.html">Log in</a></div>
     </div>
   </header>

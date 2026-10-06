@@ -5,41 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chatter - Messages</title>
   <style>
-    :root { color-scheme: dark; --bg: #06080f; --panel: #0c1019; --panel2: #101524; --line: #1b2233; --ink: #eef1f8; --muted: #8590a8; --me: #5b4bff; --me2: #06b6d4; --them: #1a2132; }
+    :root { color-scheme: dark; --bg: #111318; --panel: #16191f; --panel2: #1d2129; --line: #262b34; --ink: #f3f4f6; --muted: #9ca3af; --me: #2563eb; --them: #262b34; }
     * { box-sizing: border-box; }
     body { margin: 0; font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: var(--ink); height: 100vh; display: grid; grid-template-columns: 350px 1fr;
-      background: radial-gradient(700px 420px at 100% 0%, rgba(91, 75, 255, .16), transparent 60%), radial-gradient(600px 400px at 0% 100%, rgba(6, 182, 212, .10), transparent 60%), var(--bg); }
-    aside { border-right: 1px solid var(--line); background: rgba(12, 16, 25, .86); display: flex; flex-direction: column; min-height: 0; }
+      background: var(--bg); }
+    aside { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
     .me { padding: 20px 20px 12px; font-weight: 700; font-size: 19px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
-    .me::before { content: "C"; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--me), var(--me2)); }
+    .me::before { content: "C"; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; font-weight: 800; color: #fff; background: var(--me); }
     .search { margin: 0 16px 14px; padding: 10px 14px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); color: var(--ink); font: inherit; }
     .search:focus { outline: none; border-color: var(--me); }
     .head { padding: 4px 20px 8px; font-weight: 700; display: flex; justify-content: space-between; font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
-    .head a { color: #8ea2ff; font-weight: 600; text-decoration: none; text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .head a { color: #60a5fa; font-weight: 600; text-decoration: none; text-transform: none; letter-spacing: 0; font-size: 13px; }
     ul { list-style: none; margin: 0; padding: 0 8px; overflow: auto; }
     li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 14px; }
-    li.active { background: linear-gradient(90deg, rgba(91, 75, 255, .20), rgba(6, 182, 212, .06)); }
-    li:hover { background: #151b2b; }
+    li.active { background: var(--panel2); }
+    li:hover { background: var(--panel2); }
     .avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex: none; }
     .avatar.bg { background: url(profile.jpg) center 20% / cover; }
     .who { min-width: 0; }
     .who b { display: block; font-weight: 600; }
     .who span { color: var(--muted); font-size: 12.5px; }
     main { display: flex; flex-direction: column; min-height: 0; }
-    .top { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: rgba(12, 16, 25, .6); }
+    .top { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel); }
     .top .avatar { width: 40px; height: 40px; }
     .top .who span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; margin-right: 6px; vertical-align: 1px; }
     .thread { flex: 1; overflow: auto; padding: 22px; display: flex; flex-direction: column; gap: 7px; }
     .msg { max-width: 60%; padding: 9px 15px; border-radius: 20px 20px 20px 6px; background: var(--them); align-self: flex-start; }
-    .msg.mine { background: linear-gradient(135deg, var(--me), #4338ca); align-self: flex-end; border-radius: 20px 20px 6px 20px; box-shadow: 0 6px 18px rgba(91, 75, 255, .28); }
+    .msg.mine { background: var(--me); align-self: flex-end; border-radius: 20px 20px 6px 20px; }
     .row { display: flex; gap: 8px; align-items: flex-end; }
     .row .avatar { width: 28px; height: 28px; }
     .shot { width: 250px; border-radius: 16px; display: block; }
     .time { text-align: center; color: var(--muted); font-size: 11.5px; margin: 10px 0; }
-    form { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); background: rgba(12, 16, 25, .6); }
+    form { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); background: var(--panel); }
     form input { flex: 1; padding: 11px 16px; border-radius: 24px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; }
     form input:focus { outline: none; border-color: var(--me); }
-    form button { border: none; border-radius: 24px; padding: 0 20px; color: #fff; font: 600 14px "Segoe UI", sans-serif; cursor: pointer; background: linear-gradient(135deg, var(--me), var(--me2)); }
+    form button { border: none; border-radius: 24px; padding: 0 20px; color: #fff; font: 600 14px "Segoe UI", sans-serif; cursor: pointer; background: var(--me); }
   </style>
 </head>
 <body>

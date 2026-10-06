@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus Store - Books and laptops</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    .hero { padding: 28px 0 28px; margin-bottom: 24px; }
+    .hero h1 { font-size: 38px; margin: 12px 0 6px; }
+    .offers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 26px; }
+    @media (max-width: 860px) { .offers { grid-template-columns: 1fr; } }
+    .offer { padding: 16px 18px; border-radius: 12px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--brand); }
+    .offer b { display: block; font-size: 17px; letter-spacing: -.01em; }
+    .offer span { font-size: 13.5px; color: var(--muted); }
+
+    .shop { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+    @media (max-width: 980px) { .shop { grid-template-columns: 1fr; } }
+    h2.title { font-size: 21px; letter-spacing: -.02em; margin: 0 0 4px; }
+    p.lead { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 30px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    .item { padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+    .cover { height: 104px; border-radius: 10px; display: grid; place-items: center; text-align: center; color: var(--ink); font-weight: 700; font-size: 14px; line-height: 1.25; padding: 10px;
+             background: #f3f4f6; border: 1px solid var(--line); margin-bottom: 8px; }
+    .item h3 { font-size: 15.5px; margin: 0; letter-spacing: -.01em; }
+    .item .by { color: var(--muted); font-size: 13px; }
+    .item .meta { font-size: 12.5px; color: var(--muted); }
+    .item .price { font-size: 19px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
+    .item .rating { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    .item button { margin-top: 8px; padding: 9px 12px; font-size: 14px; width: 100%; }
+
+    table.specs { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.specs th, table.specs td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    table.specs th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    table.specs td b { font-size: 15px; }
+    table.specs button { padding: 8px 12px; font-size: 13.5px; white-space: nowrap; }
+    .laptops { padding: 6px 8px 2px; overflow-x: auto; margin-bottom: 30px; }
+
+    /* Cart */
+    .cart { padding: 18px; position: sticky; top: 84px; }
+    .cart h2 { font-size: 17px; margin: 0 0 10px; }
+    #cart-items { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
+    #cart-items li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+    #cart-items li.empty { color: var(--muted); border: none; }
+    .totals { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; font-size: 14px; margin: 0 0 14px; }
+    .totals dt { color: var(--muted); } .totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .totals .grand { font-weight: 700; font-size: 17px; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; }
+    .cart .actions button { flex: 1; padding: 10px 12px; font-size: 14.5px; }
+    #status { font-size: 13.5px; }
+    .facts { font-size: 13px; color: var(--muted); margin: 14px 0 0; padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="index.html">Contact</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Nimbus Store</span>
+      <h1>Books and laptops for <em>people who build.</em></h1>
+      <p>A test shop: nothing is really sold. Prices are in Indian rupees and include tax.</p>
+    </div>
+  </section>
+
+  <div class="container">
+    <section class="offers" aria-label="Current offers">
+      <div class="offer"><b>Any 3 books for ₹999</b><span>Applied automatically to every set of three books in your cart.</span></div>
+      <div class="offer"><b>Free delivery from ₹999</b><span>Orders below ₹999 pay ₹49 for delivery.</span></div>
+      <div class="offer"><b>Student discount on laptops</b><span>₹2,000 off any laptop priced under ₹60,000, applied in the cart.</span></div>
+    </section>
+
+    <div class="shop">
+      <main>
+        <h2 class="title">Books</h2>
+        <p class="lead">Paperback editions. Ratings are out of 5 from verified buyers.</p>
+        <div class="grid" id="books"></div>
+
+        <h2 class="title">Laptops</h2>
+        <p class="lead">All have a 14 or 15 inch full-HD screen and a one-year warranty.</p>
+        <div class="card laptops">
+          <table class="specs">
+            <thead><tr><th>Model</th><th>Price</th><th>Memory</th><th>Storage</th><th>Weight</th><th>Battery</th><th>Rating</th><th></th></tr></thead>
+            <tbody id="laptops"></tbody>
+          </table>
+        </div>
+      </main>
+
+      <aside class="card cart" aria-label="Your cart">
+        <h2>Your cart</h2>
+        <ul id="cart-items"><li class="empty">Your cart is empty.</li></ul>
+        <dl class="totals">
+          <dt>Subtotal</dt><dd id="subtotal">₹0</dd>
+          <dt>Offers</dt><dd id="discount">−₹0</dd>
+          <dt>Delivery</dt><dd id="delivery">₹0</dd>
+          <dt class="grand">Total</dt><dd class="grand" id="total">₹0</dd>
+        </dl>
+        <div class="actions">
+          <button type="button" id="place-order">Place order</button>
+          <button type="button" class="secondary" id="clear-cart">Empty cart</button>
+        </div>
+        <div id="status" role="status"></div>
+        <ul class="facts">
+          <li>Books are delivered in 2 to 4 days, laptops in 5 to 7 days.</li>
+          <li>Returns are free within 10 days.</li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <span class="copy">© 2026 Nimbus Labs · test site</span>
+      <a href="apply.html">Careers</a><a href="chat.html">Messages</a><a href="#">Privacy</a><a href="#">Terms</a>
+    </div>
+  </footer>
+
+  <script>
+    const BOOKS = [
+      { id: "habits", title: "Atomic Habits", by: "James Clear", price: 399, rating: 4.8, genre: "Self-help", pages: 320, a: "#f59e0b", b: "#b45309" },
+      { id: "deepwork", title: "Deep Work", by: "Cal Newport", price: 449, rating: 4.6, genre: "Productivity", pages: 304, a: "#0ea5e9", b: "#1d4ed8" },
+      { id: "pragmatic", title: "The Pragmatic Programmer", by: "Hunt and Thomas", price: 549, rating: 4.7, genre: "Programming", pages: 352, a: "#7c3aed", b: "#4338ca" },
+      { id: "cleancode", title: "Clean Code", by: "Robert C. Martin", price: 529, rating: 4.5, genre: "Programming", pages: 464, a: "#059669", b: "#065f46" },
+      { id: "sapiens", title: "Sapiens", by: "Yuval Noah Harari", price: 499, rating: 4.6, genre: "History", pages: 498, a: "#e11d48", b: "#9f1239" },
+      { id: "alchemist", title: "The Alchemist", by: "Paulo Coelho", price: 299, rating: 4.4, genre: "Fiction", pages: 208, a: "#0891b2", b: "#155e75" },
+    ];
+    const LAPTOPS = [
+      { id: "aero", title: "AeroBook 14", price: 54990, ram: "16 GB", ssd: "512 GB", weight: "1.2 kg", battery: "14 hours", rating: 4.6, note: "Light and long-lasting" },
+      { id: "code", title: "CodeMaster 15", price: 58990, ram: "16 GB", ssd: "1 TB", weight: "1.9 kg", battery: "7 hours", rating: 4.4, note: "Most storage under ₹60,000" },
+      { id: "budget", title: "BudgetBook 15", price: 38990, ram: "8 GB", ssd: "256 GB", weight: "1.8 kg", battery: "6 hours", rating: 4.0, note: "Lowest price" },
+      { id: "creator", title: "Creator Pro 16", price: 89990, ram: "32 GB", ssd: "1 TB", weight: "2.1 kg", battery: "8 hours", rating: 4.8, note: "Dedicated graphics for video and 3D" },
+    ];
+    const rupees = (n) => "₹" + n.toLocaleString("en-IN");
+    const cart = []; // { id, title, price, kind }
+
+    document.getElementById("books").innerHTML = BOOKS.map((b) => `
+      <article class="card item">
+        <div class="cover" style="--a:${b.a};--b:${b.b}">${b.title}</div>
+        <h3>${b.title}</h3>
+        <span class="by">${b.by}</span>
+        <span class="meta">${b.genre} · ${b.pages} pages</span>
+        <span class="rating">★ ${b.rating} out of 5</span>
+        <span class="price">${rupees(b.price)}</span>
+        <button type="button" data-add="${b.id}" aria-label="Add ${b.title} to cart, ${rupees(b.price)}, rated ${b.rating}">Add to cart</button>
+      </article>`).join("");
+
+    document.getElementById("laptops").innerHTML = LAPTOPS.map((l) => `
+      <tr>
+        <td><b>${l.title}</b><br><span style="color:var(--muted);font-size:12.5px">${l.note}</span></td>
+        <td><b>${rupees(l.price)}</b></td><td>${l.ram}</td><td>${l.ssd}</td><td>${l.weight}</td><td>${l.battery}</td><td>★ ${l.rating}</td>
+        <td><button type="button" class="secondary" data-add="${l.id}" aria-label="Add ${l.title} to cart, ${rupees(l.price)}, ${l.ram} memory, ${l.weight}, ${l.battery} battery">Add to cart</button></td>
+      </tr>`).join("");
+
+    function totals() {
+      const books = cart.filter((c) => c.kind === "book").sort((x, y) => y.price - x.price);
+      const subtotal = cart.reduce((s, c) => s + c.price, 0);
+      let discount = 0;
+      // Any 3 books for ₹999: applied to each complete set of three, most expensive first.
+      for (let i = 0; i + 2 < books.length; i += 3) {
+        const set = books[i].price + books[i + 1].price + books[i + 2].price;
+        if (set > 999) discount += set - 999;
+      }
+      // Student discount: ₹2,000 off each laptop priced under ₹60,000.
+      discount += cart.filter((c) => c.kind === "laptop" && c.price < 60000).length * 2000;
+      const afterOffers = subtotal - discount;
+      const delivery = cart.length === 0 || afterOffers >= 999 ? 0 : 49;
+      return { subtotal, discount, delivery, total: afterOffers + delivery };
+    }
+
+    function render(message) {
+      const list = document.getElementById("cart-items");
+      list.innerHTML = cart.length
+        ? cart.map((c) => `<li><span>${c.title}</span><span>${rupees(c.price)}</span></li>`).join("")
+        : '<li class="empty">Your cart is empty.</li>';
+      const t = totals();
+      document.getElementById("subtotal").textContent = rupees(t.subtotal);
+      document.getElementById("discount").textContent = "−" + rupees(t.discount);
+      document.getElementById("delivery").textContent = cart.length ? (t.delivery ? rupees(t.delivery) : "Free") : rupees(0);
+      document.getElementById("total").textContent = rupees(t.total);
+      document.getElementById("status").textContent = message ??
+        (cart.length ? `Cart: ${cart.length} item${cart.length === 1 ? "" : "s"} (${cart.map((c) => c.title).join(", ")}). Total ${rupees(t.total)}.` : "");
+    }
+
+    document.addEventListener("click", (e) => {
+      const id = e.target.closest("[data-add]")?.dataset.add;
+      if (!id) return;
+      const book = BOOKS.find((b) => b.id === id);
+      const item = book ?? LAPTOPS.find((l) => l.id === id);
+      cart.push({ id, title: item.title, price: item.price, kind: book ? "book" : "laptop" });
+      render();
+    });
+    document.getElementById("clear-cart").addEventListener("click", () => { cart.length = 0; render(); });
+    document.getElementById("place-order").addEventListener("click", () => {
+      if (!cart.length) return render("Your cart is empty. Add something first.");
+      const t = totals();
+      const n = cart.length;
+      cart.length = 0;
+      render(`Order placed: ${n} item${n === 1 ? "" : "s"} for ${rupees(t.total)}. Thank you!`);
+    });
+  </script>
+</body>
+</html>
