@@ -11,6 +11,7 @@
     "e2e"
   ],
   "scripts": {
+    "start": "node scripts/start.mjs",
     "build": "npm run build --workspace=extension",
     "dev": "npm run dev --workspace=extension",
     "typecheck": "npm run typecheck --workspaces --if-present",
