@@ -62,7 +62,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | [`server/`](server/) | `POST /process` and `POST /ask` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
-| [`demo/`](demo/) | Test pages: a product site with a contact form and sample PII, a job application, a bank login page, an Instagram-style chat | HTML |
+| [`demo/`](demo/) | Test site: contact form with sample PII, job application, store with a cart and offers, pricing, features, a bank login page, an Instagram-style chat | HTML |
 
 ## Prerequisites
 
@@ -123,6 +123,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
 | `e2e/run-ask.mjs` | Questions go to ask mode in real Chrome: "Analyze this login page" changes no field |
 | `e2e/run-profile.mjs` | A job application is filled from saved details; the values never reach the server |
+| `e2e/run-smart.mjs` | Reasoning on the store and pricing pages: each answer must contain the right fact |
 | `e2e/popup-screens.mjs` | Drives the real popup (Run task, Allow, Ask) and the My info page, saves screenshots |
 
 ## Compression study
@@ -132,6 +133,24 @@ dynamic, INT8 static) measured for size, speed, memory and accuracy with the sam
 extension uses. Full table: [`perception/benchmarks/RESULTS.md`](perception/benchmarks/RESULTS.md).
 Headline: fixing the export's graph gives **1.5x** speed at identical accuracy (now shipped);
 FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slower in WASM.
+
+## Questions that need reasoning
+
+Ask mode lets Gemma think before it answers (`GEMMA_ASK_THINKING`, on by default), so it can
+compare prices, apply an offer or match a recommendation to what you asked for. On the test
+site's store and pricing pages (`npm run smart --workspace=e2e`, 6/6 with real Gemma):
+
+| Question | Answer it reached |
+| --- | --- |
+| Two programming books cost how much, and is it cheaper to add a third? | ₹529 + ₹549 = ₹1,078 for two; ₹999 for three with the "any 3 for ₹999" offer |
+| Which laptop for a student who codes and travels, under ₹60,000? | AeroBook 14: 1.2 kg and the longest battery, under budget |
+| How much does paying yearly for Pro save? | ₹998 |
+| Team of 7 needing priority support? | Team plan: ₹1,499 + 2 × ₹250 = ₹1,999 a month |
+
+An answer takes about 10 to 25 seconds, because thinking takes time. Action steps do not think,
+so they stay fast. A limit worth knowing: this small model does not reliably rank options and
+act on the ranking in one task ("add the three cheapest books" picked a wrong book). Ask first,
+then tell it which item to add.
 
 ## My info: fill forms with your saved details
 
@@ -176,9 +195,10 @@ Chrome and checks that no field changed (`e2e/proof/ask.json`).
 A YOLO11n model we trained to find buttons, inputs and links **from the screenshot alone**
 (10.6 MB, runs in the extension). Training data is generated: headless Chrome renders 1,700
 random web pages and the DOM gives exact labels for free. On the original demo page, which it
-never saw in training, it finds **97.5%** of the elements with **97.5%** precision. On the
-redesigned, more modern demo page it finds **76%** with **64%** precision (inputs 97% / 95%):
-strong on familiar styling, weaker on unfamiliar styling, and measured live either way.
+never saw in training, it found **97.5%** of the elements with **97.5%** precision. Across
+today's whole test site (seven restyled pages it never saw) it finds **61%** with **55%**
+precision, and inputs stay at 97% / 90%: strong on familiar styling, weaker on unfamiliar
+styling, and measured live either way.
 The extension compares its boxes with the DOM on every step and "What the AI sees" draws them.
 Details: [`perception/ui-model/`](perception/ui-model/README.md).
 

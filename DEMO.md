@@ -1,6 +1,6 @@
 # Demo guide
 
-Everything you need to show the project to your mentors. It takes about 10 minutes.
+Everything you need to show the project to your mentors. It takes about 12 minutes.
 
 ## Before the meeting: 3 minutes
 
@@ -19,7 +19,7 @@ Everything you need to show the project to your mentors. It takes about 10 minut
 
 To stop: press `Ctrl+C` in the start window.
 
-## The demo: 10 minutes
+## The demo: 12 minutes
 
 **1. The idea, 30 seconds.** Show the architecture diagram.
 > "A browser agent that completes tasks for you, but personal data never leaves your laptop. The
@@ -55,6 +55,25 @@ avatar and the shared photo are black boxes, even the tiny ones.
 > "Small profile pictures are too small for any face model to see reliably, so the extension
 > also hides every photo, video and canvas it finds in the page code. Here it hid 9 photos; the
 > face model alone would have caught 1."
+
+**3e. Show that it reasons, 1.5 minutes.** Open <http://127.0.0.1:5500/store.html>. In the popup
+click **Demo question**, then **Ask about page**. It takes 10 to 25 seconds because the model
+thinks first.
+> "This shop has an offer: any 3 books for ₹999. I asked whether adding a third book is cheaper
+> than buying two. It works it out: the two books are ₹529 plus ₹549, which is ₹1,078, and three
+> books cost ₹999 with the offer. So three books cost less than two."
+
+Then type **I am a student who writes code and travels a lot. Which laptop do you recommend
+under ₹60,000, and why?** and press **Ask about page**.
+> "It checks each requirement: under budget, light for travel, enough memory for coding, and
+> picks the AeroBook. It did not just pick the most expensive one."
+
+Then show it acting: **Add Deep Work to the cart.** → **Run task**. The cart shows ₹498.
+On <http://127.0.0.1:5500/pricing.html> the **Demo question** asks about a team of 7; the answer
+is the Team plan at ₹1,999 a month.
+
+If asked about limits: it adds one named item reliably. It does not reliably choose and add
+several items in one go ("add the three cheapest books"), so ask first, then add.
 
 **3d. Fill a job application from saved details, 1.5 minutes.** Before the meeting: click
 **My info** at the bottom of the popup, press **Use sample data**, then **Save**. Under **Files**,
@@ -94,10 +113,10 @@ the dashed boxes and the "Found from pixels" section.
 > ourselves. Instead of labelling images by hand, we generated 1,700 random web pages and read
 > the exact position of every button from the page code, so the labels were free and perfect.
 > The test page was never used in training. On every step the extension checks the model
-> against the real page." Read the number from the screen: on this page it finds about 10 of
-> 12 controls. "On the original, plain test page it scored 97.5%. On this redesigned page it
-> scores about 76%, and inputs are still 97%. It mistakes pill-shaped badges for buttons and
-> misses some grey menu links. We show the live score instead of claiming it is perfect."
+> against the real page." Read the number from the screen: on the contact page it finds about
+> 11 of 13 controls. "On the original, plain test page it scored 97.5%. Across the whole
+> restyled test site it finds about 61%, and form inputs are still 97%. Links on unfamiliar
+> layouts are its weak spot. We show the live score instead of claiming it is perfect."
 
 Then show `perception/ui-model/RESULTS.md` for the numbers across thresholds.
 > "We also tried Microsoft's OmniParser model first. It was 77 MB and couldn't even load in the
