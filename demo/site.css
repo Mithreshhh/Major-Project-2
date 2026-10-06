@@ -1,0 +1,87 @@
+/*
+ * Shared look of the Nimbus test pages (index, apply). No image files and no web fonts on
+ * purpose: the extension blacks out every image on a page, and the demo must work offline.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f6f7fc; --card: #ffffff; --ink: #0b1020; --muted: #5a6478; --line: #e4e8f2; --soft: #f7f9fd;
+  --brand: #5b4bff; --brand-2: #06b6d4; --brand-ink: #ffffff; --brand-soft: #efedff;
+  --ok: #047857; --ok-soft: #ecfdf5; --ok-line: #a7f3d0;
+  --radius: 18px; --shadow: 0 1px 2px rgba(11, 16, 32, .04), 0 12px 40px rgba(11, 16, 32, .08);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; color: var(--ink); font: 15px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(91, 75, 255, .16), transparent 62%),
+    radial-gradient(820px 480px at 96% 2%, rgba(6, 182, 212, .15), transparent 60%),
+    radial-gradient(700px 500px at 50% 110%, rgba(16, 185, 129, .08), transparent 60%),
+    var(--bg);
+  background-attachment: fixed; min-height: 100vh;
+}
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 1140px; margin: 0 auto; padding: 0 22px; }
+
+/* Navigation */
+.nav { position: sticky; top: 0; z-index: 10; background: rgba(255, 255, 255, .72); backdrop-filter: saturate(160%) blur(16px); border-bottom: 1px solid rgba(228, 232, 242, .9); }
+.nav .container { display: flex; align-items: center; gap: 30px; height: 64px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -.02em; color: var(--ink); }
+.logo:hover { text-decoration: none; }
+.logo-mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-size: 16px; font-weight: 800;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 6px 18px rgba(91, 75, 255, .35); }
+.nav nav { display: flex; gap: 6px; }
+.nav nav a { color: var(--muted); font-weight: 500; padding: 7px 12px; border-radius: 9px; }
+.nav nav a:hover { color: var(--ink); background: rgba(11, 16, 32, .05); text-decoration: none; }
+.nav .right { margin-left: auto; display: flex; align-items: center; gap: 16px; font-weight: 500; }
+
+/* Hero */
+.hero { padding: 54px 0 92px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em; color: var(--brand);
+  background: var(--brand-soft); border: 1px solid rgba(91, 75, 255, .18); border-radius: 99px; padding: 4px 12px; }
+.eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+.hero h1 { margin: 16px 0 10px; font-size: 46px; line-height: 1.08; letter-spacing: -.035em; font-weight: 700; max-width: 760px; }
+.hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { margin: 0; max-width: 620px; color: var(--muted); font-size: 17px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.chips span { font-size: 13px; color: var(--muted); background: rgba(255, 255, 255, .8); border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; }
+.chips b { color: var(--ink); font-weight: 600; }
+
+/* Cards and layout */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card h2 { font-size: 19px; margin: 0 0 4px; letter-spacing: -.015em; }
+.card .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+.section-title { font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 22px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.section-title:first-of-type { margin-top: 0; }
+
+/* Forms */
+label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; }
+.opt { font-weight: 400; color: var(--muted); }
+input[type=text], input[type=email], input[type=password], input[type=tel], input[type=url], textarea {
+  width: 100%; padding: 11px 13px; border: 1px solid #d5dbe8; border-radius: 11px; font: inherit; background: var(--soft); color: var(--ink); margin-bottom: 16px;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input[type=file] { width: 100%; padding: 11px 13px; border: 1.5px dashed #c3cbdc; border-radius: 11px; background: var(--soft); font: inherit; color: var(--muted); margin-bottom: 16px; }
+input::placeholder, textarea::placeholder { color: #9aa3b5; }
+input:focus, textarea:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px rgba(91, 75, 255, .14); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+@media (max-width: 620px) { .two { grid-template-columns: 1fr; } .hero h1 { font-size: 34px; } }
+.wide { grid-column: 1 / -1; }
+.check { display: flex; align-items: center; gap: 10px; margin: 2px 0 22px; }
+.check input { width: 18px; height: 18px; accent-color: var(--brand); margin: 0; }
+.check label { margin: 0; font-weight: 400; }
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+button { font: 600 15px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; padding: 11px 22px; border-radius: 11px; border: 1px solid transparent; color: var(--brand-ink); cursor: pointer;
+  background: linear-gradient(135deg, var(--brand), #4338ca); box-shadow: 0 8px 22px rgba(91, 75, 255, .32); transition: transform .12s, box-shadow .12s; }
+button:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(91, 75, 255, .38); }
+button.secondary { background: #fff; color: var(--brand); border-color: #d5dbe8; box-shadow: none; }
+button.secondary:hover { border-color: var(--brand); box-shadow: none; }
+.reply { color: var(--muted); font-size: 13px; margin-left: auto; }
+#status { min-height: 1.5em; margin-top: 18px; font-weight: 600; color: var(--ok); }
+#status:not(:empty) { background: var(--ok-soft); border: 1px solid var(--ok-line); border-radius: 11px; padding: 11px 14px; }
+
+/* Footer */
+footer { border-top: 1px solid var(--line); background: rgba(255, 255, 255, .7); margin-top: 44px; }
+footer .container { padding-top: 20px; padding-bottom: 20px; display: flex; gap: 22px; color: var(--muted); font-size: 13.5px; flex-wrap: wrap; align-items: center; }
+footer .copy { margin-right: auto; }

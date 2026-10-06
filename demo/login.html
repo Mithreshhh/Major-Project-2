@@ -5,47 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Acme Bank - Sign in</title>
   <style>
-    :root { color-scheme: light; }
+    :root { color-scheme: light; --navy: #071a3a; --navy2: #0d2f6e; --gold: #f5b942; --ink: #0b1020; --muted: #5a6478; --line: #e2e7f1; --soft: #f6f8fc; --brand: #0d47c9; }
     * { box-sizing: border-box; }
-    body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #eef2f7; color: #1b1f24; }
-    header { background: #0b3d91; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 24px; }
-    header strong { font-size: 19px; }
-    header a { color: #cfe0ff; margin-right: 14px; }
-    main { max-width: 980px; margin: 32px auto; padding: 0 16px; display: grid; grid-template-columns: 380px 1fr; gap: 28px; }
-    @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
-    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 22px; }
-    h1 { font-size: 20px; margin: 0 0 14px; }
-    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-    input[type=text], input[type=password] { width: 100%; padding: 9px 11px; border: 1px solid #b6c2cf; border-radius: 6px; font: inherit; margin-bottom: 14px; }
-    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-size: 14px; }
-    button { width: 100%; padding: 10px; border: none; border-radius: 6px; background: #0b3d91; color: #fff; font: 600 15px system-ui; cursor: pointer; }
-    #status { margin-top: 12px; font-weight: 600; color: #b42318; min-height: 1.4em; }
-    .info h2 { font-size: 16px; margin: 0 0 8px; }
-    .info ul { padding-left: 18px; margin: 0 0 14px; }
-    .muted { color: #57606a; font-size: 13px; }
+    body { margin: 0; font: 15px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: var(--ink); background: #eef2f9; min-height: 100vh; display: flex; flex-direction: column; }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header { background: #fff; border-bottom: 1px solid var(--line); }
+    header .inner { max-width: 1120px; margin: 0 auto; padding: 0 22px; height: 62px; display: flex; align-items: center; gap: 30px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -.02em; color: var(--navy); }
+    .crest { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, var(--navy), var(--navy2)); display: grid; place-items: center; color: var(--gold); font-weight: 800; }
+    nav a { color: var(--muted); font-weight: 500; margin-right: 18px; }
+    .secure { margin-left: auto; font-size: 12.5px; font-weight: 600; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 99px; padding: 3px 11px; }
+
+    main { flex: 1; max-width: 1120px; width: 100%; margin: 0 auto; padding: 38px 22px; display: grid; grid-template-columns: 1.1fr 420px; gap: 28px; align-items: stretch; }
+    @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+    .info { border-radius: 22px; padding: 38px; color: #dbe6ff; position: relative; overflow: hidden;
+      background: radial-gradient(600px 380px at 85% -10%, rgba(245, 185, 66, .22), transparent 60%), radial-gradient(500px 400px at -10% 110%, rgba(56, 132, 255, .35), transparent 60%), linear-gradient(150deg, var(--navy), var(--navy2)); }
+    .info h1 { color: #fff; font-size: 34px; line-height: 1.12; letter-spacing: -.03em; margin: 0 0 12px; max-width: 460px; }
+    .info h1 em { font-style: normal; color: var(--gold); }
+    .info > p { margin: 0 0 26px; max-width: 460px; opacity: .9; }
+    .info h2 { color: #fff; font-size: 13px; letter-spacing: .09em; text-transform: uppercase; margin: 0 0 10px; }
+    .info ul { margin: 0 0 24px; padding: 0; list-style: none; display: grid; gap: 10px; }
+    .info li { padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); }
+    .info .help { margin: 0; }
+    .info .muted { font-size: 13px; opacity: .7; margin: 12px 0 0; }
+
+    form { background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 34px; box-shadow: 0 16px 50px rgba(7, 26, 58, .12); align-self: center; }
+    form h2 { font-size: 22px; letter-spacing: -.02em; margin: 0 0 4px; }
+    form .sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+    label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; }
+    input[type=text], input[type=password] { width: 100%; padding: 12px 13px; border: 1px solid #d3daea; border-radius: 11px; font: inherit; background: var(--soft); margin-bottom: 16px; transition: border-color .15s, box-shadow .15s; }
+    input:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px rgba(13, 71, 201, .14); }
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-size: 14px; }
+    .row label { font-weight: 400; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .row input { width: 17px; height: 17px; accent-color: var(--brand); margin: 0; }
+    button { width: 100%; padding: 13px; border: none; border-radius: 11px; color: #fff; font: 600 15.5px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; cursor: pointer;
+      background: linear-gradient(135deg, var(--brand), var(--navy2)); box-shadow: 0 10px 26px rgba(13, 71, 201, .32); }
+    #status { margin-top: 14px; font-weight: 600; color: #b42318; min-height: 1.4em; }
+    .foot { text-align: center; font-size: 13px; color: var(--muted); margin: 16px 0 0; }
   </style>
 </head>
 <body>
   <header>
-    <strong>Acme Bank</strong>
-    <nav><a href="#">Personal</a><a href="#">Business</a><a href="#">Loans</a><a href="#">Help</a></nav>
+    <div class="inner">
+      <div class="brand"><span class="crest">A</span>Acme Bank</div>
+      <nav><a href="#">Personal</a><a href="#">Business</a><a href="#">Loans</a><a href="#">Help</a></nav>
+      <span class="secure">Secure session</span>
+    </div>
   </header>
   <main>
-    <form class="card" id="login" aria-label="Sign in">
-      <h1>Sign in to online banking</h1>
-      <label for="user">Customer ID or email</label>
-      <input id="user" name="user" type="text" autocomplete="username" placeholder="e.g. 12345678" />
-      <label for="pass">Password</label>
-      <input id="pass" name="pass" type="password" autocomplete="current-password" />
-      <div class="row">
-        <label style="font-weight:400;margin:0"><input type="checkbox" id="remember" /> Remember me</label>
-        <a href="#">Forgot password?</a>
-      </div>
-      <button type="submit">Log in</button>
-      <div id="status" role="status"></div>
-    </form>
-
-    <section class="card info">
+    <section class="info">
+      <h1>Banking that <em>stays yours.</em></h1>
+      <p>Sign in to see your accounts, move money and manage your cards. This is a test page.</p>
       <h2>Before you sign in</h2>
       <ul>
         <li>We will never ask for your OTP or full password by phone or email.</li>
@@ -53,9 +66,25 @@
         <li>Sessions end automatically after 5 minutes of inactivity.</li>
       </ul>
       <h2>Need help?</h2>
-      <p>Call customer care on +91 22 4000 1234 or write to support@acmebank.example.</p>
+      <p class="help">Call customer care on +91 22 4000 1234 or write to support@acmebank.example.</p>
       <p class="muted">Registered office: Acme Bank Ltd. Last login from this device: 12 Sep 2026.</p>
     </section>
+
+    <form id="login" aria-label="Sign in">
+      <h2>Sign in to online banking</h2>
+      <p class="sub">Use your customer ID or registered email.</p>
+      <label for="user">Customer ID or email</label>
+      <input id="user" name="user" type="text" autocomplete="username" placeholder="e.g. 12345678" />
+      <label for="pass">Password</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password" />
+      <div class="row">
+        <label><input type="checkbox" id="remember" /> Remember me</label>
+        <a href="#">Forgot password?</a>
+      </div>
+      <button type="submit">Log in</button>
+      <div id="status" role="status"></div>
+      <p class="foot">New to Acme? <a href="#">Open an account</a></p>
+    </form>
   </main>
   <script>
     document.getElementById("login").addEventListener("submit", (e) => {

@@ -4,84 +4,89 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Nimbus Careers - Apply: Software Engineer Intern</title>
+  <link rel="stylesheet" href="site.css" />
   <style>
-    :root { color-scheme: light; --bg: #f5f7fb; --card: #fff; --ink: #0f172a; --muted: #5b6475; --line: #e3e8f0; --brand: #4f46e5; --brand-soft: #eef2ff; --ok: #15803d; --ok-soft: #ecfdf3; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font: 15px/1.55 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
-    a { color: var(--brand); text-decoration: none; }
-    .topbar { background: var(--card); border-bottom: 1px solid var(--line); }
-    .topbar .inner { max-width: 900px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 28px; }
-    .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; color: var(--ink); }
-    .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #06b6d4); display: grid; place-items: center; color: #fff; font-size: 15px; }
-    nav a { color: var(--muted); margin-right: 20px; font-weight: 500; }
-    .hero { background: linear-gradient(120deg, #312e81, #4f46e5 55%, #0891b2); color: #fff; }
-    .hero .inner { max-width: 900px; margin: 0 auto; padding: 26px 20px 60px; }
-    .hero h1 { margin: 0 0 4px; font-size: 26px; }
-    .hero p { margin: 0; opacity: .9; }
-    .tags span { display: inline-block; font-size: 12.5px; background: rgba(255,255,255,.16); border-radius: 99px; padding: 2px 10px; margin: 10px 6px 0 0; }
-    main { max-width: 900px; margin: -38px auto 0; padding: 0 20px 40px; }
-    form { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 6px 24px rgba(15,23,42,.06); padding: 24px; }
-    h2 { font-size: 15px; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-    h2:first-child { margin-top: 0; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
-    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
-    .wide { grid-column: 1 / -1; }
-    label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 5px; }
-    input[type=text], input[type=email], input[type=tel], input[type=url], textarea {
-      width: 100%; padding: 10px 12px; border: 1px solid #cfd6e3; border-radius: 9px; font: inherit; background: #fbfcfe; margin-bottom: 14px; }
-    input[type=file] { width: 100%; padding: 9px 12px; border: 1px dashed #b9c2d3; border-radius: 9px; background: #fbfcfe; font: inherit; color: var(--muted); margin-bottom: 14px; }
-    input:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79,70,229,.15); background: #fff; }
-    .actions { display: flex; gap: 12px; align-items: center; margin-top: 6px; }
-    button { font: 600 15px "Segoe UI", system-ui, sans-serif; padding: 10px 20px; border-radius: 9px; border: 1px solid var(--brand); background: var(--brand); color: #fff; cursor: pointer; }
-    button.secondary { background: #fff; color: var(--brand); }
-    #status { min-height: 1.5em; margin-top: 16px; font-weight: 600; color: var(--ok); }
-    #status:not(:empty) { background: var(--ok-soft); border: 1px solid #b7ebc6; border-radius: 9px; padding: 9px 12px; }
+    .hero { padding-bottom: 84px; }
+    .hero h1 { font-size: 40px; }
+    main { max-width: 900px; margin: -52px auto 0; display: grid; grid-template-columns: 1fr 250px; gap: 24px; align-items: start; }
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+    form.card { padding: 28px; }
+    .role { padding: 20px; }
+    .role h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: -.01em; }
+    .role dl { margin: 0; display: grid; gap: 12px; font-size: 13.5px; }
+    .role dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+    .role dd { margin: 2px 0 0; font-weight: 500; }
+    .role p { color: var(--muted); font-size: 13px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="inner">
+  <header class="nav">
+    <div class="container">
       <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
       <nav><a href="#">Open roles</a><a href="#">Life at Nimbus</a><a href="index.html">Contact</a></nav>
     </div>
   </header>
+
   <section class="hero">
-    <div class="inner">
-      <h1>Software Engineer Intern</h1>
+    <div class="container" style="max-width:944px">
+      <span class="eyebrow">Careers · Engineering</span>
+      <h1>Software Engineer <em>Intern</em></h1>
       <p>Apply below. This is a test page: nothing is sent anywhere.</p>
-      <div class="tags"><span>Hyderabad</span><span>6 months</span><span>Engineering</span></div>
+      <div class="chips"><span><b>Hyderabad</b></span><span><b>6 months</b></span><span><b>Engineering</b> team</span></div>
     </div>
   </section>
-  <main>
-    <form id="application" aria-label="Job application">
-      <h2>About you</h2>
-      <div class="grid">
-        <div><label for="fullname">Full name</label><input id="fullname" name="fullname" type="text" autocomplete="off" /></div>
-        <div><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="off" /></div>
-        <div><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" autocomplete="off" /></div>
-        <div><label for="city">City</label><input id="city" name="city" type="text" autocomplete="off" /></div>
-      </div>
-      <h2>Education</h2>
-      <div class="grid">
-        <div><label for="college">College / University</label><input id="college" name="college" type="text" autocomplete="off" /></div>
-        <div><label for="degree">Degree</label><input id="degree" name="degree" type="text" autocomplete="off" /></div>
-        <div><label for="gradyear">Year of graduation</label><input id="gradyear" name="gradyear" type="text" autocomplete="off" /></div>
-        <div><label for="cgpa">CGPA</label><input id="cgpa" name="cgpa" type="text" autocomplete="off" /></div>
-      </div>
-      <h2>Profile</h2>
-      <div class="grid">
-        <div><label for="linkedin">LinkedIn profile</label><input id="linkedin" name="linkedin" type="url" autocomplete="off" /></div>
-        <div><label for="github">GitHub profile</label><input id="github" name="github" type="url" autocomplete="off" /></div>
-        <div class="wide"><label for="skills">Skills</label><textarea id="skills" name="skills" rows="2"></textarea></div>
-        <div class="wide"><label for="resume">Resume (PDF)</label><input id="resume" name="resume" type="file" accept=".pdf,application/pdf" /></div>
-      </div>
-      <div class="actions">
-        <button type="submit">Submit application</button>
-        <button type="button" class="secondary" id="clear">Clear form</button>
-      </div>
-      <div id="status" role="status"></div>
-    </form>
-  </main>
+
+  <div class="container">
+    <main>
+      <form id="application" class="card" aria-label="Job application">
+        <div class="section-title">About you</div>
+        <div class="two">
+          <div><label for="fullname">Full name</label><input id="fullname" name="fullname" type="text" autocomplete="off" /></div>
+          <div><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="off" /></div>
+          <div><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" autocomplete="off" /></div>
+          <div><label for="city">City</label><input id="city" name="city" type="text" autocomplete="off" /></div>
+        </div>
+        <div class="section-title">Education</div>
+        <div class="two">
+          <div><label for="college">College / University</label><input id="college" name="college" type="text" autocomplete="off" /></div>
+          <div><label for="degree">Degree</label><input id="degree" name="degree" type="text" autocomplete="off" /></div>
+          <div><label for="gradyear">Year of graduation</label><input id="gradyear" name="gradyear" type="text" autocomplete="off" /></div>
+          <div><label for="cgpa">CGPA</label><input id="cgpa" name="cgpa" type="text" autocomplete="off" /></div>
+        </div>
+        <div class="section-title">Profile</div>
+        <div class="two">
+          <div><label for="linkedin">LinkedIn profile</label><input id="linkedin" name="linkedin" type="url" autocomplete="off" /></div>
+          <div><label for="github">GitHub profile</label><input id="github" name="github" type="url" autocomplete="off" /></div>
+          <div class="wide"><label for="skills">Skills</label><textarea id="skills" name="skills" rows="2"></textarea></div>
+          <div class="wide"><label for="resume">Resume (PDF)</label><input id="resume" name="resume" type="file" accept=".pdf,application/pdf" /></div>
+        </div>
+        <div class="actions">
+          <button type="submit">Submit application</button>
+          <button type="button" class="secondary" id="clear">Clear form</button>
+        </div>
+        <div id="status" role="status"></div>
+      </form>
+
+      <aside class="card role">
+        <h3>About this role</h3>
+        <dl>
+          <div><dt>Location</dt><dd>Hyderabad, on site</dd></div>
+          <div><dt>Duration</dt><dd>6 months</dd></div>
+          <div><dt>Stipend</dt><dd>Paid</dd></div>
+          <div><dt>Starts</dt><dd>January 2027</dd></div>
+        </dl>
+        <p>We read every application. You will hear back within a week.</p>
+      </aside>
+    </main>
+  </div>
+
+  <footer>
+    <div class="container">
+      <span class="copy">© 2026 Nimbus Labs · test site</span>
+      <a href="index.html">Contact</a><a href="#">Privacy</a>
+    </div>
+  </footer>
+
   <script>
     const form = document.getElementById("application");
     const status = document.getElementById("status");
