@@ -57,10 +57,13 @@ avatar and the shared photo are black boxes, even the tiny ones.
 > face model alone would have caught 1."
 
 **3d. Fill a job application from saved details, 1.5 minutes.** Before the meeting: click
-**My info** at the bottom of the popup, press **Use sample data**, then **Save**. In the demo,
-show that page for a moment, then open <http://127.0.0.1:5500/apply.html>, click
-**Fill with my info** in the popup and **Run task**. It fills 11 fields (about 40 seconds), then
-asks to **Allow** "Submit application".
+**My info** at the bottom of the popup, press **Use sample data**, then **Save**. Under **Files**,
+type "Resume", choose any PDF and press **Add file**. Optionally press **+ Add a person**, name
+them "Father" and save a few details. In the demo, show that page for a moment, then open
+<http://127.0.0.1:5500/apply.html>, click **Fill with my info** in the popup and **Run task**. It
+fills 11 fields and attaches the resume (about 40 seconds), then asks to **Allow** "Submit
+application". To show the second person: **Clear form**, then run
+`Fill this application with Father's details`.
 > "I saved my details once. Now I just say 'fill this form with my details'. The important part:
 > the AI never sees my details. It only knows I have something called Email and something called
 > Phone. It replies 'type the Email here', and the extension puts in the real value on my

@@ -135,8 +135,13 @@ FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slo
 
 ## My info: fill forms with your saved details
 
-Save your details once on the extension's **My info** page (name, email, phone, college, skills,
-plus any fields you add), then say "Fill this form with my saved details".
+Save details once on the extension's **My info** page (name, email, phone, college, skills, plus
+any fields you add by typing their name), then say "Fill this form with my saved details".
+
+- **Several people.** Save yourself, a parent, a friend. The popup's "as" selector picks who to
+  fill as, and a task that names a saved person ("fill this with Father's details") uses them.
+- **Files.** Save a resume, certificates or a photo per person (up to 10 MB each, kept in the
+  extension's IndexedDB). The agent attaches them to file-upload fields.
 
 The values never leave the device:
 
@@ -146,10 +151,13 @@ The values never leave the device:
 4. The extension replaces the placeholder with the real value just before typing.
 5. Fields filled this way are blacked out in every later screenshot, and history keeps the
    placeholder.
+6. A saved file goes straight from the extension into the page's file field. Neither its bytes
+   nor its name are sent to the server.
 
-Proof: `npm run profile --workspace=e2e` fills the 11-field job application in `demo/apply.html`
-with real Gemma and checks that every field is right and that no saved value appears in anything
-the server received (`e2e/proof/profile.json`).
+Proof: `npm run profile --workspace=e2e` saves two people and a PDF, fills the job application in
+`demo/apply.html` with real Gemma (11 fields plus the resume upload), fills it again as the second
+person, and checks that no saved value or file name appears in anything the server received
+(`e2e/proof/profile.json`).
 
 ## Safety: asking vs acting
 
