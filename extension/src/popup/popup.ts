@@ -16,6 +16,14 @@ const DEMO_TASK =
   "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.";
 const DEMO_INFO_TASK = "Fill this form with my saved details, then submit it.";
 const DEMO_QUESTION = "What personal information is shown on this page, and what can I do here?";
+/** Questions that show reasoning, offered on the test site's store and pricing pages. */
+const PAGE_QUESTIONS: Array<[RegExp, string]> = [
+  [/store\.html/, "How much do Clean Code and The Pragmatic Programmer cost together? Would I pay less if I add The Alchemist as a third book?"],
+  [/pricing\.html/, "We are a team of 7 people and we need priority support. Which plan should we choose, and what will it cost per month?"],
+  [/features\.html/, "Is Nimbus a good fit for a 20-person remote team that also needs payroll? Explain."],
+  [/login\.html/, "Analyze this login page"],
+  [/chat\.html/, "Summarize this conversation"],
+];
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const taskEl = $<HTMLTextAreaElement>("task");
@@ -211,7 +219,7 @@ async function init(): Promise<void> {
     taskEl.focus();
   });
   $("demo-q").addEventListener("click", () => {
-    taskEl.value = DEMO_QUESTION;
+    taskEl.value = PAGE_QUESTIONS.find(([page]) => page.test(tab?.url ?? ""))?.[1] ?? DEMO_QUESTION;
     updateHint();
     taskEl.focus();
   });

@@ -57,7 +57,7 @@ export async function requestAction(context: SanitizedContext): Promise<ActionCo
 /** POST a SanitizedContext carrying pageText and get back a text answer. Never an action. */
 export async function requestAnswer(context: SanitizedContext): Promise<string> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), CONFIG.requestTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), CONFIG.askTimeoutMs);
   try {
     const res = await fetch(`${await resolveServerUrl()}${ASK_ENDPOINT}`, {
       method: "POST",

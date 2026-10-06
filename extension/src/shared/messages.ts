@@ -190,7 +190,8 @@ export function looksLikeQuestion(text: string): boolean {
   let t = text.trim();
   for (let i = 0; i < 3 && POLITE.test(t); i++) t = t.replace(POLITE, "");
   if (ACTION_START.test(t)) return false;
-  return QUESTION.test(t) || QUESTION.test(text.trim());
+  // A question mark anywhere counts: "I want X and Y. Would adding Z be cheaper? Show the numbers."
+  return t.includes("?") || QUESTION.test(t) || QUESTION.test(text.trim());
 }
 
 const norm = (s: string) =>

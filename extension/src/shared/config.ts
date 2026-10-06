@@ -35,7 +35,9 @@ export const CONFIG = {
   maxElements: 200,
 
   /** Network timeout for /process. The first call may include loading Gemma (~10 s). */
-  requestTimeoutMs: 60_000,
+  requestTimeoutMs: 120_000,
+  /** Questions let the model think first, so an answer can take much longer than a step. */
+  askTimeoutMs: 240_000,
 
   /** A task from the popup stops after this many steps even if the model has not said "done". */
   maxTaskSteps: 25,

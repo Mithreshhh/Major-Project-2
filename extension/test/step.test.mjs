@@ -447,10 +447,12 @@ test("a risky click waits for the user's Allow, and does nothing when refused", 
 
 test("question detection and typed-text rules", () => {
   const { looksLikeQuestion, textComesFromTask } = globalThis.odpa;
-  for (const q of ["analyze this page", "Analyze this login page", "what does this form ask for?", "Summarize the page", "Can you tell me what this page is about"]) {
+  for (const q of ["analyze this page", "Analyze this login page", "what does this form ask for?", "Summarize the page", "Can you tell me what this page is about",
+    "I want Clean Code and Deep Work. Would a third book make it cheaper? Show the numbers."]) {
     assert.equal(looksLikeQuestion(q), true, q);
   }
-  for (const t of ["Fill in the contact form with name John Doe", "Can you fill the form with name John", "Log in", "Search for cheap flights", "Click submit"]) {
+  for (const t of ["Fill in the contact form with name John Doe", "Can you fill the form with name John", "Log in", "Search for cheap flights", "Click submit",
+    "Type How are you? into the message box"]) {
     assert.equal(looksLikeQuestion(t), false, t);
   }
   assert.equal(textComesFromTask("John Doe", "Fill name John Doe"), true);
