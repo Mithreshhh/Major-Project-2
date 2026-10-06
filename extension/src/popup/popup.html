@@ -50,9 +50,12 @@
     button.ghost { background: transparent; }
     button:disabled { opacity: .45; cursor: default; }
     .spacer { flex: 1; }
-    .links { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; white-space: nowrap; }
+    .links { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; white-space: nowrap; align-items: center; }
     button.link { border: none; background: none; color: var(--brand); padding: 0; font-weight: 500; }
     button.link:hover { text-decoration: underline; filter: none; }
+    .as { color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .as[hidden] { display: none; }
+    .as select { font: inherit; font-size: 12px; max-width: 110px; padding: 1px 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); }
 
     .warn { color: var(--bad); background: var(--bad-soft); border-radius: 8px; padding: 7px 9px; font-size: 12px; margin-top: 8px; display: none; }
     .warn.show { display: block; }
@@ -120,6 +123,10 @@
       <button class="link" id="demo" title="Fill in the demo task for the test page">Demo task</button>
       <button class="link" id="demo-q" title="Fill in a demo question">Demo question</button>
       <button class="link" id="demo-info" title="Fill the form on this page with your saved details">Fill with my info</button>
+      <span class="spacer"></span>
+      <label class="as" id="as-row" hidden title="Whose saved details to use. A task that names a saved person uses that person instead.">as
+        <select id="person"></select>
+      </label>
     </div>
     <div class="warn" id="warn">This tab is not a normal web page. Chrome does not allow extensions on its own pages; open an http(s) site.</div>
 

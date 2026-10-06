@@ -153,7 +153,8 @@ function stableId(el: Element): string {
 function stateAttributes(el: Element): Record<string, string> {
   if (el instanceof HTMLInputElement) {
     if (el.type === "checkbox" || el.type === "radio") return el.checked ? { checked: "yes" } : {};
-    if (["button", "submit", "reset", "image", "hidden", "file"].includes(el.type)) return {};
+    if (el.type === "file") return el.files?.length ? { filled: "yes" } : {};
+    if (["button", "submit", "reset", "image", "hidden"].includes(el.type)) return {};
     return el.value ? { filled: "yes" } : {};
   }
   if (el instanceof HTMLTextAreaElement) return el.value ? { filled: "yes" } : {};
@@ -225,7 +226,13 @@ function scanTextForPii(): RedactedRegion[] {
 function scanInputValuesForPii(): RedactedRegion[] {
   const regions: RedactedRegion[] = [];
   for (const el of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")) {
-    if (el instanceof HTMLInputElement && ["password", "hidden", "checkbox", "radio", "submit", "button", "reset", "image", "file"].includes(el.type)) {
+    // A file field the agent attached a saved file to shows the file name: mask it.
+    if (el instanceof HTMLInputElement && el.type === "file") {
+      const box = bboxOf(el);
+      if (filledFromProfile.has(el) && inViewport(box)) regions.push({ bbox: box, category: "pii_text", confidence: 0.99, method: "heuristic" });
+      continue;
+    }
+    if (el instanceof HTMLInputElement && ["password", "hidden", "checkbox", "radio", "submit", "button", "reset", "image"].includes(el.type)) {
       continue; // password fields are handled by the DOM rules; the rest carry no typed text
     }
     const value = el.value;
@@ -395,6 +402,9 @@ export async function executeAction(command: ActionCommand, sensitive = false): 
     }
     case "type": {
       const el = resolveTarget(command.target);
+      if (el instanceof HTMLInputElement && el.type === "file") {
+        return { ok: false, message: `${command.target} is a file-upload field: it takes a saved file, not text` };
+      }
       (el as HTMLElement).focus();
       if (sensitive) filledFromProfile.add(el);
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
@@ -437,6 +447,28 @@ export async function executeAction(command: ActionCommand, sensitive = false): 
   }
 }
 
+/**
+ * Put a saved file into a file-upload field, as if the user had chosen it. The bytes come from
+ * the extension's own storage and go only into this page's field.
+ */
+export function uploadFile(target: string, file: { name: string; type: string; dataBase64: string }): ExecutionResult {
+  const el = resolveTarget(target);
+  if (!(el instanceof HTMLInputElement) || el.type !== "file") {
+    return { ok: false, message: `target ${target} is not a file-upload field` };
+  }
+  const binary = atob(file.dataBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const transfer = new DataTransfer();
+  transfer.items.add(new File([bytes], file.name, { type: file.type }));
+  el.scrollIntoView({ block: "center", inline: "center" });
+  el.files = transfer.files;
+  filledFromProfile.add(el);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Message handling
 // ---------------------------------------------------------------------------
@@ -450,6 +482,8 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
         return { type: "DOM_SNAPSHOT", snapshot: captureDom(message.includeText === true) };
       case "EXECUTE_ACTION":
         return { type: "EXECUTION_RESULT", result: await executeAction(message.command, message.sensitive === true) };
+      case "UPLOAD_FILE":
+        return { type: "EXECUTION_RESULT", result: uploadFile(message.target, message.file) };
       default:
         return { type: "ERROR", message: `unknown message ${(message as { type: string }).type}` };
     }

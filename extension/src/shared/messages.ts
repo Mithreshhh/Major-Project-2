@@ -29,7 +29,9 @@ export type ContentRequest =
   | { type: "PING" }
   | { type: "CAPTURE_DOM"; includeText?: boolean }
   /** `sensitive`: the typed text is a saved detail, so the field is masked in later screenshots. */
-  | { type: "EXECUTE_ACTION"; command: ActionCommand; sensitive?: boolean };
+  | { type: "EXECUTE_ACTION"; command: ActionCommand; sensitive?: boolean }
+  /** Attach a saved file ("My info") to the file-upload field `target`. */
+  | { type: "UPLOAD_FILE"; target: string; file: { name: string; type: string; dataBase64: string } };
 
 export type ContentResponse =
   | { type: "PONG" }
@@ -59,6 +61,10 @@ export interface StepResult {
   targetLabel?: string;
   /** Labels of the saved details ("My info") typed in this step. The values are not kept here. */
   savedDetails?: string[];
+  /** Whose saved details were used ("Me", "Father"). */
+  person?: string;
+  /** True when a saved file was attached rather than text typed. */
+  attached?: boolean;
   stepIndex: number;
   sessionId: string;
   redactions: RedactionCounts;
@@ -120,6 +126,8 @@ export interface TaskState {
   hidden?: RedactionCounts;
   /** Risky action waiting for the user's decision (status "confirm"). */
   pending?: string;
+  /** Whose saved details ("My info") this task is using, when it uses any. */
+  person?: string;
   steps: StepLog[];
   maxSteps: number;
   /** Final explanation: the model's summary, its question, or why the task stopped. */
@@ -139,13 +147,14 @@ export type PopupRequest =
 export type BackgroundBroadcast = { type: "TASK_UPDATE"; state: TaskState };
 
 /** Human-readable command. `targetLabel` (already redacted) replaces the element id when known. */
-export function describeCommand(c: ActionCommand, targetLabel?: string, savedDetails?: string[]): string {
+export function describeCommand(c: ActionCommand, targetLabel?: string, savedDetails?: string[], isFile = false): string {
   const target = (id: string) => (targetLabel ? `"${targetLabel.length > 40 ? `${targetLabel.slice(0, 39)}…` : targetLabel}"` : id);
   switch (c.action) {
     case "click":
       return `Click ${target(c.target)}`;
     case "type":
-      if (savedDetails?.length) return `Type your saved ${savedDetails.join(", ")} into ${target(c.target)}${c.submit ? " and submit" : ""}`;
+      if (savedDetails?.length && isFile) return `Attach the saved ${savedDetails.join(", ")} to ${target(c.target)}`;
+      if (savedDetails?.length) return `Type the saved ${savedDetails.join(", ")} into ${target(c.target)}${c.submit ? " and submit" : ""}`;
       return `Type "${c.text}" into ${target(c.target)}${c.submit ? " and submit" : ""}`;
     case "scroll":
       return `Scroll ${c.direction}`;

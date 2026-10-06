@@ -42,7 +42,8 @@ import type {
   Veto,
 } from "../shared/messages";
 import { describeCommand, looksLikeQuestion, riskyAction, textComesFromTask } from "../shared/messages";
-import { hasPlaceholder, loadProfile, profileFieldNames, resolvePlaceholders, type ProfileField } from "../shared/profile";
+import { getFile, toBase64 } from "../shared/files";
+import { hasPlaceholder, loadPeople, pickPerson, profileFieldNames, resolvePlaceholders, type ProfileField } from "../shared/profile";
 import { requestAction, requestAnswer } from "./api";
 import { decodeDataUrl, encodeRawImage } from "./image";
 
@@ -160,6 +161,15 @@ async function captureDom(tabId: number, includeText = false): Promise<DomSnapsh
 
 async function executeOnPage(tabId: number, command: ActionCommand, sensitive = false) {
   const res = await sendToContent(tabId, sensitive ? { type: "EXECUTE_ACTION", command, sensitive } : { type: "EXECUTE_ACTION", command });
+  if (res.type !== "EXECUTION_RESULT") {
+    return { ok: false, message: res.type === "ERROR" ? res.message : `unexpected ${res.type}` };
+  }
+  return res.result;
+}
+
+/** Attach a saved file to a file-upload field. The bytes go only to the page, never the server. */
+async function uploadOnPage(tabId: number, target: string, file: { name: string; type: string; dataBase64: string }) {
+  const res = await sendToContent(tabId, { type: "UPLOAD_FILE", target, file });
   if (res.type !== "EXECUTION_RESULT") {
     return { ok: false, message: res.type === "ERROR" ? res.message : `unexpected ${res.type}` };
   }
@@ -302,7 +312,9 @@ export async function runStep(
   try {
     const session = getSession(tabId);
     const task = taskOverride ?? (await storedTask());
-    const profile = (await loadProfile()).filter((f) => f.value.trim());
+    // Whose details: a saved person named in the task, otherwise the active one.
+    const person = pickPerson(task, await loadPeople());
+    const profile = (person?.fields ?? []).filter((f) => f.value.trim());
     const { context, redactions, perceptionMs, vision } = await perceive(tabId, windowId, task, false, profile);
 
     console.info(LOG, `step ${session.stepIndex} -> /process`, {
@@ -319,14 +331,36 @@ export async function runStep(
     let toExecute = command;
     let savedDetails: string[] = [];
     let missing: Veto | null = null;
-    if (command.action === "type" && hasPlaceholder(command.text)) {
-      const resolved = resolvePlaceholders(command.text, profile);
-      if (resolved.missing.length) {
+    let upload: { name: string; type: string; dataBase64: string } | null = null;
+    const who = person && person.name.toLowerCase() !== "me" ? ` for ${person.name}` : "";
+    if (command.action === "type") {
+      const target = context.elements.find((e) => e.id === command.target);
+      const isFileField = target?.attributes?.type === "file";
+      const resolved = hasPlaceholder(command.text) ? resolvePlaceholders(command.text, profile) : null;
+      if (resolved?.missing.length) {
         missing = {
           status: "needs_user",
-          message: `You have not saved "${resolved.missing.join('", "')}" under My info. Add it there, or put the value in your task.`,
+          message:
+            `The form asks for "${target?.label || command.target}", but "${resolved.missing.join('", "')}" is not saved${who} under My info. ` +
+            `Everything that was saved has been filled in. Add the missing detail there, or fill that field yourself.`,
         };
-      } else {
+      } else if (isFileField !== Boolean(resolved?.file)) {
+        // A file can only go into a file-upload field, and a file-upload field only takes a file.
+        missing = {
+          status: "needs_user",
+          message: isFileField
+            ? `"${target?.label || command.target}" needs a file. Save one${who} under My info → Files, then run the task again.`
+            : `"${resolved?.file?.label}" is a saved file, but "${target?.label || command.target}" is not a file-upload field.`,
+        };
+      } else if (resolved?.file) {
+        const stored = resolved.file.fileId ? await getFile(resolved.file.fileId).catch(() => undefined) : undefined;
+        if (!stored) {
+          missing = { status: "needs_user", message: `The saved file "${resolved.file.label}" could not be read. Add it again under My info → Files.` };
+        } else {
+          upload = { name: stored.name, type: stored.type, dataBase64: toBase64(stored.bytes) };
+          savedDetails = resolved.used;
+        }
+      } else if (resolved) {
         toExecute = { ...command, text: resolved.text };
         savedDetails = resolved.used;
       }
@@ -336,7 +370,9 @@ export async function runStep(
     const veto = missing ?? (await gate(command, context));
     const execution = veto
       ? { ok: true, message: `not executed: ${veto.message}` }
-      : await executeOnPage(tabId, toExecute, savedDetails.length > 0);
+      : upload
+        ? await uploadOnPage(tabId, (command as { target: string }).target, upload)
+        : await executeOnPage(tabId, toExecute, savedDetails.length > 0);
 
     session.history.push(command);
     session.stepIndex += 1;
@@ -348,7 +384,8 @@ export async function runStep(
       skipped: veto !== null,
       ...(veto ? { veto } : {}),
       ...(targetLabel ? { targetLabel } : {}),
-      ...(savedDetails.length ? { savedDetails } : {}),
+      ...(savedDetails.length ? { savedDetails, ...(person ? { person: person.name } : {}) } : {}),
+      ...(upload ? { attached: true } : {}),
       stepIndex: session.stepIndex - 1,
       sessionId: session.sessionId,
       redactions,
@@ -546,7 +583,7 @@ export async function runTask(
       const result = await runStep(tabId, windowId, task, gate);
       const log: StepLog = {
         index: i,
-        summary: describeCommand(result.command, result.targetLabel, result.savedDetails),
+        summary: describeCommand(result.command, result.targetLabel, result.savedDetails, result.attached),
         command: result.command,
         ok: result.execution.ok && !result.skipped,
         message: result.execution.message,
@@ -555,6 +592,7 @@ export async function runTask(
         ...(result.vision ? { vision: result.vision } : {}),
         ...(confirmed ? { confirmed } : {}),
       };
+      if (result.person) state.person = result.person;
       state.steps.push(log);
       await publish(state);
 

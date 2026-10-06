@@ -10,7 +10,7 @@ import { HEALTH_ENDPOINT, type HealthResponse } from "@odpa/shared";
 
 import { CONFIG } from "../shared/config";
 import { looksLikeQuestion, type BackgroundBroadcast, type PopupRequest, type TaskState } from "../shared/messages";
-import { loadProfile, profileFieldNames } from "../shared/profile";
+import { loadPeople, profileFieldNames, setActivePerson } from "../shared/profile";
 
 const DEMO_TASK =
   "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.";
@@ -122,7 +122,11 @@ function render(state: TaskState | null): void {
   }
   $("status-msg").textContent = state.status === "confirm" ? `The agent wants to: ${state.pending ?? "do something"}` : state.message ?? "";
   $("status-meta").textContent =
-    state.mode === "ask" && state.hidden ? `Ask mode: nothing was clicked or typed. ${hiddenSummary(state.hidden)}.` : "";
+    state.mode === "ask" && state.hidden
+      ? `Ask mode: nothing was clicked or typed. ${hiddenSummary(state.hidden)}.`
+      : state.person
+        ? `Using the details saved for ${state.person}. The AI saw only their names, not the values.`
+        : "";
 
   for (const step of state.steps) {
     const li = document.createElement("li");
@@ -217,8 +221,21 @@ async function init(): Promise<void> {
     updateHint();
     taskEl.focus();
   });
-  const saved = profileFieldNames(await loadProfile()).length;
-  $("info").textContent = saved ? `My info (${saved} saved)` : "My info (add yours)";
+  // Whose saved details to fill with, when more than one person is saved.
+  const all = await loadPeople();
+  const select = $<HTMLSelectElement>("person");
+  const showSaved = () => {
+    const person = all.people.find((p) => p.id === select.value) ?? all.people[0];
+    const saved = person ? profileFieldNames(person.fields).length : 0;
+    $("info").textContent = saved ? `My info (${saved} saved)` : "My info (add yours)";
+  };
+  for (const person of all.people) select.add(new Option(person.name, person.id, false, person.id === all.activeId));
+  $("as-row").hidden = all.people.length < 2;
+  select.addEventListener("change", async () => {
+    await setActivePerson(select.value);
+    showSaved();
+  });
+  showSaved();
   $("info").addEventListener("click", async () => {
     await chrome.tabs.create({ url: chrome.runtime.getURL("profile.html") });
   });

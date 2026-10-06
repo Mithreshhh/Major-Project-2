@@ -117,7 +117,7 @@ globalThis.chrome = {
   },
   storage: {
     local: {
-      get: async (key) => (typeof key === "string" && key in localStore ? { [key]: localStore[key] } : {}),
+      get: async (keys) => Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter((k) => k in localStore).map((k) => [k, localStore[k]])),
       set: async (items) => { Object.assign(localStore, structuredClone(items)); },
     },
     session: {
@@ -477,7 +477,8 @@ test("saved details: the placeholder becomes the real value on-device and the va
     const typed = calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type");
     assert.equal(typed.command.text, "aarav.sharma@example.com");
     assert.equal(typed.sensitive, true);
-    assert.equal(state.steps[0].summary, 'Type your saved Email into "Email"');
+    assert.equal(state.steps[0].summary, 'Type the saved Email into "Email"');
+    assert.equal(state.person, "Me", "a profile saved before people existed is read as a person called Me");
 
     // The server received names only (and only for details that have a value).
     assert.deepEqual(calls.fetches[0].body.profileFields, [{ key: "email", label: "Email" }, { key: "full_name", label: "Full name" }]);
@@ -490,9 +491,40 @@ test("saved details: the placeholder becomes the real value on-device and the va
     serverScript.push({ action: "type", target: "el_0", text: "{{passport_number}}" });
     const missing = await globalThis.odpa.runTask(41, 1, "Fill this form with my saved details");
     assert.equal(missing.status, "needs_user");
-    assert.match(missing.message, /not saved "passport_number" under My info/);
+    assert.match(missing.message, /^The form asks for "Email", but "passport_number" is not saved under My info/);
     assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0);
   } finally {
     delete localStore.profile;
+  }
+});
+
+test("several people: the active person is used unless the task names another saved person", async () => {
+  localStore.people = [
+    { id: "p1", name: "Me", fields: [{ key: "email", label: "Email", value: "me@example.com" }] },
+    { id: "p2", name: "Father", fields: [{ key: "email", label: "Email", value: "father@example.com" }] },
+  ];
+  localStore.activePersonId = "p1";
+  const typedText = () => calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type").command.text;
+  try {
+    serverScript.push({ action: "type", target: "el_0", text: "{{email}}" }, { action: "done", summary: "Filled." });
+    const mine = await globalThis.odpa.runTask(42, 1, "Fill this form with my saved details");
+    assert.equal(typedText(), "me@example.com");
+    assert.equal(mine.person, "Me");
+
+    reset();
+    serverScript.push({ action: "type", target: "el_0", text: "{{email}}" }, { action: "done", summary: "Filled." });
+    const fathers = await globalThis.odpa.runTask(43, 1, "Fill this form with my father's details");
+    assert.equal(typedText(), "father@example.com");
+    assert.equal(fathers.person, "Father");
+
+    // Switching the active person (the popup's "as" selector) changes who is used.
+    reset();
+    localStore.activePersonId = "p2";
+    serverScript.push({ action: "type", target: "el_0", text: "{{email}}" }, { action: "done", summary: "Filled." });
+    await globalThis.odpa.runTask(44, 1, "Fill this form with the saved details");
+    assert.equal(typedText(), "father@example.com");
+  } finally {
+    delete localStore.people;
+    delete localStore.activePersonId;
   }
 });

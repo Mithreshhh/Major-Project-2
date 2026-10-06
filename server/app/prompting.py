@@ -60,7 +60,7 @@ Rules:
 6. Never type into password fields unless the task gives the password.
 7. If the task only asks for information (analyze, summarize, explain, describe, check, or a question), do not click or type anything: reply with "done" and put the answer in "summary".
 8. Only type text that appears in the task, or a placeholder from "Saved details" such as "{{email}}". Never invent names, usernames, emails or passwords; use "ask_user" instead.
-9. "Saved details" are the user's own information. Their values are hidden from you. To type one, set "text" to exactly its placeholder, for example {"action": "type", "target": "el_4", "text": "{{email}}"}. Match each form field to the saved detail with the closest meaning, fill one field per step, and skip fields that have no matching saved detail.
+9. "Saved details" are the user's own information. Their values are hidden from you. To type one, set "text" to exactly its placeholder, for example {"action": "type", "target": "el_4", "text": "{{email}}"}. Match each form field to the saved detail with the closest meaning, fill one field per step, and skip fields that have no matching saved detail. A file-upload field (type=file) takes only a saved detail marked "(file to upload)", used the same way: {"action": "type", "target": "el_9", "text": "{{resume}}"}. Never use a file placeholder in an ordinary text field.
 10. Do not log in, sign up, pay, buy, delete or send anything unless the task explicitly asks for it.
 11. Keep "reasoning" under 20 words."""
 
@@ -213,7 +213,11 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
         ]
         if empty:
             lines.append("Empty fields still to fill, in order (fill the first one that has a matching saved detail):")
-            lines.extend(f'  {e.id} "{_trunc(e.label, _LABEL_MAX)}"' for e in empty[:12])
+            lines.extend(
+                f'  {e.id} "{_trunc(e.label, _LABEL_MAX)}"'
+                + (" (file upload: needs a saved file)" if (e.attributes or {}).get("type") == "file" else "")
+                for e in empty[:12]
+            )
         else:
             lines.append('Every field is filled. If the task asks to submit, click the submit button; otherwise reply "done".')
 
