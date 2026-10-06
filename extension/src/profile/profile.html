@@ -6,33 +6,39 @@
   <title>My info - On-Device Perception Agent</title>
   <style>
     :root {
-      --bg: #f5f7fb; --card: #ffffff; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0; --soft: #f8fafc;
-      --brand: #4f46e5; --brand2: #0891b2; --brand-soft: #eef2ff; --ok: #15803d; --bad: #dc2626;
+      --bg: #f4f6fb; --bg2: #eaeef7; --card: rgba(255, 255, 255, .78); --fg: #0b1020; --muted: #5d6880; --line: #e1e6f0; --soft: #f6f8fc;
+      --brand: #5b4bff; --brand2: #06b6d4; --brand-soft: #efedff; --ok: #047857; --bad: #e11d48;
       color-scheme: light dark;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #0b1120; --card: #111827; --fg: #e2e8f0; --muted: #94a3b8; --line: #1e293b; --soft: #0f172a;
-              --brand: #818cf8; --brand2: #22d3ee; --brand-soft: #1e1b4b; --ok: #4ade80; --bad: #f87171; }
+      :root { --bg: #070a12; --bg2: #0b1020; --card: rgba(15, 21, 38, .78); --fg: #e8ecf6; --muted: #8f9bb5; --line: #1c2540; --soft: #0b1120;
+              --brand: #8b7dff; --brand2: #22d3ee; --brand-soft: #1b1846; --ok: #34d399; --bad: #fb7185; }
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+    html { background: var(--bg2); }
+    body { margin: 0; color: var(--fg); font: 14px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; min-height: 100vh;
+           background: radial-gradient(900px 500px at 10% -10%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 60%),
+                       radial-gradient(800px 480px at 96% 0%, color-mix(in srgb, var(--brand2) 18%, transparent), transparent 60%),
+                       linear-gradient(var(--bg), var(--bg2));
+           background-attachment: fixed; }
     main { max-width: 880px; margin: 0 auto; padding: 28px 20px 110px; }
     header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-    .mark { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: #fff; flex: none;
-            background: linear-gradient(135deg, var(--brand), var(--brand2)); }
+    .mark { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff; flex: none;
+            background: linear-gradient(135deg, var(--brand), var(--brand2)); box-shadow: 0 8px 24px color-mix(in srgb, var(--brand) 45%, transparent); }
     .mark svg { width: 21px; height: 21px; }
-    h1 { font-size: 22px; margin: 0; }
+    h1 { font-size: 26px; margin: 0; letter-spacing: -.025em; }
     h2 { font-size: 15px; margin: 0 0 4px; }
     .lead { color: var(--muted); margin: 0 0 16px; max-width: 660px; }
     .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
-    .privacy { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent); border-radius: 12px;
+    .privacy { background: color-mix(in srgb, var(--brand-soft) 80%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent); border-radius: 14px;
                padding: 12px 14px; margin-bottom: 18px; font-size: 13.5px; }
     .privacy b { color: var(--brand); }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 10px 40px rgba(11, 16, 32, .07); backdrop-filter: blur(14px); }
 
     .people { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
     .chip { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 99px; padding: 6px 14px; cursor: pointer; font: inherit; font-weight: 600; }
-    .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .chip.on { background: linear-gradient(135deg, var(--brand), var(--brand2)); border-color: transparent; color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--brand) 35%, transparent); }
     .chip .star { margin-left: 6px; font-size: 11px; opacity: .85; font-weight: 500; }
     .chip.add { border-style: dashed; color: var(--brand); font-weight: 500; }
     .person { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -56,7 +62,7 @@
     .add input[type=text] { flex: 1; min-width: 200px; }
     .add input[type=file] { flex: 1; min-width: 200px; font: inherit; color: var(--muted); }
     button { font: inherit; font-weight: 600; padding: 9px 15px; border-radius: 9px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); cursor: pointer; }
-    button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    button.primary { border-color: transparent; color: #fff; background: linear-gradient(135deg, #5b4bff, #4338ca); box-shadow: 0 8px 20px color-mix(in srgb, #5b4bff 38%, transparent); }
     button.link { border: none; background: none; color: var(--brand); padding: 0; font-weight: 500; }
     button.link.danger { color: var(--bad); }
 
@@ -68,7 +74,7 @@
     .files .meta span { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
     .empty { color: var(--muted); font-size: 13px; }
 
-    .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); }
+    .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); backdrop-filter: blur(16px); }
     .bar .inner { max-width: 880px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
     #saved { color: var(--ok); font-weight: 600; font-size: 13px; }
     #saved.bad { color: var(--bad); }
