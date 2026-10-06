@@ -35,3 +35,7 @@ perception/ui-model/runs/
 perception/ui-model/weights/
 perception/ui-model/*.pt
 perception/ui-model/train.log
+
+# Ultralytics drops a checkpoint here during its AMP self-check; not part of the project
+/weights/
+perception/ui-model/gen.log

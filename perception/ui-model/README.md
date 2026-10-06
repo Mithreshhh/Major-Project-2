@@ -7,32 +7,36 @@ compares its boxes with the DOM on every step, so its accuracy is measured live,
 
 ## Results
 
-The demo page is **never used in training**. It was redesigned once, so there are two held-out
-tests, both at the extension's confidence threshold of 0.5.
+The test site is **never used in training**. All numbers are at the extension's confidence
+threshold of 0.5, measured with the extension's own code (`evaluate.ts`).
 
 | Held-out test | Recall (real elements found) | Precision (boxes that are real) |
 | --- | --- | --- |
-| Original demo page (plain styling), 21 screenshots, 199 elements | **97.5%** | **97.5%** |
-| Redesigned demo page (glass nav, gradient buttons, pill badges), 21 screenshots, 223 elements | **76.2%** | **63.9%** |
-| 200 held-out generated pages | 98.2% | 99.2% |
+| Original demo page (plain styling), 21 screenshots, 199 elements; round-2 model | **97.5%** | **97.5%** |
+| Whole test site today (contact, application, store, pricing, features, login), 51 screenshots, 531 elements; current model | **61.2%** | **55.0%** |
+| 200 held-out generated pages; current model | 97.2% | 98.7% |
 
-On the redesigned page, by class: inputs 96.9% recall / 94.9% precision, buttons 100% / 21.2%,
-links 54.1% / 71.1%. Full tables at every threshold: [`RESULTS.md`](RESULTS.md) (current model,
-redesigned page). In real Chrome it finds 10 of 12 controls on the contact page.
+On the whole site, by class: inputs 96.8% recall / 89.8% precision, buttons 71.7% / 48.3%,
+links 41.8% / 39.4%. Full tables at every threshold: [`RESULTS.md`](RESULTS.md). The current
+model is still right on the saved screenshots of the original page (`npm test`).
 
-What the three training rounds taught us:
+What four training rounds taught us:
 
 | Round | Change to the data | Effect |
 | --- | --- | --- |
 | 1 | Generated pages only | Original page: 97% recall but 55% precision. Short grey labels were called "links". |
 | 2 | Added look-alikes that are not controls (label/value lists, log panels, code boxes) | Original page: precision 55% → 97.5%. |
-| 3 | Added modern styling (tinted inputs, gradient buttons, muted nav links, dark console panels) after the page redesign | Redesigned page: recall 59.6% → 76.2%, precision 45.2% → 63.9%. Still perfect on the original-page test screenshots. |
+| 3 | Added modern styling (tinted inputs, gradient buttons, muted nav links, console panels) after the page was redesigned | Redesigned contact page: recall 59.6% → 76.2%, precision 45.2% → 63.9%. |
+| 4 | Added logo links, pill badges, plain "Log in" links, one-row footers, coloured headline words | Whole site (Ultralytics validation at 0.5): precision 48% → 63%, recall 66% → 70%. |
 
-What is still wrong on the redesigned page: pill-shaped badges and the logo are called buttons,
-and muted navigation and footer links are missed. That is the honest picture: the detector is
-strong on styles close to its training pages and drops on unfamiliar ones, which is why the
-extension scores it against the DOM on every step instead of trusting it. Real-site training
-data is the next step.
+The honest picture: generated pages are easy (97%+), form inputs carry over to new designs
+(97%), and links and buttons on unfamiliar layouts are the weak spot. Every redesign of the test
+site moved the numbers, which is exactly why the extension scores the detector against the DOM
+on every step instead of trusting it. Training on screenshots of real sites, labelled from their
+DOM the same way, is the next step.
+
+`compare.py` compares checkpoints on the held-out pages; `generate.mjs --demo-only` re-shoots only
+those pages after the test site changes.
 
 ## How it was built
 

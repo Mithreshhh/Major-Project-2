@@ -1,190 +1,190 @@
 {
   "demo": {
-    "frames": 21,
-    "medianMs": 1096,
+    "frames": 51,
+    "medianMs": 582,
     "scores": [
       {
         "threshold": 0.25,
         "all": {
-          "recall": 0.7982062780269058,
-          "precision": 0.572347266881029,
-          "truth": 223,
-          "found": 178,
-          "detections": 311,
-          "correct": 178
+          "recall": 0.6177024482109228,
+          "precision": 0.5149136577708007,
+          "truth": 531,
+          "found": 328,
+          "detections": 637,
+          "correct": 328
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.17647058823529413,
-            "truth": 18,
-            "found": 18,
-            "detections": 102,
-            "correct": 18
-          },
-          {
-            "recall": 0.9791666666666666,
-            "precision": 0.9306930693069307,
-            "truth": 96,
-            "found": 94,
+            "recall": 0.7666666666666667,
+            "precision": 0.45544554455445546,
+            "truth": 60,
+            "found": 46,
             "detections": 101,
-            "correct": 94
+            "correct": 46
           },
           {
-            "recall": 0.6055045871559633,
-            "precision": 0.6111111111111112,
-            "truth": 109,
-            "found": 66,
-            "detections": 108,
-            "correct": 66
+            "recall": 0.967741935483871,
+            "precision": 0.8108108108108109,
+            "truth": 155,
+            "found": 150,
+            "detections": 185,
+            "correct": 150
+          },
+          {
+            "recall": 0.4177215189873418,
+            "precision": 0.37606837606837606,
+            "truth": 316,
+            "found": 132,
+            "detections": 351,
+            "correct": 132
           }
         ]
       },
       {
         "threshold": 0.35,
         "all": {
-          "recall": 0.7757847533632287,
-          "precision": 0.5986159169550173,
-          "truth": 223,
-          "found": 173,
-          "detections": 289,
-          "correct": 173
+          "recall": 0.615819209039548,
+          "precision": 0.5325732899022801,
+          "truth": 531,
+          "found": 327,
+          "detections": 614,
+          "correct": 327
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.18556701030927836,
-            "truth": 18,
-            "found": 18,
-            "detections": 97,
-            "correct": 18
+            "recall": 0.75,
+            "precision": 0.45918367346938777,
+            "truth": 60,
+            "found": 45,
+            "detections": 98,
+            "correct": 45
           },
           {
-            "recall": 0.9791666666666666,
-            "precision": 0.9306930693069307,
-            "truth": 96,
-            "found": 94,
-            "detections": 101,
-            "correct": 94
+            "recall": 0.967741935483871,
+            "precision": 0.8620689655172413,
+            "truth": 155,
+            "found": 150,
+            "detections": 174,
+            "correct": 150
           },
           {
-            "recall": 0.5596330275229358,
-            "precision": 0.6703296703296703,
-            "truth": 109,
-            "found": 61,
-            "detections": 91,
-            "correct": 61
+            "recall": 0.4177215189873418,
+            "precision": 0.38596491228070173,
+            "truth": 316,
+            "found": 132,
+            "detections": 342,
+            "correct": 132
           }
         ]
       },
       {
         "threshold": 0.5,
         "all": {
-          "recall": 0.7623318385650224,
-          "precision": 0.6390977443609023,
-          "truth": 223,
-          "found": 170,
-          "detections": 266,
-          "correct": 170
+          "recall": 0.6120527306967984,
+          "precision": 0.5499153976311336,
+          "truth": 531,
+          "found": 325,
+          "detections": 591,
+          "correct": 325
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.21176470588235294,
-            "truth": 18,
-            "found": 18,
-            "detections": 85,
-            "correct": 18
+            "recall": 0.7166666666666667,
+            "precision": 0.48314606741573035,
+            "truth": 60,
+            "found": 43,
+            "detections": 89,
+            "correct": 43
           },
           {
-            "recall": 0.96875,
-            "precision": 0.9489795918367347,
-            "truth": 96,
-            "found": 93,
-            "detections": 98,
-            "correct": 93
+            "recall": 0.967741935483871,
+            "precision": 0.8982035928143712,
+            "truth": 155,
+            "found": 150,
+            "detections": 167,
+            "correct": 150
           },
           {
-            "recall": 0.5412844036697247,
-            "precision": 0.7108433734939759,
-            "truth": 109,
-            "found": 59,
-            "detections": 83,
-            "correct": 59
+            "recall": 0.4177215189873418,
+            "precision": 0.3940298507462687,
+            "truth": 316,
+            "found": 132,
+            "detections": 335,
+            "correct": 132
           }
         ]
       },
       {
         "threshold": 0.6,
         "all": {
-          "recall": 0.7488789237668162,
-          "precision": 0.6653386454183267,
-          "truth": 223,
-          "found": 167,
-          "detections": 251,
-          "correct": 167
+          "recall": 0.608286252354049,
+          "precision": 0.5676625659050967,
+          "truth": 531,
+          "found": 323,
+          "detections": 569,
+          "correct": 323
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.2222222222222222,
-            "truth": 18,
-            "found": 18,
-            "detections": 81,
-            "correct": 18
+            "recall": 0.7166666666666667,
+            "precision": 0.5180722891566265,
+            "truth": 60,
+            "found": 43,
+            "detections": 83,
+            "correct": 43
           },
           {
-            "recall": 0.96875,
-            "precision": 0.9587628865979382,
-            "truth": 96,
-            "found": 93,
-            "detections": 97,
-            "correct": 93
+            "recall": 0.9548387096774194,
+            "precision": 0.9367088607594937,
+            "truth": 155,
+            "found": 148,
+            "detections": 158,
+            "correct": 148
           },
           {
-            "recall": 0.5137614678899083,
-            "precision": 0.7671232876712328,
-            "truth": 109,
-            "found": 56,
-            "detections": 73,
-            "correct": 56
+            "recall": 0.4177215189873418,
+            "precision": 0.4024390243902439,
+            "truth": 316,
+            "found": 132,
+            "detections": 328,
+            "correct": 132
           }
         ]
       },
       {
         "threshold": 0.7,
         "all": {
-          "recall": 0.7174887892376681,
-          "precision": 0.7407407407407407,
-          "truth": 223,
-          "found": 160,
-          "detections": 216,
-          "correct": 160
+          "recall": 0.60075329566855,
+          "precision": 0.5706618962432916,
+          "truth": 531,
+          "found": 319,
+          "detections": 559,
+          "correct": 319
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.2647058823529412,
-            "truth": 18,
-            "found": 18,
-            "detections": 68,
-            "correct": 18
+            "recall": 0.6833333333333333,
+            "precision": 0.5125,
+            "truth": 60,
+            "found": 41,
+            "detections": 80,
+            "correct": 41
           },
           {
-            "recall": 0.9375,
-            "precision": 0.9782608695652174,
-            "truth": 96,
-            "found": 90,
-            "detections": 92,
-            "correct": 90
+            "recall": 0.9548387096774194,
+            "precision": 0.9426751592356688,
+            "truth": 155,
+            "found": 148,
+            "detections": 157,
+            "correct": 148
           },
           {
-            "recall": 0.47706422018348627,
-            "precision": 0.9285714285714286,
-            "truth": 109,
-            "found": 52,
-            "detections": 56,
-            "correct": 52
+            "recall": 0.41139240506329117,
+            "precision": 0.40372670807453415,
+            "truth": 316,
+            "found": 130,
+            "detections": 322,
+            "correct": 130
           }
         ]
       }
@@ -192,190 +192,190 @@
   },
   "val": {
     "frames": 200,
-    "medianMs": 1669,
+    "medianMs": 583,
     "scores": [
       {
         "threshold": 0.25,
         "all": {
-          "recall": 0.9911058404980729,
-          "precision": 0.9774853801169591,
-          "truth": 3373,
-          "found": 3343,
-          "detections": 3420,
-          "correct": 3343
+          "recall": 0.9865161492630918,
+          "precision": 0.9609040928527794,
+          "truth": 3189,
+          "found": 3146,
+          "detections": 3274,
+          "correct": 3146
         },
         "perClass": [
           {
             "recall": 1,
-            "precision": 0.9947848761408083,
-            "truth": 763,
-            "found": 763,
-            "detections": 767,
-            "correct": 763
+            "precision": 0.9939024390243902,
+            "truth": 652,
+            "found": 652,
+            "detections": 656,
+            "correct": 652
           },
           {
-            "recall": 0.9900990099009901,
-            "precision": 0.9787928221859706,
-            "truth": 606,
-            "found": 600,
-            "detections": 613,
-            "correct": 600
+            "recall": 0.9872611464968153,
+            "precision": 0.96875,
+            "truth": 471,
+            "found": 465,
+            "detections": 480,
+            "correct": 465
           },
           {
-            "recall": 0.9880239520958084,
-            "precision": 0.9705882352941176,
-            "truth": 2004,
-            "found": 1980,
-            "detections": 2040,
-            "correct": 1980
+            "recall": 0.9820909970958374,
+            "precision": 0.9490177736202058,
+            "truth": 2066,
+            "found": 2029,
+            "detections": 2138,
+            "correct": 2029
           }
         ]
       },
       {
         "threshold": 0.35,
         "all": {
-          "recall": 0.9887340646308924,
-          "precision": 0.9849379799173066,
-          "truth": 3373,
-          "found": 3335,
-          "detections": 3386,
-          "correct": 3335
+          "recall": 0.9830667920978363,
+          "precision": 0.9702878365831012,
+          "truth": 3189,
+          "found": 3135,
+          "detections": 3231,
+          "correct": 3135
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.9973856209150327,
-            "truth": 763,
-            "found": 763,
-            "detections": 765,
-            "correct": 763
+            "recall": 0.9984662576687117,
+            "precision": 0.9938931297709923,
+            "truth": 652,
+            "found": 651,
+            "detections": 655,
+            "correct": 651
           },
           {
-            "recall": 0.9867986798679867,
-            "precision": 0.9819376026272578,
-            "truth": 606,
-            "found": 598,
-            "detections": 609,
-            "correct": 598
+            "recall": 0.9808917197452229,
+            "precision": 0.9767441860465116,
+            "truth": 471,
+            "found": 462,
+            "detections": 473,
+            "correct": 462
           },
           {
-            "recall": 0.9850299401197605,
-            "precision": 0.9811133200795229,
-            "truth": 2004,
-            "found": 1974,
-            "detections": 2012,
-            "correct": 1974
+            "recall": 0.978702807357212,
+            "precision": 0.9614835948644793,
+            "truth": 2066,
+            "found": 2022,
+            "detections": 2103,
+            "correct": 2022
           }
         ]
       },
       {
         "threshold": 0.5,
         "all": {
-          "recall": 0.9816187370293508,
-          "precision": 0.9916142557651991,
-          "truth": 3373,
-          "found": 3311,
-          "detections": 3339,
-          "correct": 3311
+          "recall": 0.9724051426779555,
+          "precision": 0.986950986632718,
+          "truth": 3189,
+          "found": 3101,
+          "detections": 3142,
+          "correct": 3101
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.9986910994764397,
-            "truth": 763,
-            "found": 763,
-            "detections": 764,
-            "correct": 763
+            "recall": 0.9969325153374233,
+            "precision": 0.9938837920489296,
+            "truth": 652,
+            "found": 650,
+            "detections": 654,
+            "correct": 650
           },
           {
-            "recall": 0.976897689768977,
-            "precision": 0.988313856427379,
-            "truth": 606,
-            "found": 592,
-            "detections": 599,
-            "correct": 592
+            "recall": 0.9681528662420382,
+            "precision": 0.991304347826087,
+            "truth": 471,
+            "found": 456,
+            "detections": 460,
+            "correct": 456
           },
           {
-            "recall": 0.9760479041916168,
-            "precision": 0.9898785425101214,
-            "truth": 2004,
-            "found": 1956,
-            "detections": 1976,
-            "correct": 1956
+            "recall": 0.9656340755082284,
+            "precision": 0.9837278106508875,
+            "truth": 2066,
+            "found": 1995,
+            "detections": 2028,
+            "correct": 1995
           }
         ]
       },
       {
         "threshold": 0.6,
         "all": {
-          "recall": 0.9703528016602431,
-          "precision": 0.994228432563791,
-          "truth": 3373,
-          "found": 3273,
-          "detections": 3292,
-          "correct": 3273
+          "recall": 0.9636249608027595,
+          "precision": 0.9925710594315246,
+          "truth": 3189,
+          "found": 3073,
+          "detections": 3096,
+          "correct": 3073
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.9986910994764397,
-            "truth": 763,
-            "found": 763,
-            "detections": 764,
-            "correct": 763
+            "recall": 0.9969325153374233,
+            "precision": 0.9969325153374233,
+            "truth": 652,
+            "found": 650,
+            "detections": 652,
+            "correct": 650
           },
           {
-            "recall": 0.971947194719472,
-            "precision": 0.9915824915824916,
-            "truth": 606,
-            "found": 589,
-            "detections": 594,
-            "correct": 589
+            "recall": 0.9617834394904459,
+            "precision": 0.993421052631579,
+            "truth": 471,
+            "found": 453,
+            "detections": 456,
+            "correct": 453
           },
           {
-            "recall": 0.9585828343313373,
-            "precision": 0.9932781799379524,
-            "truth": 2004,
-            "found": 1921,
-            "detections": 1934,
-            "correct": 1921
+            "recall": 0.9535333978702807,
+            "precision": 0.9909456740442656,
+            "truth": 2066,
+            "found": 1970,
+            "detections": 1988,
+            "correct": 1970
           }
         ]
       },
       {
         "threshold": 0.7,
         "all": {
-          "recall": 0.950489178772606,
-          "precision": 0.9959614787200994,
-          "truth": 3373,
-          "found": 3206,
-          "detections": 3219,
-          "correct": 3206
+          "recall": 0.9410473502665412,
+          "precision": 0.9960172585462994,
+          "truth": 3189,
+          "found": 3001,
+          "detections": 3013,
+          "correct": 3001
         },
         "perClass": [
           {
-            "recall": 1,
-            "precision": 0.9986910994764397,
-            "truth": 763,
-            "found": 763,
-            "detections": 764,
-            "correct": 763
+            "recall": 0.9969325153374233,
+            "precision": 0.9969325153374233,
+            "truth": 652,
+            "found": 650,
+            "detections": 652,
+            "correct": 650
           },
           {
-            "recall": 0.9488448844884488,
-            "precision": 0.9930915371329879,
-            "truth": 606,
-            "found": 575,
-            "detections": 579,
-            "correct": 575
+            "recall": 0.9384288747346072,
+            "precision": 0.9954954954954955,
+            "truth": 471,
+            "found": 442,
+            "detections": 444,
+            "correct": 442
           },
           {
-            "recall": 0.9321357285429142,
-            "precision": 0.9957356076759062,
-            "truth": 2004,
-            "found": 1868,
-            "detections": 1876,
-            "correct": 1868
+            "recall": 0.9240077444336883,
+            "precision": 0.9958268127282212,
+            "truth": 2066,
+            "found": 1909,
+            "detections": 1917,
+            "correct": 1909
           }
         ]
       }

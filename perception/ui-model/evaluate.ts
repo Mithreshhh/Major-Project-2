@@ -106,7 +106,7 @@ async function main() {
     "correct when it overlaps a real element of the same class with IoU ≥ 0.5. Recall = real elements",
     "found; precision = detections that are real elements. The extension uses confidence ≥ 0.5.",
     "",
-    table("demo", "Demo page (held out: never used in training)"),
+    table("demo", "Test site: contact, application, store, pricing, features and login pages (held out: never used in training)"),
     table("val", "Synthetic validation pages (held out)"),
   ].join("\n");
   await writeFile(path.join(here, "RESULTS.md"), md);

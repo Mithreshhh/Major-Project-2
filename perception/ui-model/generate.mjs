@@ -8,6 +8,7 @@
 // the "demo" split, labelled from its DOM, and used as a held-out test.
 //
 //   node generate.mjs [trainCount=700] [valCount=100]
+//   node generate.mjs --demo-only          re-shoot only the held-out test pages
 
 import { mkdir, rm, writeFile, copyFile } from "node:fs/promises";
 import path from "node:path";
@@ -148,8 +149,16 @@ function makePage(seed, images) {
     ? `<img src="${pick(images)}" style="width:${w};height:${h}px;object-fit:cover;border-radius:${int(0, 12)}px;display:block">`
     : `<div style="width:${w};height:${h}px;border-radius:${int(0, 12)}px;background:linear-gradient(${int(0, 360)}deg,` +
       `${hsl(int(0, 359), 60, 70)},${hsl(int(0, 359), 60, 45)})"></div>`;
+  // Coloured or gradient words inside a heading are decoration, not links.
+  const fancy = (t) => chance(0.5)
+    ? `<span style="background:linear-gradient(90deg,${accent},${accent2});-webkit-background-clip:text;background-clip:text;color:transparent">${t}</span>`
+    : `<span style="color:${accent}">${t}</span>`;
   const heading = (lvl) => `<h${lvl} style="margin:${int(6, 16)}px 0;font-size:${size + (4 - lvl) * int(3, 7)}px">` +
-    `${cap(words(2, 6))}</h${lvl}>`;
+    `${cap(words(2, 4))}${modern && lvl <= 2 && chance(0.5) ? " " + fancy(words(1, 3)) : " " + words(0, 2)}</h${lvl}>`;
+  // A pill badge next to a name or title ("Pro plan"): rounded and coloured like a button, but
+  // small, bold and not interactive.
+  const badge = () => `<span style="display:inline-block;font-size:${int(11, 13)}px;font-weight:700;color:${accent};` +
+    `background:${hsl(hue, 70, dark ? 22 : 93)};border-radius:99px;padding:${int(2, 4)}px ${int(9, 12)}px;margin-left:8px">${cap(words(1, 2))}</span>`;
   const card = (inner) => `<div style="background:${surface};border:${chance(0.7) ? `1px solid ${border}` : "none"};` +
     `border-radius:${radius === 999 ? 16 : radius}px;padding:${int(12, 24)}px;${chance(0.4) ? "box-shadow:0 2px 10px rgba(0,0,0,.12);" : ""}">${inner}</div>`;
 
@@ -159,12 +168,19 @@ function makePage(seed, images) {
     const items = Array.from({ length: int(3, 7) }, () => link(cap(pick(WORDS))))
       .map((a) => plainNav ? a.replace(`color:${linkColor};text-decoration:${underline}`, `color:${navColor};text-decoration:none;font-weight:500${modern ? `;padding:${int(5, 8)}px ${int(6, 12)}px` : ""}`) : a)
       .join(`<span style="width:${int(10, 28)}px;display:inline-block"></span>`);
-    const right = [chance(0.5) ? btn(cap(words(1, 2)), "solid") : "", chance(0.4) ? btn("Log in", pick(["ghost", "outline"])) : "",
+    const name = `${cap(pick(WORDS))}${pick(["", "ly", "io", " Hub", " Co"])}`;
+    const mark = `<span style="display:inline-grid;place-items:center;width:${int(26, 34)}px;height:${int(26, 34)}px;border-radius:${pick([6, 8, 10, 99])}px;` +
+      `background:linear-gradient(135deg,${accent},${accent2});color:#fff;font-weight:800;font-size:${size}px;margin-right:${int(6, 10)}px;vertical-align:middle">${name[0]}</span>`;
+    // Most sites link their logo home. The mark is square and coloured, but the whole thing is a link.
+    const brand = chance(0.6)
+      ? `<a href="#" data-cls="link" style="display:inline-flex;align-items:center;font-weight:700;font-size:${size + 4}px;color:${text};text-decoration:none;margin-right:${int(10, 40)}px">${chance(0.7) ? mark : ""}${name}</a>`
+      : `<strong style="font-size:${size + 4}px;margin-right:${int(10, 40)}px">${name}</strong>`;
+    const plainLogin = `<a href="#" data-cls="link" style="color:${chance(0.6) ? accent : navColor};text-decoration:none;font-weight:500">${pick(["Log in", "Sign in", "Account", "Help"])}</a>`;
+    const right = [chance(0.3) ? plainLogin : "", chance(0.5) ? btn(cap(words(1, 2)), "solid") : "", chance(0.3) ? btn("Log in", pick(["ghost", "outline"])) : "",
       chance(0.4) ? iconBtn() : "", chance(0.3) ? input("Search") .replace(/width:[^;]+;/, "width:180px;") : ""].join("");
     return `<header style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:${int(8, 18)}px ${int(12, 40)}px;` +
-      `background:${chance(0.5) ? surface : bg};border-bottom:1px solid ${border}"><strong style="font-size:${size + 4}px;` +
-      `margin-right:${int(10, 40)}px">${cap(pick(WORDS))}${pick(["", "ly", "io", " Hub", " Co"])}</strong><nav>${items}</nav>` +
-      `<div style="margin-left:auto;display:flex;align-items:center;gap:6px">${right}</div></header>`;
+      `background:${chance(0.5) ? surface : bg};border-bottom:1px solid ${border}">${brand}<nav>${items}</nav>` +
+      `<div style="margin-left:auto;display:flex;align-items:center;gap:${int(6, 16)}px">${right}</div></header>`;
   };
   const hero = () => `<section style="padding:${int(20, 50)}px 0;display:flex;gap:30px;align-items:center;flex-wrap:wrap">` +
     `<div style="flex:1;min-width:280px">${heading(1)}${para()}<div>${btn(cap(words(1, 3)), "solid")}${chance(0.6) ? btn(cap(words(1, 2)), pick(["outline", "ghost"])) : ""}</div></div>` +
@@ -195,14 +211,18 @@ function makePage(seed, images) {
   const article = () => `<article>${heading(2)}${para()}${para()}${chance(0.5) ? para() : ""}</article>`;
   const sidebar = () => card(`${heading(4)}` + Array.from({ length: int(3, 8) }, () => `<div style="margin:6px 0">${link(cap(words(1, 3)))}</div>`).join(""));
   const pager = () => `<div style="margin:14px 0">${btn("‹ Prev", "ghost")}${Array.from({ length: int(3, 6) }, (_, i) => link(String(i + 1))).join(" &nbsp; ")}${btn("Next ›", "ghost")}</div>`;
-  const footer = () => `<footer style="margin-top:24px;padding:${int(14, 30)}px 0;border-top:1px solid ${border};display:flex;gap:40px;flex-wrap:wrap;color:${muted}">` +
+  const footerRow = () => `<footer style="margin-top:24px;padding:${int(14, 24)}px 0;border-top:1px solid ${border};display:flex;gap:${int(14, 26)}px;flex-wrap:wrap;` +
+    `align-items:center;color:${muted};font-size:${size - 2}px"><span style="margin-right:auto">© 2026 ${cap(pick(WORDS))} ${pick(["Labs", "Inc", "Ltd"])}</span>` +
+    Array.from({ length: int(2, 5) }, () => `<a href="#" data-cls="link" style="color:${chance(0.6) ? accent : muted};text-decoration:none">${cap(words(1, 2))}</a>`).join("") + `</footer>`;
+  const footer = () => chance(0.45) ? footerRow() : `<footer style="margin-top:24px;padding:${int(14, 30)}px 0;border-top:1px solid ${border};display:flex;gap:40px;flex-wrap:wrap;color:${muted}">` +
     Array.from({ length: int(2, 4) }, () => `<div><strong style="color:${text}">${cap(pick(WORDS))}</strong>` +
       Array.from({ length: int(2, 5) }, () => `<div style="margin:4px 0">${link(cap(words(1, 2)))}</div>`).join("") + `</div>`).join("") + `</footer>`;
   const banner = () => `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;margin:10px 0;border-radius:${radius === 999 ? 12 : radius}px;` +
     `background:${hsl(int(0, 359), 70, dark ? 20 : 92)}">${sentence(5, 10)} ${link(cap(words(1, 2)))}<span style="margin-left:auto">${btn(cap(words(1, 1)), "solid")}${chance(0.6) ? iconBtn() : ""}</span></div>`;
 
   // Hard negatives: things that look a bit like links or inputs but are not interactive.
-  const details = () => card(`${chance(0.6) ? image(`${int(120, 260)}px`, int(120, 260)) : ""}${heading(3)}` +
+  const details = () => card(`${chance(0.6) ? image(`${int(120, 260)}px`, int(120, 260)) : ""}` +
+    `<div style="display:flex;align-items:center;justify-content:${pick(["space-between", "flex-start"])}"><strong style="font-size:${size + 2}px">${cap(words(1, 2))}</strong>${chance(0.7) ? badge() : ""}</div>` +
     `<dl style="display:grid;grid-template-columns:auto 1fr;gap:${int(2, 8)}px ${int(8, 20)}px;margin:8px 0;font-size:${size - 1}px">` +
     Array.from({ length: int(3, 7) }, () => `<dt style="color:${muted}">${cap(pick(WORDS))}</dt>` +
       `<dd style="margin:0;font-variant-numeric:tabular-nums">${chance(0.5) ? String(int(1000, 99999)) + " " + String(int(1000, 9999)) : cap(words(1, 3))}</dd>`).join("") +
@@ -227,6 +247,8 @@ function makePage(seed, images) {
     `<ul style="margin:0;padding:8px 14px 12px;list-style:none;font-family:ui-monospace,Consolas,monospace;font-size:${int(11, 13)}px">` +
     Array.from({ length: int(2, 7) }, () => `<li style="color:#9fb0d4;padding:2px 0;border-bottom:1px dashed #18203a">${int(1, 12)}:${int(10, 59)}:${int(10, 59)} PM  ` +
       `${pick(["click", "input", "submit", "change"])} &lt;${pick(["button", "input", "a"])}&gt; #${pick(WORDS)} "${words(1, 4)}"</li>`).join("") + `</ul></div>`;
+  const successBanner = () => `<div style="margin:12px 0;padding:${int(8, 12)}px ${int(10, 14)}px;border-radius:${int(6, 12)}px;font-weight:600;` +
+    `color:hsl(150 70% ${dark ? 60 : 25}%);background:hsl(150 60% ${dark ? 14 : 95}%);border:1px solid hsl(150 50% ${dark ? 30 : 80}%)">${sentence(2, 5)}</div>`;
   const chipsRow = () => `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">` + Array.from({ length: int(2, 4) }, () =>
     `<span style="font-size:${size - 2}px;color:${muted};background:${surface};border:1px solid ${border};border-radius:99px;padding:4px 12px">` +
     `<b style="color:${text}">${pick([String(int(1, 99)), cap(pick(WORDS)), "No"])}</b> ${words(1, 2)}</span>`).join("") + `</div>`;
@@ -234,7 +256,7 @@ function makePage(seed, images) {
     `background:${hsl(hue, 70, dark ? 20 : 94)};border-radius:99px;padding:3px 12px">${cap(words(1, 2))}</span></div>${heading(pick([1, 2]))}${para()}`;
 
   const blocks = [hero, form, cards, table, searchBar, article, pager, banner, form, cards, details, details, logPanel, codeBox, stats, tags,
-    consolePanel, chipsRow, eyebrow, form];
+    consolePanel, chipsRow, eyebrow, form, successBanner, details];
   const body = [];
   if (chance(0.9)) body.push(nav());
   const withSidebar = chance(0.35);
@@ -303,7 +325,15 @@ function toYolo({ boxes, vw, vh }) {
 }
 
 async function main() {
-  await rm(OUT, { recursive: true, force: true });
+  // --demo-only: keep the training pages, re-shoot only the held-out test pages (after the test
+  // site's design changed, for example).
+  const demoOnly = process.argv.includes("--demo-only");
+  if (demoOnly) {
+    await rm(path.join(OUT, "images", "demo"), { recursive: true, force: true });
+    await rm(path.join(OUT, "labels", "demo"), { recursive: true, force: true });
+  } else {
+    await rm(OUT, { recursive: true, force: true });
+  }
   for (const split of ["train", "val", "demo"]) {
     await mkdir(path.join(OUT, "images", split), { recursive: true });
     await mkdir(path.join(OUT, "labels", split), { recursive: true });
@@ -331,7 +361,7 @@ async function main() {
     stats[split] += 1;
   };
 
-  const total = trainCount + valCount;
+  const total = demoOnly ? 0 : trainCount + valCount;
   for (let i = 0; i < total; i++) {
     const split = i < trainCount ? "train" : "val";
     const r = rng(i * 7919 + 17);
@@ -365,9 +395,20 @@ async function main() {
       await shoot("demo", `demo_${String(n++).padStart(2, "0")}_${width}x${height}_${state}`, true);
     }
   }
+  // The rest of the test site (also never trained on): top of the page and scrolled down.
+  for (const file of ["apply.html", "store.html", "pricing.html", "features.html", "login.html"]) {
+    for (const [width, height] of [[1280, 720], [1536, 864], [1024, 768]]) {
+      for (const scroll of [0, 420]) {
+        await page.setViewport({ width, height, deviceScaleFactor: 1 });
+        await page.goto(pathToFileURL(path.join(ROOT, "demo", file)).href, { waitUntil: "load" });
+        if (scroll) await page.evaluate((y) => window.scrollTo(0, y), scroll);
+        await shoot("demo", `site_${String(n++).padStart(2, "0")}_${file.replace(".html", "")}_${width}x${height}_${scroll ? "scrolled" : "top"}`, true);
+      }
+    }
+  }
 
   await browser.close();
-  await writeFile(path.join(OUT, "data.yaml"),
+  if (!demoOnly) await writeFile(path.join(OUT, "data.yaml"),
     `path: ${OUT.replace(/\\/g, "/")}\ntrain: images/train\nval: images/val\ntest: images/demo\nnames:\n` +
     CLASSES.map((c, i) => `  ${i}: ${c}`).join("\n") + "\n");
   console.log(JSON.stringify(stats), `${((Date.now() - started) / 1000).toFixed(0)} s`);
