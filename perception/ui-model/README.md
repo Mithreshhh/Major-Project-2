@@ -7,25 +7,32 @@ compares its boxes with the DOM on every step, so its accuracy is measured live,
 
 ## Results
 
-On the demo page, which was **never used in training** (21 screenshots, 199 elements), at the
-extension's confidence threshold of 0.5:
+The demo page is **never used in training**. It was redesigned once, so there are two held-out
+tests, both at the extension's confidence threshold of 0.5.
 
-| | Recall (real elements found) | Precision (boxes that are real) |
+| Held-out test | Recall (real elements found) | Precision (boxes that are real) |
 | --- | --- | --- |
-| All | **97.5%** (194/199) | **97.5%** (194/199) |
-| Buttons | 100% | 100% |
-| Inputs | 95.1% | 100% |
-| Links | 100% | 91.5% |
+| Original demo page (plain styling), 21 screenshots, 199 elements | **97.5%** | **97.5%** |
+| Redesigned demo page (glass nav, gradient buttons, pill badges), 21 screenshots, 223 elements | **76.2%** | **63.9%** |
+| 200 held-out generated pages | 98.2% | 99.2% |
 
-On 200 held-out generated pages: 97.8% recall, 98.5% precision. Full tables at every threshold:
-[`RESULTS.md`](RESULTS.md). In real Chrome, inside the extension, it found 10/10 elements on
-every step of the demo task in 0.3-0.65 s. After the test page was redesigned (a new layout it
-has never seen, with a nav bar, hero banner and footer) it finds 11 of 12 with about 79% of its
-boxes correct, which is the honest number to expect on unfamiliar designs.
+On the redesigned page, by class: inputs 96.9% recall / 94.9% precision, buttons 100% / 21.2%,
+links 54.1% / 71.1%. Full tables at every threshold: [`RESULTS.md`](RESULTS.md) (current model,
+redesigned page). In real Chrome it finds 10 of 12 controls on the contact page.
 
-The data fix mattered more than the model. The first round (no hard negatives) had 97% recall
-but only 55% precision on the demo page, because it called short grey labels "links". Adding
-look-alike non-interactive content and fine-tuning for 25 epochs raised precision to 97.5%.
+What the three training rounds taught us:
+
+| Round | Change to the data | Effect |
+| --- | --- | --- |
+| 1 | Generated pages only | Original page: 97% recall but 55% precision. Short grey labels were called "links". |
+| 2 | Added look-alikes that are not controls (label/value lists, log panels, code boxes) | Original page: precision 55% → 97.5%. |
+| 3 | Added modern styling (tinted inputs, gradient buttons, muted nav links, dark console panels) after the page redesign | Redesigned page: recall 59.6% → 76.2%, precision 45.2% → 63.9%. Still perfect on the original-page test screenshots. |
+
+What is still wrong on the redesigned page: pill-shaped badges and the logo are called buttons,
+and muted navigation and footer links are missed. That is the honest picture: the detector is
+strong on styles close to its training pages and drops on unfamiliar ones, which is why the
+extension scores it against the DOM on every step instead of trusting it. Real-site training
+data is the next step.
 
 ## How it was built
 
@@ -39,7 +46,8 @@ look-alike non-interactive content and fine-tuning for 25 epochs raised precisio
 | 6. Evaluate | `evaluate.ts` | Recall/precision at several thresholds on held-out data. Results in `RESULTS.md`. |
 
 **The demo page is never used for training.** Its 21 screenshots (7 window sizes x empty, filled
-and scrolled) are the held-out test.
+and scrolled) are the held-out test. `finish.py` evaluates and exports an existing checkpoint
+when a training run was stopped early.
 
 ## Reproduce
 

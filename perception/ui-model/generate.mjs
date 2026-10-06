@@ -72,6 +72,10 @@ function makePage(seed, images) {
   const text = dark ? hsl(0, 0, int(82, 95)) : hsl(int(200, 230), int(5, 20), int(8, 22));
   const muted = dark ? hsl(0, 0, 60) : hsl(0, 0, 42);
   const border = dark ? hsl(0, 0, int(26, 36)) : hsl(0, 0, int(78, 88));
+  // "Modern" pages: tinted soft inputs, gradient buttons with a glow, muted nav links, a
+  // gradient page backdrop. Added after a redesigned test page (same controls, new styling)
+  // dropped the detector from 11/12 to 8/12.
+  const modern = chance(0.45);
   const radius = pick([0, 2, 4, 6, 8, 12, 999]);
   const inputRadius = radius === 999 ? pick([4, 8, 999]) : radius;
   const font = pick(FONTS);
@@ -81,10 +85,13 @@ function makePage(seed, images) {
   const linkColor = chance(0.75) ? accent : pick([accent2, "#0645ad"]);
   const underline = chance(0.5) ? "underline" : "none";
 
-  const btn = (label, kind = pick(["solid", "solid", "outline", "ghost", "soft", "link-like"])) => {
-    const pad = `${int(5, 12)}px ${int(10, 24)}px`;
+  const btn = (label, kind = pick(modern ? ["gradient", "gradient", "solid", "outline", "ghost", "soft"] : ["solid", "solid", "outline", "ghost", "soft", "link-like"])) => {
+    if (modern && kind === "solid" && chance(0.6)) kind = "gradient";
+    const pad = modern ? `${int(9, 13)}px ${int(16, 24)}px` : `${int(5, 12)}px ${int(10, 24)}px`;
     const styles = {
       solid: `background:${pick([accent, accent2])};color:#fff;border:1px solid transparent`,
+      gradient: `background:linear-gradient(135deg,${accent},${pick([accent2, hsl(hue, 70, 35)])});color:#fff;border:1px solid transparent;` +
+        `box-shadow:0 ${int(4, 10)}px ${int(14, 26)}px ${hsl(hue, 70, 50)}55`,
       outline: `background:transparent;color:${accent};border:${int(1, 2)}px solid ${accent}`,
       ghost: `background:transparent;color:${text};border:1px solid ${border}`,
       soft: `background:${hsl(hue, 70, dark ? 25 : 92)};color:${accent};border:none`,
@@ -94,15 +101,24 @@ function makePage(seed, images) {
     const extra = tag === "a" ? ' href="#"' : "";
     return `<${tag}${extra} data-cls="button" style="display:inline-block;text-decoration:none;cursor:pointer;` +
       `font:inherit;font-size:${int(size - 2, size + 2)}px;font-weight:${pick([400, 500, 600, 700])};` +
-      `padding:${pad};border-radius:${radius === 999 ? 999 : int(0, radius)}px;${styles[kind]};margin:${int(2, 8)}px">` +
+      `padding:${pad};border-radius:${modern ? pick([9, 10, 11, 12, 999]) : radius === 999 ? 999 : int(0, radius)}px;${styles[kind]};margin:${int(2, 8)}px">` +
       `${label}</${tag}>`;
   };
   const iconBtn = () => `<button data-cls="button" style="font:inherit;font-size:${int(14, 20)}px;width:${int(28, 40)}px;` +
     `height:${int(28, 40)}px;border-radius:${pick([4, 8, 999])}px;border:1px solid ${border};background:${surface};` +
     `color:${text};cursor:pointer;margin:4px">${pick(ICONS)}</button>`;
   const link = (label) => `<a href="#" data-cls="link" style="color:${linkColor};text-decoration:${underline}">${label}</a>`;
+  // Soft field look: a faint tint instead of a white box, large radius, generous padding.
+  const softBg = dark ? hsl(int(200, 240), int(10, 25), int(10, 16)) : hsl(int(200, 240), int(20, 50), int(96, 98));
+  const softBorder = dark ? hsl(0, 0, int(22, 30)) : hsl(int(200, 240), int(15, 30), int(84, 90));
   const input = (placeholder) => {
     const h = int(28, 44);
+    if (modern) {
+      return `<input data-cls="input" type="${pick(["text", "text", "email", "password", "tel"])}" placeholder="${chance(0.6) ? placeholder : ""}" ` +
+        `${chance(0.3) ? `value="${words(1, 3)}"` : ""} style="font:inherit;font-size:${int(size - 1, size + 1)}px;height:${int(40, 48)}px;` +
+        `padding:0 ${int(11, 14)}px;width:${pick(["100%", "100%", `${int(200, 380)}px`])};border:1px solid ${softBorder};` +
+        `border-radius:${pick([9, 10, 11, 12, 14])}px;background:${softBg};color:${text};margin:4px 0 ${int(10, 16)}px">`;
+    }
     return `<input data-cls="input" type="text" placeholder="${chance(0.7) ? placeholder : ""}" ` +
       `${chance(0.3) ? `value="${words(1, 3)}"` : ""} style="font:inherit;font-size:${int(size - 1, size + 1)}px;` +
       `height:${h}px;padding:0 ${int(6, 14)}px;width:${pick(["100%", `${int(160, 360)}px`])};` +
@@ -114,9 +130,9 @@ function makePage(seed, images) {
     return `<div style="margin-bottom:${int(4, 12)}px"><label style="display:block;font-size:${size - 1}px;` +
       `font-weight:${pick([400, 600])};color:${chance(0.5) ? text : muted}">${name}</label>${input(name.toLowerCase())}</div>`;
   };
-  const textarea = () => `<textarea data-cls="input" rows="${int(2, 5)}" placeholder="${sentence(2, 4)}" ` +
-    `style="font:inherit;width:100%;padding:8px;border:1px solid ${border};border-radius:${inputRadius}px;` +
-    `background:${surface};color:${text};margin:4px 0 10px"></textarea>`;
+  const textarea = () => `<textarea data-cls="input" rows="${int(2, 5)}" placeholder="${chance(0.8) ? sentence(2, 4) : ""}" ` +
+    `style="font:inherit;width:100%;padding:${modern ? 11 : 8}px;border:1px solid ${modern ? softBorder : border};border-radius:${modern ? pick([10, 12, 14]) : inputRadius}px;` +
+    `background:${modern ? softBg : surface};color:${text};margin:4px 0 10px"></textarea>`;
   const select = () => `<select data-cls="input" style="font:inherit;height:${int(28, 40)}px;padding:0 8px;` +
     `border:1px solid ${border};border-radius:${inputRadius}px;background:${surface};color:${text};margin:4px">` +
     `<option>${cap(words(1, 2))}</option></select>`;
@@ -138,9 +154,10 @@ function makePage(seed, images) {
     `border-radius:${radius === 999 ? 16 : radius}px;padding:${int(12, 24)}px;${chance(0.4) ? "box-shadow:0 2px 10px rgba(0,0,0,.12);" : ""}">${inner}</div>`;
 
   const nav = () => {
-    const plainNav = chance(0.3);
+    const plainNav = chance(modern ? 0.75 : 0.3);
+    const navColor = modern && chance(0.7) ? muted : text;
     const items = Array.from({ length: int(3, 7) }, () => link(cap(pick(WORDS))))
-      .map((a) => plainNav ? a.replace(`color:${linkColor};text-decoration:${underline}`, `color:${text};text-decoration:none;font-weight:500`) : a)
+      .map((a) => plainNav ? a.replace(`color:${linkColor};text-decoration:${underline}`, `color:${navColor};text-decoration:none;font-weight:500${modern ? `;padding:${int(5, 8)}px ${int(6, 12)}px` : ""}`) : a)
       .join(`<span style="width:${int(10, 28)}px;display:inline-block"></span>`);
     const right = [chance(0.5) ? btn(cap(words(1, 2)), "solid") : "", chance(0.4) ? btn("Log in", pick(["ghost", "outline"])) : "",
       chance(0.4) ? iconBtn() : "", chance(0.3) ? input("Search") .replace(/width:[^;]+;/, "width:180px;") : ""].join("");
@@ -203,7 +220,21 @@ function makePage(seed, images) {
   const tags = () => `<div style="margin:8px 0">` + Array.from({ length: int(2, 6) }, () =>
     `<span style="display:inline-block;font-size:${size - 3}px;padding:1px 8px;margin:2px;border-radius:99px;background:${hsl(int(0, 359), 50, dark ? 25 : 90)}">${pick(WORDS)}</span>`).join("") + `</div>`;
 
-  const blocks = [hero, form, cards, table, searchBar, article, pager, banner, form, cards, details, details, logPanel, codeBox, stats, tags];
+  // More look-alikes that are not controls: a dark console of timestamped lines, a row of
+  // rounded info chips, a small "eyebrow" pill above a heading.
+  const consolePanel = () => `<div style="background:#0b1020;border:1px solid #1b2340;border-radius:${int(10, 18)}px;overflow:hidden;margin:14px 0">` +
+    `<div style="padding:10px 14px;border-bottom:1px solid #1b2340;color:#c7d0e6;font-weight:600;font-size:${size - 2}px">${cap(words(1, 2))}</div>` +
+    `<ul style="margin:0;padding:8px 14px 12px;list-style:none;font-family:ui-monospace,Consolas,monospace;font-size:${int(11, 13)}px">` +
+    Array.from({ length: int(2, 7) }, () => `<li style="color:#9fb0d4;padding:2px 0;border-bottom:1px dashed #18203a">${int(1, 12)}:${int(10, 59)}:${int(10, 59)} PM  ` +
+      `${pick(["click", "input", "submit", "change"])} &lt;${pick(["button", "input", "a"])}&gt; #${pick(WORDS)} "${words(1, 4)}"</li>`).join("") + `</ul></div>`;
+  const chipsRow = () => `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">` + Array.from({ length: int(2, 4) }, () =>
+    `<span style="font-size:${size - 2}px;color:${muted};background:${surface};border:1px solid ${border};border-radius:99px;padding:4px 12px">` +
+    `<b style="color:${text}">${pick([String(int(1, 99)), cap(pick(WORDS)), "No"])}</b> ${words(1, 2)}</span>`).join("") + `</div>`;
+  const eyebrow = () => `<div style="margin:14px 0 6px"><span style="display:inline-block;font-size:${size - 3}px;font-weight:600;color:${accent};` +
+    `background:${hsl(hue, 70, dark ? 20 : 94)};border-radius:99px;padding:3px 12px">${cap(words(1, 2))}</span></div>${heading(pick([1, 2]))}${para()}`;
+
+  const blocks = [hero, form, cards, table, searchBar, article, pager, banner, form, cards, details, details, logPanel, codeBox, stats, tags,
+    consolePanel, chipsRow, eyebrow, form];
   const body = [];
   if (chance(0.9)) body.push(nav());
   const withSidebar = chance(0.35);
@@ -216,7 +247,9 @@ function makePage(seed, images) {
   body.push(`<main style="max-width:${typeof maxW === "number" ? maxW + "px" : maxW};margin:0 auto;padding:${int(8, 30)}px ${int(12, 40)}px">${mainHtml}</main>`);
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}` +
-    `body{margin:0;font-family:${font};font-size:${size}px;line-height:${pick([1.3, 1.45, 1.6])};background:${bg};color:${text}}` +
+    `body{margin:0;font-family:${font};font-size:${size}px;line-height:${pick([1.3, 1.45, 1.6])};color:${text};background:` +
+    (modern ? `radial-gradient(900px 500px at ${int(0, 20)}% -8%,${hsl(hue, 80, dark ? 30 : 88)},transparent 62%),radial-gradient(800px 480px at ${int(80, 100)}% 0%,${hsl((hue + 120) % 360, 80, dark ? 26 : 90)},transparent 60%),` : "") +
+    `${bg}}` +
     `</style></head><body>${body.join("")}</body></html>`;
 }
 
