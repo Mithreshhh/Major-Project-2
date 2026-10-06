@@ -72,15 +72,29 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 ## Quick start
 
 ```bash
+npm start            # or double-click start.bat on Windows
+```
+
+That one command checks Ollama (starting it if needed), creates the server's Python environment
+and installs npm packages on the first run, rebuilds the extension when its source changed,
+starts the API server (`:8000`) and the test pages (`:5500`), loads Gemma into memory, and opens
+the test page and "What the AI sees" in Chrome. `Ctrl+C` stops it. Options:
+`npm start -- --no-open`, `npm start -- --build`.
+
+Load the extension once: `chrome://extensions` → Developer mode → **Load unpacked** →
+`extension/dist/chrome`. Pin it from the puzzle-piece menu. After a rebuild, press its reload arrow.
+
+<details><summary>Manual start, step by step</summary>
+
+```bash
 npm install
 npm run build                       # -> extension/dist/chrome and extension/dist/firefox
 npm run server:install              # once: creates server/.venv
 npm run server:dev                  # terminal 1: API on http://127.0.0.1:8000
-python -m http.server 5500 --bind 127.0.0.1 --directory demo    # terminal 2: test page
+python -m http.server 5500 --bind 127.0.0.1 --directory demo    # terminal 2: test pages
 ```
 
-Load the extension: `chrome://extensions` → Developer mode → **Load unpacked** →
-`extension/dist/chrome`. Pin it from the puzzle-piece menu.
+</details>
 
 Use it: open <http://127.0.0.1:5500>, click the extension icon, press **Demo task** (or type your
 own), then **Run task**. Open <http://127.0.0.1:8000/debug/view> to see what the AI received.

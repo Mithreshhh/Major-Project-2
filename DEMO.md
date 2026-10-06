@@ -2,30 +2,22 @@
 
 Everything you need to show the project to your mentors. It takes about 8 minutes.
 
-## Before the meeting: 10 minutes
+## Before the meeting: 3 minutes
 
-1. **Start Ollama.** It usually runs in the background already. Check with `ollama list`, which
-   should show `ledgerguard-gemma4-e2b-q4-0:latest`.
-2. **Start the server.** In a terminal, from the project folder:
-   ```
-   npm run server:dev
-   ```
-3. **Start the test page.** In a second terminal:
-   ```
-   python -m http.server 5500 --bind 127.0.0.1 --directory demo
-   ```
-4. **Warm up the AI.** Open <http://127.0.0.1:8000/health/gemma?warm=true>. It should say
-   `"status":"ok"` and `"modelLoaded":true`.
-5. **Build and reload the extension.** Run `npm run build`, then on `chrome://extensions` click
-   the reload arrow on "On-Device Perception Agent". Pin its icon to the toolbar.
-6. **Do one practice run** (steps 3 to 5 below) so the first slow step is out of the way.
-7. **Open these tabs in order:**
-   1. `README.md` on GitHub, showing the architecture diagram
-   2. <http://127.0.0.1:5500>, the test page
-   3. <http://127.0.0.1:8000/debug/view>, the "What the AI sees" page
-   4. `perception/benchmarks/RESULTS.md` on GitHub
-   5. `perception/ui-model/RESULTS.md` on GitHub
-   6. The `e2e/proof/` folder, your backup if anything fails live
+1. **Start everything.** Double-click `start.bat` in the project folder (or run `npm start`).
+   It checks Ollama, starts the server and the test pages, rebuilds the extension if needed,
+   loads Gemma, and opens the test page and "What the AI sees" in Chrome. Wait for **Ready.**
+   and keep that window open.
+2. **Reload the extension** only if the window said "extension rebuilt": on `chrome://extensions`
+   click the reload arrow on "On-Device Perception Agent". Pin its icon to the toolbar.
+   (Very first time: Developer mode → **Load unpacked** → `extension/dist/chrome`.)
+3. **Do one practice run** (step 3 below), then **Clear form**. The first run loads the
+   on-device models, so it is the slow one.
+4. **Open the files you will show** in VS Code (`Ctrl+Shift+V` shows them formatted): `README.md`,
+   `perception/benchmarks/RESULTS.md`, `perception/ui-model/RESULTS.md`, and the `e2e/proof/`
+   folder as your backup.
+
+To stop: press `Ctrl+C` in the start window.
 
 ## The demo: 8 minutes
 
@@ -105,7 +97,7 @@ buttons) is the next milestone.
 
 | Problem | Fix |
 | --- | --- |
-| Popup shows "server offline" | Start the server (`npm run server:dev`) |
+| Popup shows "server offline" | The start window was closed. Double-click `start.bat` again |
 | First step takes 10 to 20 seconds | Normal. The browser loads both on-device models once and Gemma warms up. Later steps take 2 to 4 seconds |
 | "This tab is not a normal web page" | You're on a Chrome page. Switch to the test page tab |
 | Agent stops with "same action twice" | The loop guard worked. Click **Clear form** on the page and run again |
