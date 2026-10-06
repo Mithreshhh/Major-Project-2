@@ -57,6 +57,8 @@ class Settings:
     #: Upper bound on UI elements described in one prompt (interactive ones win).
     max_prompt_elements: int
     #: Record received payloads and serve GET /debug/view ("What the AI sees").
+    #: Let a thinking-capable model think before answering questions on /ask (GEMMA_ASK_THINKING).
+    ask_thinking: bool
     debug_view: bool
     #: Also write each recorded payload to this directory (empty string disables saving).
     debug_save_dir: str
@@ -67,13 +69,14 @@ def get_settings() -> Settings:
         reasoner=os.getenv("REASONER", "gemma").strip().lower(),
         ollama_url=os.getenv("OLLAMA_URL", DEFAULT_OLLAMA_URL).strip().rstrip("/"),
         ollama_model=os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL).strip(),
-        ollama_timeout_s=_float("OLLAMA_TIMEOUT_S", 120.0),
+        ollama_timeout_s=_float("OLLAMA_TIMEOUT_S", 240.0),
         ollama_num_ctx=_int("OLLAMA_NUM_CTX", 8192),
         ollama_num_predict=_int("OLLAMA_NUM_PREDICT", 256),
         ollama_temperature=_float("OLLAMA_TEMPERATURE", 0.0),
         ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "10m").strip(),
         send_screenshot=os.getenv("GEMMA_SEND_SCREENSHOT", "auto").strip().lower(),
         max_prompt_elements=_int("GEMMA_MAX_ELEMENTS", 60),
+        ask_thinking=_bool("GEMMA_ASK_THINKING", True),
         debug_view=_bool("ODPA_DEBUG_VIEW", True),
         debug_save_dir=os.getenv("ODPA_DEBUG_SAVE_DIR", "debug_captures").strip(),
     )

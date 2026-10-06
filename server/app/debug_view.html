@@ -6,35 +6,29 @@
 <title>What the AI sees</title>
 <style>
 :root{
-  --bg:#f4f6fb;--bg2:#eaeef7;--card:#ffffff;--glass:rgba(255,255,255,.72);--fg:#0b1220;--muted:#5d6880;--line:#e1e6f0;--soft:#f6f8fc;
-  --brand:#5b4bff;--brand2:#06b6d4;--mint:#10b981;
-  --face:#e11d48;--photo:#0891b2;--field:#7c3aed;--text:#d97706;--vbtn:#2563eb;--vinput:#059669;--vlink:#ea580c;
-  --ok:#059669;--bad:#e11d48;--shadow:0 10px 40px rgba(15,23,42,.08);
+  --bg:#f7f8fa;--bg2:#f7f8fa;--card:#ffffff;--glass:#ffffff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--soft:#f9fafb;
+  --brand:#2563eb;--brand2:#2563eb;--mint:#16a34a;
+  --face:#dc2626;--photo:#0e7490;--field:#7c3aed;--text:#b45309;--vbtn:#2563eb;--vinput:#15803d;--vlink:#c2410c;
+  --ok:#15803d;--bad:#dc2626;--shadow:0 1px 2px rgba(17,24,39,.05);
   color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#070a12;--bg2:#0b1020;--card:#0f1526;--glass:rgba(15,21,38,.72);--fg:#e8ecf6;--muted:#8f9bb5;--line:#1c2540;--soft:#0b1120;
-  --brand:#8b7dff;--brand2:#22d3ee;--mint:#34d399;
-  --face:#fb7185;--photo:#22d3ee;--field:#a78bfa;--text:#fbbf24;--vbtn:#60a5fa;--vinput:#34d399;--vlink:#fb923c;
-  --ok:#34d399;--bad:#fb7185;--shadow:0 10px 40px rgba(0,0,0,.45);
+  --bg:#111318;--bg2:#111318;--card:#16191f;--glass:#16191f;--fg:#f3f4f6;--muted:#9ca3af;--line:#262b34;--soft:#1d2129;
+  --brand:#3b82f6;--brand2:#3b82f6;--mint:#4ade80;
+  --face:#f87171;--photo:#22d3ee;--field:#a78bfa;--text:#fbbf24;--vbtn:#60a5fa;--vinput:#4ade80;--vlink:#fb923c;
+  --ok:#4ade80;--bad:#f87171;--shadow:none;
 }}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;background:var(--bg2)}
-body{margin:0;color:var(--fg);font:14px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
-  background:
-    radial-gradient(900px 500px at 12% -10%,color-mix(in srgb,var(--brand) 22%,transparent),transparent 60%),
-    radial-gradient(800px 480px at 95% 0%,color-mix(in srgb,var(--brand2) 20%,transparent),transparent 60%),
-    linear-gradient(var(--bg),var(--bg2));
-  background-attachment:fixed;min-height:100vh}
+body{margin:0;color:var(--fg);background:var(--bg);font:14px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;min-height:100vh}
 .wrap{max-width:1320px;margin:0 auto;padding:22px 22px 60px}
 
 /* Header */
 .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
-.mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;flex:none;
-  background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 8px 24px color-mix(in srgb,var(--brand) 45%,transparent)}
+.mark{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none;background:var(--brand)}
 .mark svg{width:24px;height:24px}
 h1{font-size:24px;line-height:1.15;margin:0;letter-spacing:-.02em;font-weight:700}
-h1 span{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h1 span{color:var(--brand)}
 .sub{margin:2px 0 0;color:var(--muted);font-size:13.5px}
 .grow{flex:1;min-width:200px}
 .live{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ok);padding:6px 12px;border-radius:99px;
@@ -48,14 +42,14 @@ h1 span{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-bac
 /* Timeline */
 .timeline{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin-bottom:6px}
 .timeline button{flex:none;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--glass);color:var(--fg);border-radius:12px;
-  padding:7px 12px;cursor:pointer;font:inherit;font-size:12.5px;backdrop-filter:blur(8px);transition:transform .12s,border-color .12s}
-.timeline button:hover{transform:translateY(-1px);border-color:var(--brand)}
+  padding:7px 12px;cursor:pointer;font:inherit;font-size:12.5px;transition:border-color .12s}
+.timeline button:hover{border-color:var(--brand)}
 .timeline button b{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11.5px;background:var(--soft);color:var(--muted)}
-.timeline button.on{border-color:transparent;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 35%,transparent)}
+.timeline button.on{border-color:var(--brand);color:#fff;background:var(--brand)}
 .timeline button.on b{background:rgba(255,255,255,.22);color:#fff}
 .timeline button.err b{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
 
-.card{background:var(--glass);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
 .empty{padding:56px 24px;text-align:center}
 .empty .big{font-size:20px;font-weight:700;margin:10px 0 4px}
 .empty p{color:var(--muted);margin:0}
@@ -86,7 +80,7 @@ h1 span{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-bac
 .pad{padding:16px 18px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
 .decision{position:relative;overflow:hidden}
-.decision::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(var(--brand),var(--brand2))}
+.decision::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--brand)}
 .decision .what{font-size:18px;font-weight:700;line-height:1.35;letter-spacing:-.01em;white-space:pre-wrap;overflow-wrap:anywhere}
 .decision.answer .what{font-size:14.5px;font-weight:500;line-height:1.6}
 .decision .why{color:var(--muted);margin-top:6px}
@@ -98,11 +92,11 @@ h1 span{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-bac
 
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 @media (max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
-.tile{padding:12px 12px 11px;border-radius:14px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px)}
+.tile{padding:12px 12px 11px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
 .tile .n{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
 .tile .n small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
 .tile .l{font-size:11.5px;color:var(--muted);margin-top:3px}
-.tile.hero .n{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tile.hero .n{color:var(--brand)}
 
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--c);

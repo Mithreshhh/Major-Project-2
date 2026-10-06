@@ -186,11 +186,18 @@ class GemmaReasoner:
         return command
 
     async def answer(self, context: SanitizedContext) -> str:
-        """Plain-text answer about the page. Text only: the page text carries what matters."""
-        options = {**self._options(), "num_predict": max(self._settings.ollama_num_predict, 600)}
-        raw = await self._client.chat(
-            build_ask_messages(context), json_mode=False, think=await self._think_flag(), options=options
-        )
+        """
+        Plain-text answer about the page. Text only: the page text carries what matters.
+
+        Unlike `decide`, this lets a thinking-capable model think first. Questions are where
+        reasoning shows (comparing prices, applying an offer, matching a recommendation to what
+        the user asked for), and one slower answer is fine; an agent step every second is not.
+        """
+        info = await self._client.model_info()
+        think = True if info.supports_thinking and self._settings.ask_thinking else await self._think_flag()
+        # Thinking tokens count against num_predict, so leave room for both.
+        options = {**self._options(), "num_predict": max(self._settings.ollama_num_predict, 2400 if think else 700)}
+        raw = await self._client.chat(build_ask_messages(context), json_mode=False, think=think, options=options)
         text = raw.strip()
         if not text:
             raise ModelOutputError(f"model '{self.model}' returned an empty answer", attempts=[raw])

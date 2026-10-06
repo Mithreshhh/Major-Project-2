@@ -73,7 +73,9 @@ Rules:
 2. Never guess or reconstruct hidden values. You may say what kind of personal data the page shows and that it was hidden.
 3. If the user wants something done on the page, explain what they would need to do; do not claim you did it.
 4. If asked to analyze, describe, review or summarize the page, answer in 4 to 6 short bullet points ("- "): what the page is for, what it asks the user to enter, the main actions available, important notices or warnings, and which kinds of personal data were hidden.
-5. Otherwise answer directly in at most 4 short sentences. Plain text, no headings, no bold."""
+5. For questions about prices, savings, comparisons, totals or "which should I choose": use the numbers on the page. Work it out step by step and show the arithmetic briefly, for example "2 x ₹549 = ₹1,098". Apply every offer or discount the page states. Then give one clear recommendation and the reason. When recommending, check each of the user's requirements against the options and name the option that meets them all.
+6. Otherwise answer directly in at most 4 short sentences.
+7. Plain text only: no headings, no bold, no tables."""
 
 _CATEGORY_WORDS = {
     "face": "face",
@@ -154,12 +156,19 @@ def select_elements(elements: list[UIElement], limit: int) -> tuple[list[UIEleme
     return chosen, len(elements) - len(chosen)
 
 
-def describe_command(cmd: ActionCommand) -> str:
+def describe_command(cmd: ActionCommand, labels: Optional[dict[str, str]] = None) -> str:
+    """One past action. With `labels` (element id -> label) the target is named, not just numbered:
+    a small model keeps track of 'clicked "Add Deep Work to cart"' far better than 'clicked el_14'."""
+
+    def target(element_id: str) -> str:
+        label = (labels or {}).get(element_id)
+        return f'{element_id} "{_trunc(label, 50)}"' if label else element_id
+
     a = cmd.action
     if a == "click":
-        return f"click {cmd.target}"
+        return f"click {target(cmd.target)}"
     if a == "type":
-        return f'type "{_trunc(cmd.text, 40)}" into {cmd.target}' + (" and submit" if cmd.submit else "")
+        return f'type "{_trunc(cmd.text, 40)}" into {target(cmd.target)}' + (" and submit" if cmd.submit else "")
     if a == "scroll":
         return f"scroll {cmd.direction}"
     if a == "navigate":
@@ -187,7 +196,12 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
 
     if context.history:
         lines.append("Previous actions (all already done successfully):")
-        lines.extend(f"  {i + 1}. {describe_command(c)}" for i, c in enumerate(context.history))
+        labels = {e.id: e.label for e in context.elements if e.label}
+        lines.extend(f"  {i + 1}. {describe_command(c, labels)}" for i, c in enumerate(context.history))
+        clicked = list(dict.fromkeys(labels.get(c.target, c.target) for c in context.history if c.action == "click"))
+        if clicked:
+            names = ", ".join(f'"{_trunc(n, 50)}"' for n in clicked)
+            lines.append(f"Already clicked: {names}. Do not click these again unless the task asks for more than one.")
     else:
         lines.append("Previous actions: none")
 
