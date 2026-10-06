@@ -39,6 +39,20 @@
       "type": "string",
       "maxLength": 20000,
       "description": "Visible page text for /ask, with personal data replaced on-device by placeholders such as [HIDDEN EMAIL]."
+    },
+    "profileFields": {
+      "type": "array",
+      "maxItems": 60,
+      "description": "Names (never values) of the details the user saved. The reasoner types one with the placeholder {{key}}.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z0-9_]{1,40}$" },
+          "label": { "type": "string", "maxLength": 60 }
+        }
+      }
     }
   },
   "$defs": {

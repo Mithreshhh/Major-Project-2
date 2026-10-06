@@ -392,3 +392,21 @@ def test_health_gemma_unreachable(client, swap_state):
     body = res.json()
     assert body["status"] == "unavailable" and not body["reachable"]
     assert "ollama serve" in body["detail"]
+
+
+def test_prompt_lists_saved_details_by_name_only(example_context):
+    ctx = make_context(
+        example_context,
+        task="Fill this form with my details",
+        profileFields=[{"key": "full_name", "label": "Full name"}, {"key": "email", "label": "Email"}],
+        history=[{"action": "type", "target": "el_0", "text": "{{email}}"}],
+    )
+    system, user = (m["content"] for m in build_messages(ctx, max_elements=60, include_screenshot=False))
+    assert '"text": "{{email}}"' in system and "Their values are hidden from you" in system
+    assert "{{full_name}} = Full name" in user and "{{email}} = Email" in user
+    assert "Already typed: {{email}}. Do not type these again." in user
+
+
+def test_profile_fields_reject_values_smuggled_as_extra_keys(client, example_context):
+    bad = {**example_context, "profileFields": [{"key": "email", "label": "Email", "value": "jane@example.com"}]}
+    assert client.post("/process", json=bad).status_code == 422

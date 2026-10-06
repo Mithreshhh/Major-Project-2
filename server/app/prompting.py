@@ -59,9 +59,10 @@ Rules:
 5. Use "ask_user" when you need information only the user has. Use "noop" when nothing on this page can move the task forward.
 6. Never type into password fields unless the task gives the password.
 7. If the task only asks for information (analyze, summarize, explain, describe, check, or a question), do not click or type anything: reply with "done" and put the answer in "summary".
-8. Only type text that appears in the task. Never invent names, usernames, emails or passwords; use "ask_user" instead.
-9. Do not log in, sign up, pay, buy, delete or send anything unless the task explicitly asks for it.
-10. Keep "reasoning" under 20 words."""
+8. Only type text that appears in the task, or a placeholder from "Saved details" such as "{{email}}". Never invent names, usernames, emails or passwords; use "ask_user" instead.
+9. "Saved details" are the user's own information. Their values are hidden from you. To type one, set "text" to exactly its placeholder, for example {"action": "type", "target": "el_4", "text": "{{email}}"}. Match each form field to the saved detail with the closest meaning, fill one field per step, and skip fields that have no matching saved detail.
+10. Do not log in, sign up, pay, buy, delete or send anything unless the task explicitly asks for it.
+11. Keep "reasoning" under 20 words."""
 
 ASK_SYSTEM_PROMPT = """You answer questions about the web page the user is looking at. You cannot click or type; you only answer.
 You get the page title, address, visible text, and its buttons, links and fields.
@@ -128,6 +129,10 @@ def format_element(el: UIElement, viewport: Viewport) -> str:
     if el.attributes:
         attrs = [f"{k}={_trunc(v, 40)}" for k in _PROMPT_ATTRS if (v := el.attributes.get(k))]
         notes.extend(attrs)
+        if el.attributes.get("filled"):
+            notes.append("ALREADY FILLED")
+        if el.attributes.get("checked"):
+            notes.append("checked")
     if not el.isInteractive:
         notes.append("not interactive")
     if el.redacted:
@@ -192,6 +197,25 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
     if messages:
         lines.append("Page messages:")
         lines.extend(f'  "{_trunc(m, 120)}"' for m in messages[:5])
+
+    if context.profileFields:
+        lines.append("Saved details (values hidden; type one by using its placeholder as the text):")
+        lines.extend(f"  {{{{{f.key}}}}} = {_trunc(f.label, 40)}" for f in context.profileFields)
+        used = [c.text for c in context.history if c.action == "type" and "{{" in c.text]
+        if used:
+            lines.append(f"Already typed: {', '.join(used)}. Do not type these again.")
+        # Small models lose track of a long form, so the remaining work is spelled out.
+        empty = [
+            e
+            for e in context.elements
+            if e.role == "textbox" and e.isInteractive and not (e.attributes or {}).get("filled")
+            and (e.attributes or {}).get("type") != "password"
+        ]
+        if empty:
+            lines.append("Empty fields still to fill, in order (fill the first one that has a matching saved detail):")
+            lines.extend(f'  {e.id} "{_trunc(e.label, _LABEL_MAX)}"' for e in empty[:12])
+        else:
+            lines.append('Every field is filled. If the task asks to submit, click the submit button; otherwise reply "done".')
 
     if context.redactions:
         lines.append(

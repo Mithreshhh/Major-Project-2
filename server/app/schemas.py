@@ -167,6 +167,11 @@ ActionCommand = Annotated[
 ]
 
 
+class ProfileFieldName(_Strict):
+    key: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
+    label: str = Field(max_length=60)
+
+
 class SanitizedContext(_Strict):
     protocolVersion: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     sessionId: str = Field(min_length=1)
@@ -181,6 +186,8 @@ class SanitizedContext(_Strict):
     perception: PerceptionSummary
     #: Visible page text for /ask, personal data already replaced on-device ("[HIDDEN EMAIL]").
     pageText: Optional[str] = Field(default=None, max_length=20000)
+    #: Names (never values) of the details the user saved; typed via the placeholder {{key}}.
+    profileFields: Optional[list[ProfileFieldName]] = Field(default=None, max_length=60)
 
 
 class AskResponse(_Strict):

@@ -196,6 +196,18 @@ export interface SanitizedContext {
    * by placeholders naming its kind, e.g. "[HIDDEN EMAIL]". Form values are never included.
    */
   pageText?: string;
+  /**
+   * Names of the details the user saved under "My info" (never their values). The reasoner types
+   * one by answering with its placeholder, e.g. text "{{email}}"; the client fills in the value.
+   */
+  profileFields?: ProfileFieldName[];
+}
+
+export interface ProfileFieldName {
+  /** Placeholder name: "{{<key>}}". */
+  key: string;
+  /** Human-readable name, e.g. "Full name". */
+  label: string;
 }
 
 /** Response of POST /ask: an answer about the page. Nothing is executed on the page. */
