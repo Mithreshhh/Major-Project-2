@@ -62,7 +62,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | [`server/`](server/) | `POST /process` and `POST /ask` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
-| [`demo/`](demo/) | Test pages: a product site with a contact form and sample PII, a bank login page, an Instagram-style chat | HTML |
+| [`demo/`](demo/) | Test pages: a product site with a contact form and sample PII, a job application, a bank login page, an Instagram-style chat | HTML |
 
 ## Prerequisites
 
@@ -122,6 +122,8 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `server/tests/` | Contract, prompt, parser, retries, error mapping, debug view |
 | `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
 | `e2e/run-ask.mjs` | Questions go to ask mode in real Chrome: "Analyze this login page" changes no field |
+| `e2e/run-profile.mjs` | A job application is filled from saved details; the values never reach the server |
+| `e2e/popup-screens.mjs` | Drives the real popup (Run task, Allow, Ask) and the My info page, saves screenshots |
 
 ## Compression study
 
@@ -130,6 +132,24 @@ dynamic, INT8 static) measured for size, speed, memory and accuracy with the sam
 extension uses. Full table: [`perception/benchmarks/RESULTS.md`](perception/benchmarks/RESULTS.md).
 Headline: fixing the export's graph gives **1.5x** speed at identical accuracy (now shipped);
 FP16 halves size at 99.6% box overlap; INT8 shrinks the file 45-60% but runs slower in WASM.
+
+## My info: fill forms with your saved details
+
+Save your details once on the extension's **My info** page (name, email, phone, college, skills,
+plus any fields you add), then say "Fill this form with my saved details".
+
+The values never leave the device:
+
+1. They are stored in `chrome.storage.local` only.
+2. The reasoner is sent the **names** of the saved details (`{{email}} = Email`), never the values.
+3. It answers with a placeholder: `{"action": "type", "target": "el_4", "text": "{{email}}"}`.
+4. The extension replaces the placeholder with the real value just before typing.
+5. Fields filled this way are blacked out in every later screenshot, and history keeps the
+   placeholder.
+
+Proof: `npm run profile --workspace=e2e` fills the 11-field job application in `demo/apply.html`
+with real Gemma and checks that every field is right and that no saved value appears in anything
+the server received (`e2e/proof/profile.json`).
 
 ## Safety: asking vs acting
 

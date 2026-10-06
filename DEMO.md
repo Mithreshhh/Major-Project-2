@@ -1,6 +1,6 @@
 # Demo guide
 
-Everything you need to show the project to your mentors. It takes about 8 minutes.
+Everything you need to show the project to your mentors. It takes about 10 minutes.
 
 ## Before the meeting: 3 minutes
 
@@ -19,7 +19,7 @@ Everything you need to show the project to your mentors. It takes about 8 minute
 
 To stop: press `Ctrl+C` in the start window.
 
-## The demo: 8 minutes
+## The demo: 10 minutes
 
 **1. The idea, 30 seconds.** Show the architecture diagram.
 > "A browser agent that completes tasks for you, but personal data never leaves your laptop. The
@@ -55,6 +55,16 @@ avatar and the shared photo are black boxes, even the tiny ones.
 > "Small profile pictures are too small for any face model to see reliably, so the extension
 > also hides every photo, video and canvas it finds in the page code. Here it hid 9 photos; the
 > face model alone would have caught 1."
+
+**3d. Fill a job application from saved details, 1.5 minutes.** Before the meeting: click
+**My info** at the bottom of the popup, press **Use sample data**, then **Save**. In the demo,
+show that page for a moment, then open <http://127.0.0.1:5500/apply.html>, click
+**Fill with my info** in the popup and **Run task**. It fills 11 fields (about 40 seconds), then
+asks to **Allow** "Submit application".
+> "I saved my details once. Now I just say 'fill this form with my details'. The important part:
+> the AI never sees my details. It only knows I have something called Email and something called
+> Phone. It replies 'type the Email here', and the extension puts in the real value on my
+> laptop. Look at What the AI sees: every field it filled is a black box."
 
 **4. Show what the AI saw, 1 minute.** Switch to the "What the AI sees" tab. It updates by itself.
 > "This is exactly what the server received. The face, the photo, the password field, and all
