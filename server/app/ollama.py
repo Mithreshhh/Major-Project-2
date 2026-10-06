@@ -146,9 +146,18 @@ class OllamaClient:
         )
         return self._info
 
-    async def warm(self) -> None:
-        """Load the model into memory without generating anything (empty-prompt generate)."""
-        await self._request("POST", "/api/generate", json={"model": self.model, "keep_alive": self.keep_alive})
+    async def warm(self, num_ctx: Optional[int] = None) -> None:
+        """
+        Load the model into memory without generating anything (empty-prompt generate).
+
+        Pass the same `num_ctx` the real requests use: Ollama reloads the whole model when the
+        context size changes, so warming with the default would be wasted (and the first real
+        request would pay for a second load).
+        """
+        payload: dict[str, Any] = {"model": self.model, "keep_alive": self.keep_alive}
+        if num_ctx:
+            payload["options"] = {"num_ctx": num_ctx}
+        await self._request("POST", "/api/generate", json=payload)
 
     # ------------------------------------------------------------------ inference
 

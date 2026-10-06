@@ -52,6 +52,7 @@ class FakeOllama:
         self.running = list(running)
         self.unreachable = unreachable
         self.chat_requests: list[dict[str, Any]] = []
+        self.warm_requests: list[Any] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         if self.unreachable:
@@ -72,6 +73,7 @@ class FakeOllama:
                 json={"capabilities": self.capabilities, "details": {"family": "gemma4"}, "model_info": {}},
             )
         if path == "/api/generate":
+            self.warm_requests.append(json.loads(request.content).get("options"))
             self.running = list(self.models)
             return httpx.Response(200, json={"done": True})
         if path == "/api/chat":
@@ -366,6 +368,8 @@ def test_health_gemma_warm_loads_model(client, swap_state):
     res = client.get("/health/gemma", params={"warm": "true"})
     assert res.status_code == 200
     assert res.json()["modelLoaded"] is True
+    # Warmed with the context size real requests use, or Ollama reloads the model on step 1.
+    assert fake.warm_requests == [{"num_ctx": get_settings().ollama_num_ctx}]
 
 
 def test_health_gemma_model_missing(client, swap_state):

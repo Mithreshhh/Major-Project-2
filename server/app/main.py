@@ -178,7 +178,7 @@ async def health_gemma(warm: bool = False):
         info = await client.model_info(refresh=True)
         body.capabilities = info.capabilities
         if warm:
-            await client.warm()
+            await client.warm(app.state.settings.ollama_num_ctx)
         running = await client.running_models()
     except OllamaError as exc:
         body.detail = str(exc)
