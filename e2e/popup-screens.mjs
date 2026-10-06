@@ -4,6 +4,7 @@
  *   7-popup-done.png      the finished task with its steps
  *   8-popup-answer.png    ask mode answering the demo question
  *   0-test-page.png       the test page itself
+ *   12-my-info.png        the My info page with sample details saved
  *
  * The popup normally reads the active tab; here it opens in its own window with ?tab=<id>, so
  * the test page stays the visible tab that gets captured.
@@ -77,6 +78,17 @@ async function main() {
     await popup.waitForSelector("#status.answered, #status.failed", { timeout: 120_000 });
     await popup.screenshot({ path: path.join(proofDir, "8-popup-answer.png"), fullPage: true });
     log(`answer: ${await popup.$eval("#status-msg", (e) => e.textContent)}`);
+
+    // 3. The My info page: fill the sample data through its own UI and save.
+    const info = await browser.newPage();
+    await info.setViewport({ width: 1000, height: 1100 });
+    await info.goto(`chrome-extension://${extensionId}/profile.html`, { waitUntil: "load" });
+    await info.waitForSelector("#f-full_name");
+    await info.click("#sample");
+    await info.click("#save");
+    await info.waitForFunction(() => document.getElementById("saved").textContent.startsWith("Saved"));
+    await info.screenshot({ path: path.join(proofDir, "12-my-info.png"), fullPage: true });
+    log(`my info: ${await info.$eval("#saved", (e) => e.textContent)}`);
     log(`saved popup screenshots to ${path.relative(root, proofDir)}`);
   } finally {
     await browser.close();

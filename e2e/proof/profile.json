@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-06T14:04:34.577Z",
+  "task": "Fill this application with my saved details, then submit it.",
+  "status": "done",
+  "seconds": 38.1,
+  "steps": [
+    "Type your saved Full name into \"Full name\"",
+    "Type your saved Email into \"Email\"",
+    "Type your saved Phone into \"Phone number\"",
+    "Type your saved City into \"City\"",
+    "Type your saved College into \"College / University\"",
+    "Type your saved Degree into \"Degree\"",
+    "Type your saved Graduation year into \"Year of graduation\"",
+    "Type your saved CGPA into \"CGPA\"",
+    "Type your saved LinkedIn into \"LinkedIn profile\"",
+    "Type your saved GitHub into \"GitHub profile\"",
+    "Type your saved Skills into \"Skills\"",
+    "Click \"Submit application\"",
+    "Done: Application submitted successfully."
+  ],
+  "fieldsCorrect": "11/11",
+  "fieldResults": [
+    {
+      "label": "Full name",
+      "selector": "#fullname",
+      "ok": true,
+      "got": "Aarav Sharma"
+    },
+    {
+      "label": "Email",
+      "selector": "#email",
+      "ok": true,
+      "got": "aarav.sharma@example.com"
+    },
+    {
+      "label": "Phone",
+      "selector": "#phone",
+      "ok": true,
+      "got": "+91 98765 12345"
+    },
+    {
+      "label": "City",
+      "selector": "#city",
+      "ok": true,
+      "got": "Hyderabad"
+    },
+    {
+      "label": "College",
+      "selector": "#college",
+      "ok": true,
+      "got": "MLR Institute of Technology"
+    },
+    {
+      "label": "Degree",
+      "selector": "#degree",
+      "ok": true,
+      "got": "B.Tech Computer Science"
+    },
+    {
+      "label": "Graduation year",
+      "selector": "#gradyear",
+      "ok": true,
+      "got": "2027"
+    },
+    {
+      "label": "CGPA",
+      "selector": "#cgpa",
+      "ok": true,
+      "got": "8.7"
+    },
+    {
+      "label": "LinkedIn",
+      "selector": "#linkedin",
+      "ok": true,
+      "got": "https://www.linkedin.com/in/aarav-sharma-example"
+    },
+    {
+      "label": "GitHub",
+      "selector": "#github",
+      "ok": true,
+      "got": "https://github.com/aarav-example"
+    },
+    {
+      "label": "Skills",
+      "selector": "#skills",
+      "ok": true,
+      "got": "Python, TypeScript, Machine Learning, React"
+    }
+  ],
+  "valuesLeakedToServer": [],
+  "pageSays": "Application submitted. Thank you!"
+}

@@ -7,7 +7,8 @@
   "scripts": {
     "demo": "node run-demo.mjs",
     "ask": "node run-ask.mjs",
-    "popup": "node popup-screens.mjs"
+    "popup": "node popup-screens.mjs",
+    "profile": "node run-profile.mjs"
   },
   "devDependencies": {
     "puppeteer": "^24.43.1"
