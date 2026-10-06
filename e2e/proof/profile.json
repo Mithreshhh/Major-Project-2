@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-06T16:34:11.112Z",
+  "date": "2026-10-06T17:42:26.907Z",
   "runs": [
     {
       "task": "Fill this application with my saved details, then submit it.",
       "person": "Me",
       "status": "done",
-      "seconds": 55.9,
+      "seconds": 42,
       "steps": [
         "Type the saved Full name into \"Full name\"",
         "Type the saved Email into \"Email\"",
@@ -35,7 +35,7 @@
       "task": "Fill this application with Father's details.",
       "person": "Father",
       "status": "needs_user",
-      "seconds": 18.2,
+      "seconds": 13.2,
       "steps": [
         "Type the saved Full name into \"Full name\"",
         "Type the saved Email into \"Email\"",

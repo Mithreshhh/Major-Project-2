@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-06T17:41:13.167Z",
+  "questions": [
+    {
+      "page": "store.html",
+      "question": "Which three books are the cheapest, and what do they cost together?",
+      "expected": "₹299, ₹399, ₹449; ₹999 with the offer",
+      "answer": "The three cheapest books are The Alchemist at ₹299, Atomic Habits at ₹399, and Deep Work at ₹449. Their combined cost is ₹299 + ₹399 + ₹449, which equals ₹1,147. Since there is an offer for any three books for ₹999, the total cost for this set would be ₹999. I recommend choosing these three books as they represent the lowest individual prices listed.",
+      "seconds": 10.1,
+      "ok": true
+    },
+    {
+      "page": "store.html",
+      "question": "How much do Clean Code and The Pragmatic Programmer cost together? Would I pay less if I add The Alchemist as a third book?",
+      "expected": "529 + 549 = 1,078 for two; three books cost 999 with the offer",
+      "answer": "The combined cost of Clean Code and The Pragmatic Programmer is ₹529 + ₹549, which equals ₹1078.\n\nIf you add The Alchemist as a third book, the total cost would be ₹529 + ₹549 + ₹299, which equals ₹1377.\n\nTherefore, you would not pay less; adding The Alchemist would increase the total cost by ₹299. However, since you are purchasing three books, you can take advantage of the offer for any 3 books for ₹999, which would be cheaper than the sum of the individual prices.",
+      "seconds": 7.9,
+      "ok": true
+    },
+    {
+      "page": "store.html",
+      "question": "I am a student who writes code and travels a lot. Which laptop do you recommend under ₹60,000, and why?",
+      "expected": "lightest, longest battery, under budget",
+      "answer": "I recommend the AeroBook 14. It is priced at ₹54,990, which is under your ₹60,000 budget. This laptop is described as light and long-lasting, weighing 1.2 kg, which is ideal for someone who travels a lot. It also features 16 GB of RAM and 512 GB of storage, which should be sufficient for coding tasks.",
+      "seconds": 10.8,
+      "ok": true
+    },
+    {
+      "page": "pricing.html",
+      "question": "How much do I save in one year if I pay yearly for the Pro plan instead of monthly?",
+      "expected": "12 x 499 = 5,988 vs 4,990",
+      "answer": "If you pay yearly for the Pro plan, you save ₹998 in one year. The monthly price is ₹499, so the yearly price is ₹4,990. This calculation is based on the stated savings on the page.",
+      "seconds": 5.9,
+      "ok": true
+    },
+    {
+      "page": "pricing.html",
+      "question": "We are a team of 7 people and we need priority support. Which plan should we choose?",
+      "expected": "only Team has priority support",
+      "answer": "You should choose the Team plan. The Team plan includes 5 users and offers priority support, which is a requirement for your team. To accommodate 7 people, you will need to pay for the two extra users.\n\nThe cost calculation is as follows:\nThe base price for the Team plan is ₹1,499 per month for 5 users.\nYou need 2 extra users (7 total users - 5 included users).\nThe cost for extra users is 2 x ₹250 per month, which equals ₹500 per month.\nThe total monthly cost for 7 users would be ₹1,499 + ₹500 = ₹1,999 per month.\n\nThis option meets your requirement for priority support and accommodates all 7 team members.",
+      "seconds": 10.7,
+      "ok": true
+    }
+  ],
+  "task": {
+    "task": "Add Deep Work to the cart.",
+    "status": "done",
+    "steps": [
+      "Click \"Add Deep Work to cart, ₹449, rated 4.6\"",
+      "Done: Added 'Deep Work' to the cart as requested."
+    ],
+    "cart": [
+      "Deep Work"
+    ],
+    "total": "₹498",
+    "ok": true
+  }
+}

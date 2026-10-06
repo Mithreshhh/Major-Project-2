@@ -9,7 +9,8 @@
     "ask": "node run-ask.mjs",
     "popup": "node popup-screens.mjs",
     "profile": "node run-profile.mjs",
-    "pages": "node page-screens.mjs"
+    "pages": "node page-screens.mjs",
+    "smart": "node run-smart.mjs"
   },
   "devDependencies": {
     "puppeteer": "^24.43.1"

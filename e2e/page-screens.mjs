@@ -1,5 +1,5 @@
 /**
- * Screenshots of the four test pages, for slides and for checking the design by eye.
+ * Screenshots of the test pages, for slides and for checking the design by eye.
  * No extension, server or model needed; only the pages on :5500.
  *
  *   npm run pages --workspace=e2e      -> e2e/proof/pages/*.png
@@ -18,6 +18,9 @@ const PAGES = [
   ["apply.html", "apply", 1280, 1000],
   ["login.html", "login", 1280, 780],
   ["chat.html", "chat", 1280, 780],
+  ["store.html", "store", 1280, 900],
+  ["pricing.html", "pricing", 1280, 900],
+  ["features.html", "features", 1280, 900],
 ];
 
 await mkdir(outDir, { recursive: true });
