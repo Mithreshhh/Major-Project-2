@@ -29,6 +29,9 @@ from .schemas import SanitizedContext
 
 log = logging.getLogger("odpa.debug")
 
+#: The "What the AI sees" page (plain HTML, CSS and JS; no build step, no external assets).
+VIEW_PATH = Path(__file__).with_name("debug_view.html")
+
 
 @dataclass
 class Capture:
@@ -50,6 +53,7 @@ class Capture:
     error: Optional[str] = None
     reasoning_ms: Optional[int] = None
     page_text: Optional[str] = None
+    profile_fields: Optional[list[dict[str, str]]] = None
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -71,6 +75,7 @@ class Capture:
             "error": self.error,
             "reasoningMs": self.reasoning_ms,
             "pageText": self.page_text,
+            "profileFields": self.profile_fields,
         }
 
 
@@ -119,6 +124,7 @@ class CaptureStore:
                 error=error,
                 reasoning_ms=reasoning_ms,
                 page_text=context.pageText,
+                profile_fields=[f.model_dump() for f in context.profileFields] if context.profileFields else None,
             )
             self._items.append(capture)
 
@@ -172,96 +178,7 @@ def build_router(store: CaptureStore) -> APIRouter:
 
     @router.get("/view", response_class=HTMLResponse)
     async def view() -> HTMLResponse:
-        return HTMLResponse(VIEW_HTML)
+        # Read per request: the page can be edited without restarting the server.
+        return HTMLResponse(VIEW_PATH.read_text(encoding="utf-8"), headers={"cache-control": "no-store"})
 
     return router
-
-
-VIEW_HTML = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>What the AI sees</title>
-<style>
-:root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--ml:#cf222e;--dom:#8250df;--heuristic:#bf8700;--photo:#0e7490;--ok:#1a7f37}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#151b23;--fg:#e6edf3;--muted:#9198a1;--border:#3d444d;--ml:#f85149;--dom:#ab7df8;--heuristic:#d29922;--photo:#22b8cf;--ok:#3fb950}}
-*{box-sizing:border-box}body{margin:0;padding:20px 16px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:1200px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 16px}
-.grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px}@media (max-width:900px){.grid{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
-.shot{position:relative;line-height:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#000}
-.shot img{width:100%;height:auto;display:block}.box{position:absolute;border:2px solid var(--ml);pointer-events:none}
-.box span{position:absolute;top:-1px;left:-1px;transform:translateY(-100%);font:600 11px/1.6 system-ui;padding:0 5px;color:#fff;background:var(--ml);white-space:nowrap}
-.box.dom{border-color:var(--dom)}.box.dom span{background:var(--dom)}.box.heuristic{border-color:var(--heuristic)}.box.heuristic span{background:var(--heuristic)}
-.hide-boxes .box:not(.vbox){display:none}
-.box.photo{border-color:var(--photo)}.box.photo span{background:var(--photo)}.pill.photo{border-color:var(--photo);color:var(--photo)}
-.vbox{position:absolute;border:2px dashed #0969da;pointer-events:none}.vbox.textbox{border-color:#1a7f37}.vbox.link{border-color:#bc4c00}.hide-vision .vbox{display:none}
-.pill.v-button{border-color:#0969da;color:#0969da}.pill.v-textbox{border-color:#1a7f37;color:#1a7f37}.pill.v-link{border-color:#bc4c00;color:#bc4c00}
-.big{font-size:22px;font-weight:700}.ok{color:var(--ok);font-weight:600}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}.kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere}
-.decision{font-size:16px;font-weight:600;color:var(--ok)}.error{color:var(--ml);font-weight:600}
-table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:4px 6px;border-top:1px solid var(--border);vertical-align:top}th{color:var(--muted);font-weight:500}
-.red{color:var(--ml);font-weight:600}.pill{display:inline-block;padding:0 8px;border-radius:99px;font-size:12px;border:1px solid var(--border);margin:0 4px 4px 0}
-.pill.ml{border-color:var(--ml);color:var(--ml)}.pill.dom{border-color:var(--dom);color:var(--dom)}.pill.heuristic{border-color:var(--heuristic);color:var(--heuristic)}
-.history{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}.history button{flex:none;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 8px;cursor:pointer;font:inherit;font-size:12px}
-.history button.on{border-color:var(--fg);font-weight:600}.muted{color:var(--muted)}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-pre#pageText{white-space:pre-wrap;max-height:260px;overflow:auto;font:12px/1.5 ui-monospace,monospace;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin:0}
-.hid{color:#fff;background:var(--ml);border-radius:3px;padding:0 3px}
-h2{font-size:15px;margin:14px 0 6px}h2:first-child{margin-top:0}
-</style></head><body><main>
-<h1>What the AI sees</h1>
-<p class="sub">Exactly what the reasoning server received from the browser extension: the already-redacted screenshot, the element list, and what Gemma decided. Updates live.</p>
-<div class="row"><label><input type="checkbox" id="boxes" checked> Outline redacted regions</label><label><input type="checkbox" id="vision" checked> Show UI elements found from pixels (dashed)</label><span class="muted" id="count"></span></div>
-<div class="history" id="history"></div>
-<div id="empty" class="card" style="margin-top:12px">No requests yet. Run a task from the extension popup.</div>
-<div class="grid" id="content" hidden style="margin-top:12px">
- <div class="card"><div class="shot" id="shot"><img id="img" alt="Sanitized screenshot received by the server"></div><p class="muted" id="noshot" hidden>No screenshot was sent for this step.</p></div>
- <div class="card">
-  <h2>Decision</h2><div id="decision"></div>
-  <h2>Request</h2><dl class="kv" id="req"></dl>
-  <h2>Hidden before sending</h2><div id="pills"></div>
-  <div id="textWrap" hidden><h2>Page text the AI read (personal data replaced on-device)</h2><pre id="pageText"></pre></div>
-  <h2>Found from pixels (on-device vision model)</h2><div id="visionInfo"></div>
-  <h2>Elements the model was given</h2><table><thead><tr><th>id</th><th>role</th><th>label</th><th>seen by vision</th></tr></thead><tbody id="els"></tbody></table>
- </div>
-</div>
-</main>
-<script>
-const $=id=>document.getElementById(id);let selected=null,latestId=null,data=[];
-const NAMES={ml:"face (on-device model)",photo:"photo or video",dom:"sensitive field",heuristic:"personal text"};
-function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
-function describe(c){if(!c)return"";switch(c.action){case"click":return`Click ${c.target}`;case"type":return`Type "${c.text}" into ${c.target}`;case"scroll":return`Scroll ${c.direction}`;case"navigate":return`Go to ${c.url}`;case"wait":return`Wait ${c.ms} ms`;case"done":return`Done: ${c.summary}`;case"answer":return`Answer: ${c.answer}`;case"ask_user":return`Ask user: ${c.question}`;default:return`No action: ${c.reason}`}}
-function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidden=!!c;$("content").hidden=!c;
- $("count").textContent=data.length?`${data.length} request(s) recorded`:"";
- $("history").innerHTML=data.map(x=>`<button data-id="${x.id}" class="${x.id===(c&&c.id)?"on":""}">#${x.id} · step ${x.stepIndex+1} · ${esc((x.command&&x.command.action)||"error")}</button>`).join("");
- if(!c)return;
- const shot=$("shot");shot.querySelectorAll(".box").forEach(b=>b.remove());
- const vis=c.perception.visualElements||[],seen=new Set(vis.map(v=>v.matchedId).filter(Boolean));
- if(c.hasScreenshot){$("img").src=`/debug/captures/${c.id}/screenshot`;shot.hidden=false;$("noshot").hidden=true;
-  const vw=c.viewport.width||1,vh=c.viewport.height||1;
-  for(const r of c.redactions){const d=document.createElement("div");d.className=`box ${r.category==="photo"?"photo":r.method}`;const b=r.bbox;
-   Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});
-   d.innerHTML=`<span>${esc(r.category.replace("_"," "))}</span>`;shot.appendChild(d)}
-  for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}`;const b=v.bbox;
-   Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});shot.appendChild(d)}}
- else{shot.hidden=true;$("noshot").hidden=false}
- $("decision").innerHTML=c.error?`<div class="error">${esc(c.error)}</div>`:`<div class="decision" style="white-space:pre-wrap">${esc(describe(c.command))}</div><div class="muted">${esc(c.command&&c.command.reasoning)}</div><div class="muted">Gemma took ${((c.reasoningMs||0)/1000).toFixed(1)} s</div>`;
- $("req").innerHTML=`<dt>Task</dt><dd>${esc(c.task)}</dd><dt>Step</dt><dd>${c.stepIndex+1}</dd><dt>Page</dt><dd>${esc(c.title)}<br><span class="muted">${esc(c.url)}</span></dd><dt>Screenshot</dt><dd>${c.hasScreenshot?`${c.screenshotSize[0]}×${c.screenshotSize[1]} ${esc(c.screenshotMime)}`:"none"}</dd><dt>On-device model</dt><dd>${esc(c.perception.modelId)} · ${c.perception.latencyMs} ms</dd>`;
- const by={};for(const r of c.redactions){const k=r.category==="photo"?"photo":r.method;by[k]=(by[k]||0)+1}
- $("pills").innerHTML=Object.keys(by).length?Object.entries(by).map(([m,n])=>`<span class="pill ${m}">${n} × ${NAMES[m]||m}</span>`).join(""):`<span class="muted">Nothing sensitive found on this screen.</span>`;
- $("textWrap").hidden=!c.pageText;if(c.pageText)$("pageText").innerHTML=esc(c.pageText).replace(/\\[HIDDEN [A-Z ]+\\]/g,m=>`<span class="hid">${m}</span>`);
- const CMP=new Set(["button","link","textbox","checkbox","radio","select"]),vw2=c.viewport.width,vh2=c.viewport.height;
- const comparable=e=>CMP.has(e.role)&&e.isVisible&&e.bbox.width>=4&&e.bbox.height>=4&&e.bbox.x<vw2&&e.bbox.y<vh2&&e.bbox.x+e.bbox.width>0&&e.bbox.y+e.bbox.height>0;
- if(c.perception.uiModelId){const dom=c.elements.filter(comparable).length,cnt={};for(const v of vis)cnt[v.role]=(cnt[v.role]||0)+1;
-  const correct=vis.filter(v=>v.matchedId).length,prec=vis.length?Math.round(correct/vis.length*100):100;
-  $("visionInfo").innerHTML=`<div><span class="big">${seen.size} / ${dom}</span> buttons, inputs and links on screen were found from the screenshot alone</div>`+
-   `<div class="muted">${prec}% of the ${vis.length} boxes match a real page element · ${esc(c.perception.uiModelId)} · ${c.perception.uiLatencyMs} ms on-device</div>`+
-   `<div style="margin-top:4px">${["button","textbox","link"].map(r=>`<span class="pill v-${r}">${cnt[r]||0} × ${r==="textbox"?"input":r}</span>`).join("")}</div>`}
- else $("visionInfo").innerHTML=`<span class="muted">The UI detector did not run for this step.</span>`;
- $("els").innerHTML=c.elements.map(e=>`<tr><td>${esc(e.id)}</td><td>${esc(e.role)}</td><td class="${e.redacted?"red":""}">${esc(e.label)}</td><td>${seen.has(e.id)?'<span class="ok">✓</span>':comparable(e)&&c.perception.uiModelId?'<span class="muted">missed</span>':""}</td></tr>`).join("")}
-$("history").addEventListener("click",e=>{const b=e.target.closest("button");if(b){selected=+b.dataset.id;render()}});
-$("boxes").addEventListener("change",e=>$("shot").classList.toggle("hide-boxes",!e.target.checked));
-$("vision").addEventListener("change",e=>$("shot").classList.toggle("hide-vision",!e.target.checked));
-async function poll(){try{const r=await fetch("/debug/captures",{cache:"no-store"});const j=await r.json();data=j.captures;
- const newest=data[0]&&data[0].id;if(newest!==latestId){if(selected===null||selected===latestId)selected=newest;latestId=newest;render()}}catch(e){}setTimeout(poll,1500)}
-poll();
-</script></body></html>
-"""

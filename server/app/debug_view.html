@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What the AI sees</title>
+<style>
+:root{
+  --bg:#f4f6fb;--bg2:#eaeef7;--card:#ffffff;--glass:rgba(255,255,255,.72);--fg:#0b1220;--muted:#5d6880;--line:#e1e6f0;--soft:#f6f8fc;
+  --brand:#5b4bff;--brand2:#06b6d4;--mint:#10b981;
+  --face:#e11d48;--photo:#0891b2;--field:#7c3aed;--text:#d97706;--vbtn:#2563eb;--vinput:#059669;--vlink:#ea580c;
+  --ok:#059669;--bad:#e11d48;--shadow:0 10px 40px rgba(15,23,42,.08);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#070a12;--bg2:#0b1020;--card:#0f1526;--glass:rgba(15,21,38,.72);--fg:#e8ecf6;--muted:#8f9bb5;--line:#1c2540;--soft:#0b1120;
+  --brand:#8b7dff;--brand2:#22d3ee;--mint:#34d399;
+  --face:#fb7185;--photo:#22d3ee;--field:#a78bfa;--text:#fbbf24;--vbtn:#60a5fa;--vinput:#34d399;--vlink:#fb923c;
+  --ok:#34d399;--bad:#fb7185;--shadow:0 10px 40px rgba(0,0,0,.45);
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg2)}
+body{margin:0;color:var(--fg);font:14px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(900px 500px at 12% -10%,color-mix(in srgb,var(--brand) 22%,transparent),transparent 60%),
+    radial-gradient(800px 480px at 95% 0%,color-mix(in srgb,var(--brand2) 20%,transparent),transparent 60%),
+    linear-gradient(var(--bg),var(--bg2));
+  background-attachment:fixed;min-height:100vh}
+.wrap{max-width:1320px;margin:0 auto;padding:22px 22px 60px}
+
+/* Header */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;flex:none;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 8px 24px color-mix(in srgb,var(--brand) 45%,transparent)}
+.mark svg{width:24px;height:24px}
+h1{font-size:24px;line-height:1.15;margin:0;letter-spacing:-.02em;font-weight:700}
+h1 span{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.grow{flex:1;min-width:200px}
+.live{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ok);padding:6px 12px;border-radius:99px;
+  background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+.toggles{display:flex;gap:8px;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--glass);cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--brand);margin:0}
+
+/* Timeline */
+.timeline{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin-bottom:6px}
+.timeline button{flex:none;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--glass);color:var(--fg);border-radius:12px;
+  padding:7px 12px;cursor:pointer;font:inherit;font-size:12.5px;backdrop-filter:blur(8px);transition:transform .12s,border-color .12s}
+.timeline button:hover{transform:translateY(-1px);border-color:var(--brand)}
+.timeline button b{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11.5px;background:var(--soft);color:var(--muted)}
+.timeline button.on{border-color:transparent;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 35%,transparent)}
+.timeline button.on b{background:rgba(255,255,255,.22);color:#fff}
+.timeline button.err b{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+
+.card{background:var(--glass);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.empty{padding:56px 24px;text-align:center}
+.empty .big{font-size:20px;font-weight:700;margin:10px 0 4px}
+.empty p{color:var(--muted);margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}}
+
+/* Screenshot in a browser frame */
+.frame{padding:0;overflow:hidden}
+.chrome{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--soft) 80%,transparent)}
+.dots{display:flex;gap:6px}.dots i{width:10px;height:10px;border-radius:50%;background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.addr{flex:1;min-width:0;font:12px ui-monospace,"Cascadia Code",monospace;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shot{position:relative;line-height:0;background:#000}
+.shot img{width:100%;height:auto;display:block}
+.box{position:absolute;border:2px solid var(--face);pointer-events:none;border-radius:2px}
+.box span{position:absolute;top:-2px;left:-2px;transform:translateY(-100%);font:700 10.5px/1.7 "Segoe UI",system-ui;padding:0 6px;color:#fff;background:var(--face);white-space:nowrap;border-radius:4px 4px 4px 0;letter-spacing:.02em;text-transform:uppercase}
+.box.photo{border-color:var(--photo)}.box.photo span{background:var(--photo)}
+.box.dom{border-color:var(--field)}.box.dom span{background:var(--field)}
+.box.heuristic{border-color:var(--text)}.box.heuristic span{background:var(--text)}
+.vbox{border:2px dashed var(--vbtn);border-radius:4px}.vbox.textbox{border-color:var(--vinput)}.vbox.link{border-color:var(--vlink)}
+.hide-boxes .box:not(.vbox){display:none}.hide-vision .vbox{display:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.legend i.dash{background:none;border:2px dashed var(--c)}
+.noshot{padding:40px;text-align:center;color:var(--muted)}
+
+/* Right column */
+.side{display:grid;gap:14px}
+.pad{padding:16px 18px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.decision{position:relative;overflow:hidden}
+.decision::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(var(--brand),var(--brand2))}
+.decision .what{font-size:18px;font-weight:700;line-height:1.35;letter-spacing:-.01em;white-space:pre-wrap;overflow-wrap:anywhere}
+.decision.answer .what{font-size:14.5px;font-weight:500;line-height:1.6}
+.decision .why{color:var(--muted);margin-top:6px}
+.decision.error::before{background:var(--bad)}.decision.error .what{color:var(--bad);font-size:14.5px}
+.kind{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:99px;margin-bottom:8px;
+  color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,transparent)}
+.task{font-size:13px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.task b{color:var(--fg);font-weight:600}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{padding:12px 12px 11px;border-radius:14px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px)}
+.tile .n{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.tile .n small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+.tile .l{font-size:11.5px;color:var(--muted);margin-top:3px}
+.tile.hero .n{background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--c);
+  background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.pill.plain{--c:var(--muted);font-weight:500}
+.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+pre{white-space:pre-wrap;max-height:240px;overflow:auto;font:12px/1.55 ui-monospace,"Cascadia Code",monospace;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0}
+.hid{color:#fff;background:var(--face);border-radius:4px;padding:0 4px;font-weight:600}
+details summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"▾";margin-left:auto;color:var(--muted);transition:transform .15s}
+details:not([open]) summary::after{transform:rotate(-90deg)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+td,th{text-align:left;padding:6px 8px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-top:none}
+td.id{font-family:ui-monospace,monospace;color:var(--muted)}
+.red{color:var(--face);font-weight:700}.ok{color:var(--ok);font-weight:700}.miss{color:var(--muted)}
+.role{font-size:11px;padding:1px 7px;border-radius:6px;background:var(--soft);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+    <div class="grow">
+      <h1>What the <span>AI</span> sees</h1>
+      <p class="sub">Exactly what the reasoning server received from the browser extension, after everything private was hidden on the device.</p>
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="boxes" checked> Hidden regions</label>
+      <label class="toggle"><input type="checkbox" id="vision" checked> Found from pixels</label>
+    </div>
+    <div class="live"><i></i><span id="count">Live</span></div>
+  </header>
+
+  <div class="timeline" id="history"></div>
+
+  <div id="empty" class="card empty">
+    <div class="mark" style="margin:0 auto" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/></svg></div>
+    <div class="big">Waiting for the first request</div>
+    <p>Run a task or ask a question from the extension popup. It will appear here within a second.</p>
+  </div>
+
+  <div class="layout" id="content" hidden>
+    <div class="card frame">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="addr" id="addr"></div></div>
+      <div class="shot" id="shot"><img id="img" alt="Sanitized screenshot received by the server"></div>
+      <div class="noshot" id="noshot" hidden>No screenshot was sent for this step.</div>
+      <div class="legend">
+        <span><i style="--c:var(--face)"></i>Face (on-device model)</span>
+        <span><i style="--c:var(--photo)"></i>Photo or video</span>
+        <span><i style="--c:var(--field)"></i>Sensitive field</span>
+        <span><i style="--c:var(--text)"></i>Personal text</span>
+        <span><i class="dash" style="--c:var(--vbtn)"></i>Button</span>
+        <span><i class="dash" style="--c:var(--vinput)"></i>Input</span>
+        <span><i class="dash" style="--c:var(--vlink)"></i>Link (found from pixels)</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card pad decision" id="decisionCard">
+        <span class="kind" id="kind"></span>
+        <div class="what" id="what"></div>
+        <div class="why" id="why"></div>
+        <div class="task"><b>Task</b> · <span id="task"></span></div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile hero"><div class="n" id="tHidden">0</div><div class="l">things hidden</div></div>
+        <div class="tile"><div class="n" id="tVision">–</div><div class="l">controls found from pixels</div></div>
+        <div class="tile"><div class="n" id="tDevice">–</div><div class="l">on-device models</div></div>
+        <div class="tile"><div class="n" id="tGemma">–</div><div class="l">Gemma decided in</div></div>
+      </div>
+
+      <div class="card pad">
+        <p class="eyebrow">Hidden before sending</p>
+        <div class="pills" id="pills"></div>
+        <p class="note" id="visionNote"></p>
+      </div>
+
+      <div class="card pad" id="profileWrap" hidden>
+        <p class="eyebrow">Saved details the AI was told about</p>
+        <div class="pills" id="profile"></div>
+        <p class="note">Names only. The values and files stay in the browser; the extension fills them in.</p>
+      </div>
+
+      <div class="card pad" id="textWrap" hidden>
+        <p class="eyebrow">Page text the AI read</p>
+        <pre id="pageText"></pre>
+        <p class="note">Personal data was replaced on the device before this text left.</p>
+      </div>
+
+      <details class="card pad" open>
+        <summary><span class="eyebrow" style="margin:0">Elements the model was given</span><span class="pill plain" id="elCount"></span></summary>
+        <table><thead><tr><th>id</th><th>role</th><th>label</th><th>seen by vision</th></tr></thead><tbody id="els"></tbody></table>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);let selected=null,latestId=null,data=[];
+const NAMES={ml:"face",photo:"photo or video",dom:"sensitive field",heuristic:"personal text"};
+const COLOR={ml:"var(--face)",photo:"var(--photo)",dom:"var(--field)",heuristic:"var(--text)"};
+const KIND={click:"Click",type:"Type",scroll:"Scroll",navigate:"Navigate",wait:"Wait",done:"Finished",answer:"Answer",ask_user:"Needs you",noop:"No action"};
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function plural(n,w){return `${n} ${w}${n===1?"":"s"}`}
+function labelOf(c,id){const e=c.elements.find(x=>x.id===id);return e&&e.label?`“${e.label}”`:id}
+function describe(c){const m=c.command;if(!m)return"";switch(m.action){
+  case"click":return`Click ${labelOf(c,m.target)}`;
+  case"type":return`Type ${/\{\{/.test(m.text)?"the saved "+m.text:`“${m.text}”`} into ${labelOf(c,m.target)}`;
+  case"scroll":return`Scroll ${m.direction}`;case"navigate":return`Go to ${m.url}`;case"wait":return`Wait ${m.ms} ms`;
+  case"done":return m.summary;case"answer":return m.answer;case"ask_user":return m.question;default:return m.reason||"Nothing to do"}}
+function keyOf(r){return r.category==="photo"?"photo":r.method}
+
+function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidden=!!c;$("content").hidden=!c;
+ $("count").textContent=data.length?`Live · ${plural(data.length,"request")}`:"Live";
+ $("history").innerHTML=[...data].reverse().map(x=>{const a=(x.command&&x.command.action)||"error";
+  return`<button data-id="${x.id}" class="${x.id===(c&&c.id)?"on":""}${x.error?" err":""}"><b>${x.stepIndex+1}</b>${esc(KIND[a]||"Error")}</button>`}).join("");
+ const on=$("history").querySelector(".on");if(on)on.scrollIntoView({block:"nearest",inline:"nearest"});
+ if(!c)return;
+
+ // Screenshot and overlays
+ const shot=$("shot");shot.querySelectorAll(".box").forEach(b=>b.remove());
+ const vis=c.perception.visualElements||[],seen=new Set(vis.map(v=>v.matchedId).filter(Boolean));
+ $("addr").textContent=c.url;
+ if(c.hasScreenshot){$("img").src=`/debug/captures/${c.id}/screenshot`;shot.hidden=false;$("noshot").hidden=true;
+  const vw=c.viewport.width||1,vh=c.viewport.height||1;
+  const place=(d,b)=>Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});
+  for(const r of c.redactions){const d=document.createElement("div");d.className=`box ${keyOf(r)}`;place(d,r.bbox);
+   d.innerHTML=`<span>${esc(r.category.replace("_"," "))}</span>`;shot.appendChild(d)}
+  for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}`;place(d,v.bbox);shot.appendChild(d)}}
+ else{shot.hidden=true;$("noshot").hidden=false}
+
+ // Decision
+ const a=c.command&&c.command.action,card=$("decisionCard");
+ card.className=`card pad decision${c.error?" error":a==="answer"?" answer":""}`;
+ $("kind").textContent=c.error?"Error":`Step ${c.stepIndex+1} · ${KIND[a]||a}`;
+ $("what").textContent=c.error||describe(c);
+ $("why").textContent=c.error?"":(c.command&&c.command.reasoning)||"";
+ $("task").textContent=c.task;
+
+ // Tiles
+ $("tHidden").textContent=c.redactions.length;
+ const CMP=new Set(["button","link","textbox","checkbox","radio","select"]),vw2=c.viewport.width,vh2=c.viewport.height;
+ const comparable=e=>CMP.has(e.role)&&e.isVisible&&e.bbox.width>=4&&e.bbox.height>=4&&e.bbox.x<vw2&&e.bbox.y<vh2&&e.bbox.x+e.bbox.width>0&&e.bbox.y+e.bbox.height>0;
+ const dom=c.elements.filter(comparable).length;
+ $("tVision").innerHTML=c.perception.uiModelId?`${seen.size}<small>/ ${dom}</small>`:"–";
+ const deviceMs=(c.perception.latencyMs||0)+(c.perception.uiLatencyMs||0);
+ $("tDevice").innerHTML=c.hasScreenshot?`${deviceMs}<small>ms</small>`:"–";
+ $("tGemma").innerHTML=c.reasoningMs==null?"–":`${(c.reasoningMs/1000).toFixed(1)}<small>s</small>`;
+
+ // Hidden pills
+ const by={};for(const r of c.redactions)by[keyOf(r)]=(by[keyOf(r)]||0)+1;
+ $("pills").innerHTML=Object.keys(by).length?Object.entries(by).map(([m,n])=>`<span class="pill" style="--c:${COLOR[m]||"var(--muted)"}">${n} × ${NAMES[m]||m}</span>`).join(""):`<span class="pill plain">Nothing sensitive on this screen</span>`;
+ if(c.perception.uiModelId){const correct=vis.filter(v=>v.matchedId).length,prec=vis.length?Math.round(correct/vis.length*100):100;
+  $("visionNote").textContent=`Vision model ${c.perception.uiModelId}: ${seen.size} of ${dom} buttons, inputs and links found from the screenshot alone; ${prec}% of its ${vis.length} boxes match a real element. Face model: ${c.perception.modelId}.`}
+ else $("visionNote").textContent=c.hasScreenshot?`Face model: ${c.perception.modelId}.`:"";
+
+ // Saved details (names only)
+ const pf=c.profileFields||[];$("profileWrap").hidden=!pf.length;
+ $("profile").innerHTML=pf.map(f=>`<span class="pill" style="--c:var(--brand)">${esc(f.label)}</span>`).join("");
+
+ // Page text
+ $("textWrap").hidden=!c.pageText;
+ if(c.pageText)$("pageText").innerHTML=esc(c.pageText).replace(/\[HIDDEN [A-Z ]+\]/g,m=>`<span class="hid">${m}</span>`);
+
+ // Elements
+ $("elCount").textContent=c.elements.length;
+ $("els").innerHTML=c.elements.map(e=>`<tr><td class="id">${esc(e.id)}</td><td><span class="role">${esc(e.role)}</span></td><td class="${e.redacted?"red":""}">${esc(e.label)}${e.attributes&&e.attributes.filled?' <span class="miss">· filled</span>':""}</td><td>${seen.has(e.id)?'<span class="ok">✓ found</span>':comparable(e)&&c.perception.uiModelId?'<span class="miss">missed</span>':""}</td></tr>`).join("")}
+
+$("history").addEventListener("click",e=>{const b=e.target.closest("button");if(b){selected=+b.dataset.id;render()}});
+$("boxes").addEventListener("change",e=>$("shot").classList.toggle("hide-boxes",!e.target.checked));
+$("vision").addEventListener("change",e=>$("shot").classList.toggle("hide-vision",!e.target.checked));
+async function poll(){try{const r=await fetch("/debug/captures",{cache:"no-store"});const j=await r.json();data=j.captures;
+ const newest=data[0]&&data[0].id;if(newest!==latestId){if(selected===null||selected===latestId)selected=newest;latestId=newest;render()}}catch(e){}setTimeout(poll,1500)}
+poll();
+</script>
+</body>
+</html>
