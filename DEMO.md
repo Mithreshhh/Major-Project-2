@@ -94,9 +94,10 @@ the dashed boxes and the "Found from pixels" section.
 > ourselves. Instead of labelling images by hand, we generated 1,700 random web pages and read
 > the exact position of every button from the page code, so the labels were free and perfect.
 > The test page was never used in training. On every step the extension checks the model
-> against the real page." Read the number from the screen: on this page it finds about 11 of
-> 12 elements. "On the page layout it was tested on, it scored 97.5%; on this redesigned page
-> it has never seen, it's a bit lower, and the extension measures that live."
+> against the real page." Read the number from the screen: on this page it finds about 10 of
+> 12 controls. "On the original, plain test page it scored 97.5%. On this redesigned page it
+> scores about 76%, and inputs are still 97%. It mistakes pill-shaped badges for buttons and
+> misses some grey menu links. We show the live score instead of claiming it is perfect."
 
 Then show `perception/ui-model/RESULTS.md` for the numbers across thresholds.
 > "We also tried Microsoft's OmniParser model first. It was 77 MB and couldn't even load in the

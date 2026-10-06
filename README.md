@@ -175,8 +175,10 @@ Chrome and checks that no field changed (`e2e/proof/ask.json`).
 
 A YOLO11n model we trained to find buttons, inputs and links **from the screenshot alone**
 (10.6 MB, runs in the extension). Training data is generated: headless Chrome renders 1,700
-random web pages and the DOM gives exact labels for free. On the demo page, which it never saw
-in training, it finds **97.5%** of the elements with **97.5%** precision (buttons 100% / 100%).
+random web pages and the DOM gives exact labels for free. On the original demo page, which it
+never saw in training, it finds **97.5%** of the elements with **97.5%** precision. On the
+redesigned, more modern demo page it finds **76%** with **64%** precision (inputs 97% / 95%):
+strong on familiar styling, weaker on unfamiliar styling, and measured live either way.
 The extension compares its boxes with the DOM on every step and "What the AI sees" draws them.
 Details: [`perception/ui-model/`](perception/ui-model/README.md).
 
