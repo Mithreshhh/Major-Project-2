@@ -69,6 +69,8 @@ const calls = { capture: 0, badges: [], sent: [], fetches: [], logs: [], assets:
 let onClicked = null;
 let onMessage = null;
 const sessionStore = {};
+/** chrome.storage.local: holds the user's saved details ("My info") in the tests that set them. */
+const localStore = {};
 
 function reset() {
   calls.capture = 0;
@@ -114,7 +116,10 @@ globalThis.chrome = {
     executeScript: async () => { throw new Error("content script injection not expected here"); },
   },
   storage: {
-    local: { get: async () => ({}), set: async () => {} },
+    local: {
+      get: async (key) => (typeof key === "string" && key in localStore ? { [key]: localStore[key] } : {}),
+      set: async (items) => { Object.assign(localStore, structuredClone(items)); },
+    },
     session: {
       get: async (key) => ({ [key]: sessionStore[key] }),
       set: async (items) => { Object.assign(sessionStore, structuredClone(items)); },
@@ -451,4 +456,43 @@ test("question detection and typed-text rules", () => {
   assert.equal(textComesFromTask("John Doe", "Fill name John Doe"), true);
   assert.equal(textComesFromTask("Hello from the agent.", "message Hello from the agent then submit"), true);
   assert.equal(textComesFromTask("user123", "log in"), false);
+});
+
+// ---------------------------------------------------------------------------
+// My info: saved details are typed on-device; only their names leave
+// ---------------------------------------------------------------------------
+
+test("saved details: the placeholder becomes the real value on-device and the value never leaves", async () => {
+  localStore.profile = [
+    { key: "email", label: "Email", value: "aarav.sharma@example.com" },
+    { key: "full_name", label: "Full name", value: "Aarav Sharma" },
+    { key: "github", label: "GitHub", value: "" },
+  ];
+  try {
+    serverScript.push({ action: "type", target: "el_0", text: "{{email}}" }, { action: "done", summary: "Filled." });
+    const state = await globalThis.odpa.runTask(40, 1, "Fill this form with my saved details");
+    assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+
+    // The page received the real value, flagged so the field is masked from now on.
+    const typed = calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type");
+    assert.equal(typed.command.text, "aarav.sharma@example.com");
+    assert.equal(typed.sensitive, true);
+    assert.equal(state.steps[0].summary, 'Type your saved Email into "Email"');
+
+    // The server received names only (and only for details that have a value).
+    assert.deepEqual(calls.fetches[0].body.profileFields, [{ key: "email", label: "Email" }, { key: "full_name", label: "Full name" }]);
+    assert.deepEqual(calls.fetches[1].body.history, [{ action: "type", target: "el_0", text: "{{email}}" }]);
+    const sent = JSON.stringify(calls.fetches) + JSON.stringify(calls.broadcasts) + JSON.stringify(sessionStore["task:40"]);
+    assert.ok(!sent.includes("aarav.sharma@example.com") && !sent.includes("Aarav Sharma"), "saved values appear in no request, broadcast or stored state");
+
+    // A detail that was never saved is not invented: the task stops and asks.
+    reset();
+    serverScript.push({ action: "type", target: "el_0", text: "{{passport_number}}" });
+    const missing = await globalThis.odpa.runTask(41, 1, "Fill this form with my saved details");
+    assert.equal(missing.status, "needs_user");
+    assert.match(missing.message, /not saved "passport_number" under My info/);
+    assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0);
+  } finally {
+    delete localStore.profile;
+  }
 });

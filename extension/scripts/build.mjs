@@ -30,10 +30,14 @@ const entryPoints = {
   background: path.join(extensionRoot, "src/background/index.ts"),
   content: path.join(extensionRoot, "src/content/index.ts"),
   popup: path.join(extensionRoot, "src/popup/popup.ts"),
+  profile: path.join(extensionRoot, "src/profile/profile.ts"),
 };
 
 /** Non-script files copied verbatim from src/ into each bundle. */
-const staticFiles = { "popup.html": path.join(extensionRoot, "src/popup/popup.html") };
+const staticFiles = {
+  "popup.html": path.join(extensionRoot, "src/popup/popup.html"),
+  "profile.html": path.join(extensionRoot, "src/profile/profile.html"),
+};
 
 /** Directory of onnxruntime-web's prebuilt artifacts (.wasm + .mjs glue). */
 // (package.json is not in the package's `exports`, so resolve the main entry, which lives in dist/)

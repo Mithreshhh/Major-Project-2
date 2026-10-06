@@ -42,6 +42,7 @@ import type {
   Veto,
 } from "../shared/messages";
 import { describeCommand, looksLikeQuestion, riskyAction, textComesFromTask } from "../shared/messages";
+import { hasPlaceholder, loadProfile, profileFieldNames, resolvePlaceholders, type ProfileField } from "../shared/profile";
 import { requestAction, requestAnswer } from "./api";
 import { decodeDataUrl, encodeRawImage } from "./image";
 
@@ -157,8 +158,8 @@ async function captureDom(tabId: number, includeText = false): Promise<DomSnapsh
   return res.snapshot;
 }
 
-async function executeOnPage(tabId: number, command: ActionCommand) {
-  const res = await sendToContent(tabId, { type: "EXECUTE_ACTION", command });
+async function executeOnPage(tabId: number, command: ActionCommand, sensitive = false) {
+  const res = await sendToContent(tabId, sensitive ? { type: "EXECUTE_ACTION", command, sensitive } : { type: "EXECUTE_ACTION", command });
   if (res.type !== "EXECUTION_RESULT") {
     return { ok: false, message: res.type === "ERROR" ? res.message : `unexpected ${res.type}` };
   }
@@ -186,7 +187,13 @@ interface Perceived {
  * returned context is the only thing that may leave it. `includeText` adds the visible page
  * text (for questions), with personal data replaced by "[HIDDEN EMAIL]"-style placeholders.
  */
-async function perceive(tabId: number, windowId: number | undefined, task: string, includeText: boolean): Promise<Perceived> {
+async function perceive(
+  tabId: number,
+  windowId: number | undefined,
+  task: string,
+  includeText: boolean,
+  profile: ProfileField[] = []
+): Promise<Perceived> {
   const session = getSession(tabId);
 
   // 1. DOM snapshot (+ boxes around PII found in page text and typed values)
@@ -260,6 +267,8 @@ async function perceive(tabId: number, windowId: number | undefined, task: strin
     history: session.history,
     perception: summary,
     ...(hiddenText ? { pageText: hiddenText.text } : {}),
+    // Names of the saved details only. The values stay in chrome.storage.local.
+    ...(profile.length ? { profileFields: profileFieldNames(profile) } : {}),
   };
 
   return {
@@ -293,7 +302,8 @@ export async function runStep(
   try {
     const session = getSession(tabId);
     const task = taskOverride ?? (await storedTask());
-    const { context, redactions, perceptionMs, vision } = await perceive(tabId, windowId, task, false);
+    const profile = (await loadProfile()).filter((f) => f.value.trim());
+    const { context, redactions, perceptionMs, vision } = await perceive(tabId, windowId, task, false, profile);
 
     console.info(LOG, `step ${session.stepIndex} -> /process`, {
       elements: context.elements.length,
@@ -304,9 +314,29 @@ export async function runStep(
     const command = await requestAction(context);
     console.info(LOG, "command", command);
 
-    // 6. Execute on the page, unless the gate vetoes it
-    const veto = await gate(command, context);
-    const execution = veto ? { ok: true, message: `not executed: ${veto.message}` } : await executeOnPage(tabId, command);
+    // 6. Saved details: the model answered with a placeholder ("{{email}}"); the real value is
+    //    filled in here, on the device. History and logs keep the placeholder, never the value.
+    let toExecute = command;
+    let savedDetails: string[] = [];
+    let missing: Veto | null = null;
+    if (command.action === "type" && hasPlaceholder(command.text)) {
+      const resolved = resolvePlaceholders(command.text, profile);
+      if (resolved.missing.length) {
+        missing = {
+          status: "needs_user",
+          message: `You have not saved "${resolved.missing.join('", "')}" under My info. Add it there, or put the value in your task.`,
+        };
+      } else {
+        toExecute = { ...command, text: resolved.text };
+        savedDetails = resolved.used;
+      }
+    }
+
+    // 7. Execute on the page, unless the gate vetoes it
+    const veto = missing ?? (await gate(command, context));
+    const execution = veto
+      ? { ok: true, message: `not executed: ${veto.message}` }
+      : await executeOnPage(tabId, toExecute, savedDetails.length > 0);
 
     session.history.push(command);
     session.stepIndex += 1;
@@ -318,6 +348,7 @@ export async function runStep(
       skipped: veto !== null,
       ...(veto ? { veto } : {}),
       ...(targetLabel ? { targetLabel } : {}),
+      ...(savedDetails.length ? { savedDetails } : {}),
       stepIndex: session.stepIndex - 1,
       sessionId: session.sessionId,
       redactions,
@@ -476,7 +507,8 @@ export async function runTask(
     if (sameCommand(previous, command)) {
       return { status: "stopped", message: "The agent proposed the same action twice in a row; it was not repeated and the task was stopped." };
     }
-    if (command.action === "type" && !textComesFromTask(command.text, task)) {
+    // Placeholders for saved details are allowed: runStep has already checked they exist.
+    if (command.action === "type" && !hasPlaceholder(command.text) && !textComesFromTask(command.text, task)) {
       return {
         status: "needs_user",
         message: `The agent wanted to type "${command.text}", which is not in your task, so nothing was typed. Tell it exactly what to enter.`,
@@ -514,7 +546,7 @@ export async function runTask(
       const result = await runStep(tabId, windowId, task, gate);
       const log: StepLog = {
         index: i,
-        summary: describeCommand(result.command, result.targetLabel),
+        summary: describeCommand(result.command, result.targetLabel, result.savedDetails),
         command: result.command,
         ok: result.execution.ok && !result.skipped,
         message: result.execution.message,

@@ -38,7 +38,7 @@ export const CONFIG = {
   requestTimeoutMs: 60_000,
 
   /** A task from the popup stops after this many steps even if the model has not said "done". */
-  maxTaskSteps: 10,
+  maxTaskSteps: 25,
   /** Pause between steps so the page can react (animations, validation messages). */
   stepDelayMs: 700,
 

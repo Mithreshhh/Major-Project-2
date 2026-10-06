@@ -24,6 +24,12 @@ const ATTRIBUTE_WHITELIST = ["type", "placeholder", "aria-label", "role", "title
 /** `UIElement.id` -> live DOM node, for the most recent snapshot. */
 let registry = new Map<string, Element>();
 
+/**
+ * Fields the agent filled with one of the user's saved details ("My info"). Their values are
+ * personal even when no pattern matches (a name, a college), so they are always masked.
+ */
+const filledFromProfile = new WeakSet<Element>();
+
 // ---------------------------------------------------------------------------
 // DOM capture
 // ---------------------------------------------------------------------------
@@ -114,6 +120,47 @@ function isVisible(el: Element, bbox: BoundingBox): boolean {
   return style.visibility !== "hidden" && style.display !== "none" && style.opacity !== "0";
 }
 
+const FORM_ROLES = new Set<ElementRole>(["textbox", "checkbox", "radio", "select", "button"]);
+
+/** Has a box and is not hidden by CSS; may be outside the viewport. */
+function isRendered(el: Element, bbox: BoundingBox): boolean {
+  if (bbox.width <= 0 || bbox.height <= 0) return false;
+  const style = getComputedStyle(el);
+  return style.visibility !== "hidden" && style.display !== "none" && style.opacity !== "0";
+}
+
+/**
+ * Ids that stay the same for an element across snapshots. Numbering by position would shift
+ * every id whenever the page scrolls, and the reasoner's history ("typed into el_8") would then
+ * point at the wrong field.
+ */
+const stableIds = new WeakMap<Element, string>();
+let nextId = 0;
+
+function stableId(el: Element): string {
+  let id = stableIds.get(el);
+  if (!id) {
+    id = `el_${nextId++}`;
+    stableIds.set(el, id);
+  }
+  return id;
+}
+
+/**
+ * Whether a field already holds something, as "filled" / "checked". Only the fact, never the
+ * value: it lets the reasoner move on to the next empty field instead of retyping.
+ */
+function stateAttributes(el: Element): Record<string, string> {
+  if (el instanceof HTMLInputElement) {
+    if (el.type === "checkbox" || el.type === "radio") return el.checked ? { checked: "yes" } : {};
+    if (["button", "submit", "reset", "image", "hidden", "file"].includes(el.type)) return {};
+    return el.value ? { filled: "yes" } : {};
+  }
+  if (el instanceof HTMLTextAreaElement) return el.value ? { filled: "yes" } : {};
+  if (el instanceof HTMLSelectElement) return el.selectedIndex > 0 ? { filled: "yes" } : {};
+  return {};
+}
+
 function isInteractive(el: Element, role: ElementRole): boolean {
   if (role === "heading" || role === "image" || role === "text") return false;
   if ((el as HTMLButtonElement).disabled) return false;
@@ -185,10 +232,11 @@ function scanInputValuesForPii(): RedactedRegion[] {
     if (!value) continue;
     const matches = findPii(value);
     const typed = el instanceof HTMLInputElement && (el.type === "email" || el.type === "tel");
-    if (matches.length === 0 && !typed) continue;
+    if (matches.length === 0 && !typed && !filledFromProfile.has(el)) continue;
     const bbox = bboxOf(el);
     if (!inViewport(bbox)) continue;
-    const category = matches[0]?.category ?? ((el as HTMLInputElement).type === "tel" ? "phone" : "email");
+    const type = (el as HTMLInputElement).type;
+    const category = matches[0]?.category ?? (type === "tel" ? "phone" : type === "email" ? "email" : "pii_text");
     regions.push({ bbox, category, confidence: 0.99, method: "heuristic" });
   }
   return regions;
@@ -269,12 +317,15 @@ export function captureDom(includeText = false): DomSnapshot {
     if (elements.length >= MAX_ELEMENTS) break;
 
     const bbox = bboxOf(el);
-    const visible = isVisible(el, bbox);
-    if (!visible) continue; // off-screen elements are not useful to a screenshot-grounded VLM
-
     const role = roleOf(el);
+    const visible = isVisible(el, bbox);
+    // Links, headings and images matter only when on screen. Form controls and buttons are kept
+    // even below the fold, so a long form can be filled without the reasoner having to scroll
+    // (typing or clicking scrolls the element into view).
+    if (!visible && !(FORM_ROLES.has(role) && isRendered(el, bbox))) continue;
     if (role === "text" && !(el.textContent ?? "").trim()) continue; // empty status region
-    const id = `el_${elements.length}`;
+
+    const id = stableId(el);
     registry.set(id, el);
 
     const element: UIElement = {
@@ -285,8 +336,8 @@ export function captureDom(includeText = false): DomSnapshot {
       isVisible: visible,
       isInteractive: isInteractive(el, role),
     };
-    const attributes = safeAttributes(el);
-    if (attributes) element.attributes = attributes;
+    const attributes = { ...safeAttributes(el), ...stateAttributes(el) };
+    if (Object.keys(attributes).length) element.attributes = attributes;
     elements.push(element);
   }
 
@@ -332,7 +383,7 @@ function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, text: string
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-export async function executeAction(command: ActionCommand): Promise<ExecutionResult> {
+export async function executeAction(command: ActionCommand, sensitive = false): Promise<ExecutionResult> {
   // Risky actions (log in, submit, pay, delete...) are confirmed by the user in the background
   // before they reach this point (see riskyAction in shared/messages.ts).
   switch (command.action) {
@@ -345,6 +396,7 @@ export async function executeAction(command: ActionCommand): Promise<ExecutionRe
     case "type": {
       const el = resolveTarget(command.target);
       (el as HTMLElement).focus();
+      if (sensitive) filledFromProfile.add(el);
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
         setNativeValue(el, command.text);
       } else if ((el as HTMLElement).isContentEditable) {
@@ -397,7 +449,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       case "CAPTURE_DOM":
         return { type: "DOM_SNAPSHOT", snapshot: captureDom(message.includeText === true) };
       case "EXECUTE_ACTION":
-        return { type: "EXECUTION_RESULT", result: await executeAction(message.command) };
+        return { type: "EXECUTION_RESULT", result: await executeAction(message.command, message.sensitive === true) };
       default:
         return { type: "ERROR", message: `unknown message ${(message as { type: string }).type}` };
     }

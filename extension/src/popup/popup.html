@@ -50,7 +50,7 @@
     button.ghost { background: transparent; }
     button:disabled { opacity: .45; cursor: default; }
     .spacer { flex: 1; }
-    .links { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
+    .links { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; white-space: nowrap; }
     button.link { border: none; background: none; color: var(--brand); padding: 0; font-weight: 500; }
     button.link:hover { text-decoration: underline; filter: none; }
 
@@ -89,7 +89,7 @@
     .chip.vision { color: var(--brand); } .chip.none { color: var(--muted); }
 
     footer { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
-    footer .lock::before { content: "🔒 "; }
+    footer button.link { font-size: 12px; }
   </style>
 </head>
 <body>
@@ -99,7 +99,7 @@
     </div>
     <div class="title">
       <h1>On-Device Perception Agent</h1>
-      <div class="tag">Private browser agent</div>
+      <div class="tag">Personal data stays on this device</div>
     </div>
     <div class="server"><span class="dot" id="dot"></span><span id="server">checking…</span></div>
   </header>
@@ -119,6 +119,7 @@
     <div class="links">
       <button class="link" id="demo" title="Fill in the demo task for the test page">Demo task</button>
       <button class="link" id="demo-q" title="Fill in a demo question">Demo question</button>
+      <button class="link" id="demo-info" title="Fill the form on this page with your saved details">Fill with my info</button>
     </div>
     <div class="warn" id="warn">This tab is not a normal web page. Chrome does not allow extensions on its own pages; open an http(s) site.</div>
 
@@ -133,7 +134,7 @@
   </div>
 
   <footer>
-    <span class="lock">Faces, photos and personal data are hidden on this device</span>
+    <button class="link" id="info" title="Save your details once; the AI never sees the values">My info</button>
     <button class="link" id="seen">What the AI sees →</button>
   </footer>
 

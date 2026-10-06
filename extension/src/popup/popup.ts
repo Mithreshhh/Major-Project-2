@@ -10,9 +10,11 @@ import { HEALTH_ENDPOINT, type HealthResponse } from "@odpa/shared";
 
 import { CONFIG } from "../shared/config";
 import { looksLikeQuestion, type BackgroundBroadcast, type PopupRequest, type TaskState } from "../shared/messages";
+import { loadProfile, profileFieldNames } from "../shared/profile";
 
 const DEMO_TASK =
   "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.";
+const DEMO_INFO_TASK = "Fill this form with my saved details, then submit it.";
 const DEMO_QUESTION = "What personal information is shown on this page, and what can I do here?";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -208,6 +210,17 @@ async function init(): Promise<void> {
     taskEl.value = DEMO_QUESTION;
     updateHint();
     taskEl.focus();
+  });
+
+  $("demo-info").addEventListener("click", () => {
+    taskEl.value = DEMO_INFO_TASK;
+    updateHint();
+    taskEl.focus();
+  });
+  const saved = profileFieldNames(await loadProfile()).length;
+  $("info").textContent = saved ? `My info (${saved} saved)` : "My info (add yours)";
+  $("info").addEventListener("click", async () => {
+    await chrome.tabs.create({ url: chrome.runtime.getURL("profile.html") });
   });
 
   $("seen").addEventListener("click", async () => {

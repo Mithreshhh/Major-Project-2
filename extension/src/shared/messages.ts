@@ -28,7 +28,8 @@ export interface ExecutionResult {
 export type ContentRequest =
   | { type: "PING" }
   | { type: "CAPTURE_DOM"; includeText?: boolean }
-  | { type: "EXECUTE_ACTION"; command: ActionCommand };
+  /** `sensitive`: the typed text is a saved detail, so the field is masked in later screenshots. */
+  | { type: "EXECUTE_ACTION"; command: ActionCommand; sensitive?: boolean };
 
 export type ContentResponse =
   | { type: "PONG" }
@@ -56,6 +57,8 @@ export interface StepResult {
   confirmed?: "user" | "auto";
   /** Redacted label of the element the command targets, for display. */
   targetLabel?: string;
+  /** Labels of the saved details ("My info") typed in this step. The values are not kept here. */
+  savedDetails?: string[];
   stepIndex: number;
   sessionId: string;
   redactions: RedactionCounts;
@@ -136,12 +139,13 @@ export type PopupRequest =
 export type BackgroundBroadcast = { type: "TASK_UPDATE"; state: TaskState };
 
 /** Human-readable command. `targetLabel` (already redacted) replaces the element id when known. */
-export function describeCommand(c: ActionCommand, targetLabel?: string): string {
+export function describeCommand(c: ActionCommand, targetLabel?: string, savedDetails?: string[]): string {
   const target = (id: string) => (targetLabel ? `"${targetLabel.length > 40 ? `${targetLabel.slice(0, 39)}…` : targetLabel}"` : id);
   switch (c.action) {
     case "click":
       return `Click ${target(c.target)}`;
     case "type":
+      if (savedDetails?.length) return `Type your saved ${savedDetails.join(", ")} into ${target(c.target)}${c.submit ? " and submit" : ""}`;
       return `Type "${c.text}" into ${target(c.target)}${c.submit ? " and submit" : ""}`;
     case "scroll":
       return `Scroll ${c.direction}`;
