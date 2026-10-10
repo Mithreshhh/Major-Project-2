@@ -218,7 +218,7 @@ test(
     assert.ok(body.perception.uiLatencyMs >= 0);
     assert.ok(Array.isArray(body.perception.visualElements));
     for (const v of body.perception.visualElements) {
-      assert.deepEqual(Object.keys(v).filter((k) => !["role", "bbox", "confidence", "matchedId"].includes(k)), []);
+      assert.deepEqual(Object.keys(v).filter((k) => !["role", "bbox", "confidence", "matchedId", "addedAs"].includes(k)), []);
       assert.ok(["button", "textbox", "link"].includes(v.role));
     }
 
@@ -410,6 +410,63 @@ test("typing nothing into an empty field skips it instead of looping into the re
   assert.equal(state.steps[0].summary, 'Left "Email" empty.');
   assert.equal(calls.fetches[1].body.elements.find((e) => e.id === "el_0").attributes.filled, "skipped");
 });
+
+test(
+  "controls only vision sees become vis_ elements: labels redacted on-device, clicked by position",
+  { skip: !screenshotsEnabled && "needs screenshots" },
+  async () => {
+    // demo/book.html: its booking controls are <div>s with click handlers, so the DOM scan lists
+    // only the page's links. The real UI detector runs on a real screenshot of the page.
+    const book = JSON.parse(readFileSync(path.join(root, "test/fixtures/book.json"), "utf8"));
+    const listed = book.links.map((l, i) => ({ id: `el_${i}`, role: "link", label: l.label, bbox: l.bbox, isVisible: true, isInteractive: true }));
+    const probed = [];
+    Object.assign(tab, {
+      jpeg: readFileSync(path.join(root, "test/fixtures/book.jpg")),
+      snapshot: { ...snapshot, viewport: { ...book.viewport, scrollX: 0, scrollY: 0, devicePixelRatio: 1 }, elements: listed, textRegions: [] },
+      // Stands in for the content script: a box over a <div> control is kept, with that control's
+      // text as its raw label (one carries an email, to prove labels are redacted), anything else dropped.
+      probe: (points) =>
+        points.map((p) => {
+          probed.push(p);
+          const i = book.controls.findIndex((c) => inside(p.x, p.y, [c.bbox]));
+          if (i < 0) return { index: p.index, keep: false, reason: "not clickable" };
+          const label = book.controls[i].label === "Confirm booking" ? "Confirm booking for jane.doe@example.com" : book.controls[i].label;
+          return { index: p.index, keep: true, id: `vis_${i}`, label, surface: "widget" };
+        }),
+    });
+    const confirmId = `vis_${book.controls.findIndex((c) => c.label === "Confirm booking")}`;
+    try {
+      serverScript.push({ action: "click", target: confirmId }, { action: "done", summary: "Booked." });
+      const state = await globalThis.odpa.runTask(27, 1, "Confirm the booking", { autoConfirm: true });
+      assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+
+      // Only boxes that no listed element covers were probed, and the kept ones were sent as elements.
+      assert.ok(probed.length >= 1, "the detector found unlisted boxes on the booking page");
+      for (const p of probed) assert.ok(!listed.some((e) => inside(p.x, p.y, [e.bbox])), `probed a listed link at ${p.x},${p.y}`);
+      const body = calls.fetches[0].body;
+      const added = body.elements.filter((e) => e.id.startsWith("vis_"));
+      assert.ok(added.length >= 1 && state.steps[0].vision.added === added.length, `added: ${JSON.stringify(added)}`);
+      for (const e of added) {
+        assert.equal(e.attributes.source, "vision");
+        assert.equal(e.isInteractive, true);
+        assert.ok(body.perception.visualElements.some((v) => v.addedAs === e.id), `${e.id} is marked on its vision box`);
+      }
+
+      // The label went through the same on-device redaction as every DOM label.
+      const confirm = added.find((e) => e.id === confirmId);
+      assert.ok(confirm, `"Confirm booking" was found by vision: ${JSON.stringify(added.map((e) => e.label))}`);
+      assert.ok(!JSON.stringify(calls.fetches).includes("jane.doe@example.com"), "the email in a vision label never leaves");
+      assert.equal(confirm.redacted, true);
+
+      // The click went to the page by its vis_ id; the content script acts at the remembered point.
+      const click = calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "click");
+      assert.equal(click.command.target, confirmId);
+      assert.match(state.steps[0].summary, /Confirm booking/);
+    } finally {
+      Object.assign(tab, { jpeg: fixtureJpeg, snapshot, probe: (points) => points.map((p) => ({ index: p.index, keep: false, reason: "stub" })) });
+    }
+  }
+);
 
 test("popup messages: RUN_TASK starts a task, GET_TASK_STATE reports it", async () => {
   serverScript.push({ action: "done", summary: "Nothing left to do." });

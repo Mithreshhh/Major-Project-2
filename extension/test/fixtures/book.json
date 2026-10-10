@@ -1,0 +1,199 @@
+{
+ "viewport": {
+  "width": 1280,
+  "height": 860
+ },
+ "links": [
+  {
+   "label": "N Nimbus",
+   "bbox": {
+    "x": 92,
+    "y": 16,
+    "width": 107,
+    "height": 30
+   }
+  },
+  {
+   "label": "Features",
+   "bbox": {
+    "x": 229,
+    "y": 12,
+    "width": 82,
+    "height": 38
+   }
+  },
+  {
+   "label": "Pricing",
+   "bbox": {
+    "x": 315,
+    "y": 12,
+    "width": 71,
+    "height": 38
+   }
+  },
+  {
+   "label": "Store",
+   "bbox": {
+    "x": 390,
+    "y": 12,
+    "width": 60,
+    "height": 38
+   }
+  },
+  {
+   "label": "Book a call",
+   "bbox": {
+    "x": 453,
+    "y": 12,
+    "width": 98,
+    "height": 38
+   }
+  },
+  {
+   "label": "Log in",
+   "bbox": {
+    "x": 1146,
+    "y": 19,
+    "width": 42,
+    "height": 24
+   }
+  },
+  {
+   "label": "Pricing",
+   "bbox": {
+    "x": 1078,
+    "y": 766,
+    "width": 41,
+    "height": 22
+   }
+  },
+  {
+   "label": "Support",
+   "bbox": {
+    "x": 1140,
+    "y": 766,
+    "width": 48,
+    "height": 22
+   }
+  }
+ ],
+ "controls": [
+  {
+   "label": "Mon 13 Oct",
+   "bbox": {
+    "x": 117,
+    "y": 315,
+    "width": 84,
+    "height": 58
+   }
+  },
+  {
+   "label": "Tue 14 Oct",
+   "bbox": {
+    "x": 211,
+    "y": 315,
+    "width": 84,
+    "height": 58
+   }
+  },
+  {
+   "label": "Wed 15 Oct",
+   "bbox": {
+    "x": 305,
+    "y": 315,
+    "width": 84,
+    "height": 58
+   }
+  },
+  {
+   "label": "Thu 16 Oct",
+   "bbox": {
+    "x": 399,
+    "y": 315,
+    "width": 84,
+    "height": 58
+   }
+  },
+  {
+   "label": "Fri 17 Oct",
+   "bbox": {
+    "x": 493,
+    "y": 315,
+    "width": 84,
+    "height": 58
+   }
+  },
+  {
+   "label": "09:30",
+   "bbox": {
+    "x": 117,
+    "y": 425,
+    "width": 75,
+    "height": 44
+   }
+  },
+  {
+   "label": "11:00",
+   "bbox": {
+    "x": 202,
+    "y": 425,
+    "width": 70,
+    "height": 44
+   }
+  },
+  {
+   "label": "11:30",
+   "bbox": {
+    "x": 282,
+    "y": 425,
+    "width": 70,
+    "height": 44
+   }
+  },
+  {
+   "label": "14:00",
+   "bbox": {
+    "x": 363,
+    "y": 425,
+    "width": 73,
+    "height": 44
+   }
+  },
+  {
+   "label": "16:30",
+   "bbox": {
+    "x": 446,
+    "y": 425,
+    "width": 73,
+    "height": 44
+   }
+  },
+  {
+   "label": "Video call",
+   "bbox": {
+    "x": 117,
+    "y": 522,
+    "width": 100,
+    "height": 44
+   }
+  },
+  {
+   "label": "Phone call",
+   "bbox": {
+    "x": 227,
+    "y": 522,
+    "width": 104,
+    "height": 44
+   }
+  },
+  {
+   "label": "Confirm booking",
+   "bbox": {
+    "x": 117,
+    "y": 588,
+    "width": 166,
+    "height": 48
+   }
+  }
+ ]
+}
