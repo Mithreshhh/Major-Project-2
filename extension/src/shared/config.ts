@@ -80,4 +80,17 @@ export const CONFIG = {
     /** Vision-only boxes need more confidence than measurement does: a wrong one is clickable. */
     visionOnlyMinConfidence: 0.6,
   },
+
+  ocr: {
+    /**
+     * PaddleOCR PP-OCRv3 English (detection + recognition), on-device. Runs only where the page
+     * code cannot supply text: inside embedded frames (personal data there is blacked out) and on
+     * vision-only controls with no text (a button drawn on a canvas gets its label). Loaded on
+     * first use. Optional: if it fails, frames are blacked out whole instead.
+     */
+    enabled: true as boolean,
+    detModelUrl: chrome.runtime.getURL("models/ocr-det-en-v3.onnx") as string,
+    recModelUrl: chrome.runtime.getURL("models/ocr-rec-en-v3.onnx") as string,
+    modelId: "ppocr-v3-en",
+  },
 } as const;
