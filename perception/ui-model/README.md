@@ -13,14 +13,33 @@ threshold of 0.5, measured with the extension's own code (`evaluate.ts`).
 | Held-out test | Recall (real elements found) | Precision (boxes that are real) |
 | --- | --- | --- |
 | Original demo page (plain styling), 21 screenshots, 199 elements; round-2 model | **97.5%** | **97.5%** |
-| Whole test site today (contact, application, store, pricing, features, login), 51 screenshots, 531 elements; current model | **61.2%** | **55.0%** |
-| 200 held-out generated pages; current model | 97.2% | 98.7% |
+| Whole test site today (contact, application, store, pricing, features, login, booking), 57 screenshots, 664 elements; round-5 model | **65.1%** | **57.2%** |
+| Same 57 screenshots, round-4 model | 56.0% | 55.6% |
+| 200 held-out generated pages; round-5 model | 98.0% | 99.1% |
 
-On the whole site, by class: inputs 96.8% recall / 89.8% precision, buttons 71.7% / 48.3%,
-links 41.8% / 39.4%. Full tables at every threshold: [`RESULTS.md`](RESULTS.md). The current
+On the whole site, by class: buttons 90.9% recall / 64.2% precision, inputs 97.8% / 87.6%,
+links 38.6% / 37.1%. On the booking page, whose 13 controls are all scripted `<div>`s, round 4
+found 3 and round 5 finds all 13 (confidence 0.92 to 0.95).
+
+Round 5 is a trade-off, not a free win. Per page, at 0.5, on the same screenshots:
+
+| Page | Round 4 recall / precision | Round 5 recall / precision |
+| --- | --- | --- |
+| Booking (`<div>` controls) | 26.3% / 50.8% | **79.7% / 78.3%** |
+| Contact | 65.6% / 62.2% | 65.6% / 62.7% |
+| Login | 90.0% / 79.4% | 90.0% / 79.4% |
+| Application | 67.6% / 64.9% | 67.6% / 53.2% |
+| Store | 56.7% / 50.7% | 56.7% / 47.9% |
+| Pricing | 47.9% / 41.8% | 41.7% / 31.7% |
+| Features | 25.0% / 16.9% | 25.0% / 16.9% |
+
+It learned that a row of bordered tiles is a set of buttons, so it now also calls some chip-like
+labels buttons. For acting this costs little: a vision box only becomes something the agent can
+click when the page under it is clickable, and all end-to-end runs still pass. It does lower the
+live precision shown on "What the AI sees". Full tables at every threshold: [`RESULTS.md`](RESULTS.md). The current
 model is still right on the saved screenshots of the original page (`npm test`).
 
-What four training rounds taught us:
+What five training rounds taught us:
 
 | Round | Change to the data | Effect |
 | --- | --- | --- |
