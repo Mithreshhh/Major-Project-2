@@ -79,7 +79,7 @@ function inside(x, y, boxes) {
 /** Visible text the content script would return for a question (includeText). */
 const PAGE_TEXT = "Sign in to Acme\nEmail jane.doe@example.com\nPhone +91 98765 43210\nForgot password?";
 
-const calls = { capture: 0, badges: [], sent: [], fetches: [], logs: [], assets: [], encodedAs: null, broadcasts: [] };
+const calls = { capture: 0, badges: [], sent: [], sentTo: [], fetches: [], logs: [], assets: [], encodedAs: null, broadcasts: [] };
 let onClicked = null;
 let onMessage = null;
 const sessionStore = {};
@@ -388,9 +388,10 @@ test("a task stops when the model asks the user, and when it repeats itself", as
   serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "click", target: "el_1" });
   const looped = await globalThis.odpa.runTask(22, 1, "Click submit", { autoConfirm: true });
   assert.equal(looped.status, "stopped");
-  assert.match(looped.message, /same action twice/);
-  assert.equal(looped.steps.length, 2);
-  // The repeated click was refused, not executed: only one EXECUTE_ACTION reached the page.
+  assert.match(looped.message, /kept proposing the same action/);
+  assert.equal(looped.steps.length, 4);
+  assert.match(looped.steps[1].summary, /^Skipped a repeat of: Click "Submit"/);
+  // The repeated clicks were refused, not executed: only one EXECUTE_ACTION reached the page.
   assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.target === "el_1").length, 1);
 });
 

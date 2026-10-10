@@ -1,0 +1,90 @@
+{
+ "viewport": {
+  "width": 1280,
+  "height": 860
+ },
+ "links": [
+  {
+   "label": "N Nimbus",
+   "bbox": {
+    "x": 92,
+    "y": 16,
+    "width": 107,
+    "height": 30
+   }
+  },
+  {
+   "label": "Features",
+   "bbox": {
+    "x": 229,
+    "y": 12,
+    "width": 82,
+    "height": 38
+   }
+  },
+  {
+   "label": "Pricing",
+   "bbox": {
+    "x": 315,
+    "y": 12,
+    "width": 71,
+    "height": 38
+   }
+  },
+  {
+   "label": "Store",
+   "bbox": {
+    "x": 390,
+    "y": 12,
+    "width": 60,
+    "height": 38
+   }
+  },
+  {
+   "label": "Book a call",
+   "bbox": {
+    "x": 453,
+    "y": 12,
+    "width": 98,
+    "height": 38
+   }
+  },
+  {
+   "label": "Log in",
+   "bbox": {
+    "x": 1146,
+    "y": 19,
+    "width": 42,
+    "height": 24
+   }
+  },
+  {
+   "label": "Pricing",
+   "bbox": {
+    "x": 1078,
+    "y": 786,
+    "width": 41,
+    "height": 22
+   }
+  },
+  {
+   "label": "Support",
+   "bbox": {
+    "x": 1140,
+    "y": 786,
+    "width": 48,
+    "height": 22
+   }
+  }
+ ],
+ "buttons": [],
+ "frames": [],
+ "canvases": [
+  {
+   "x": 113,
+   "y": 280,
+   "width": 720,
+   "height": 380
+  }
+ ]
+}
