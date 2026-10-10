@@ -81,6 +81,14 @@
     #status-meta:empty { display: none; }
     #confirm { display: none; gap: 8px; margin-top: 11px; }
     #confirm.show { display: flex; }
+    #answer { display: none; margin-top: 11px; }
+    #answer.show { display: block; }
+    #answer input[type="text"] { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--fg); font: inherit; }
+    #answer input[type="text"]:focus { outline: none; border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
+    #answer .save { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 12px; color: var(--muted); }
+    #answer .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    #answer [hidden] { display: none; }
+    #status.input { --c: var(--warn); background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 30%, var(--line)); }
     button.allow { border-color: #d97706; color: #fff; background: #d97706; }
     button.allow:hover:not(:disabled) { background: #b45309; border-color: #b45309; }
 
@@ -144,6 +152,15 @@
         <button class="allow" id="allow">Allow</button>
         <button id="deny">Don't allow</button>
       </div>
+      <form id="answer" autocomplete="off">
+        <input id="answer-text" type="text" placeholder="Type it here" />
+        <label class="save" id="answer-save-row"><input type="checkbox" id="answer-save" /> Save to My info for next time</label>
+        <div class="buttons">
+          <button type="submit" class="allow" id="answer-go">Fill in and continue</button>
+          <button type="button" id="answer-retry">Try again</button>
+          <button type="button" id="answer-skip">Skip this field</button>
+        </div>
+      </form>
     </div>
     <ol id="steps"></ol>
   </div>
