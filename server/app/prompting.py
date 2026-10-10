@@ -140,6 +140,8 @@ def format_element(el: UIElement, viewport: Viewport, *, image_attached: bool = 
         if el.attributes.get("source") == "vision":
             surface = el.attributes.get("surface")
             notes.append(f"seen in the screenshot only{_SURFACE_WORDS.get(surface or '', '')}")
+            if el.attributes.get("labelFrom") == "ocr":
+                notes.append("text read from the pixels")
             if not el.label:
                 notes.append("no text: look at the screenshot at this spot" if image_attached else "no text available")
     if not el.isInteractive:
