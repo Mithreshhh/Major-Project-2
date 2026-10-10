@@ -32,6 +32,14 @@ const SAMPLE: Record<string, string> = {
 
 const WIDE = new Set(["address", "skills", "experience", "about_me"]);
 const DEFAULT_KEYS = new Set(DEFAULT_PROFILE_FIELDS.map((f) => f.key));
+/** The page shows Basic open; the rest fold away so a new person needs only four fields. */
+const GROUPS: Array<{ title: string; keys: string[] }> = [
+  { title: "Basic", keys: ["full_name", "email", "phone", "city"] },
+  { title: "Address", keys: ["first_name", "last_name", "date_of_birth", "address", "state", "pin_code", "country"] },
+  { title: "Education", keys: ["college", "degree", "graduation_year", "cgpa"] },
+  { title: "Work and links", keys: ["skills", "experience", "linkedin", "github", "about_me"] },
+];
+const openGroups = new Set(["Basic", "Added by you"]);
 const SECRET = /pass(word|code)|\bpin\b|cvv|otp/i;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -91,43 +99,65 @@ function renderPeople(): void {
 
 function renderFields(): void {
   const person = selected();
-  const grid = $("fields");
-  grid.replaceChildren();
-  for (const field of textFields(person)) {
-    const wrap = document.createElement("div");
-    wrap.className = `field${WIDE.has(field.key) ? " wide" : ""}`;
-
-    const label = document.createElement("label");
-    label.htmlFor = `f-${field.key}`;
-    label.append(field.label);
-    const code = document.createElement("code");
-    code.textContent = `{{${field.key}}}`;
-    label.append(code);
-    if (!DEFAULT_KEYS.has(field.key)) {
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "del";
-      del.textContent = "Remove";
-      del.addEventListener("click", () => {
-        person.fields = person.fields.filter((f) => f !== field);
-        renderFields();
-        flash("Removed. Press Save to keep the change.");
-      });
-      label.append(del);
-    }
-
-    const input = WIDE.has(field.key) ? document.createElement("textarea") : document.createElement("input");
-    if (input instanceof HTMLInputElement) input.type = "text";
-    input.id = `f-${field.key}`;
-    input.value = field.value;
-    input.autocomplete = "off";
-    input.addEventListener("input", () => {
-      field.value = input.value;
-      flash("");
-    });
-    wrap.append(label, input);
-    grid.append(wrap);
+  const host = $("fields");
+  host.replaceChildren();
+  const byKey = new Map(textFields(person).map((f) => [f.key, f]));
+  const custom = textFields(person).filter((f) => !DEFAULT_KEYS.has(f.key));
+  const groups = [
+    ...GROUPS.map((g) => ({ title: g.title, fields: g.keys.map((k) => byKey.get(k)).filter((f): f is ProfileField => !!f) })),
+    ...(custom.length ? [{ title: "Added by you", fields: custom }] : []),
+  ];
+  for (const group of groups) {
+    const box = document.createElement("details");
+    box.className = "group";
+    box.open = openGroups.has(group.title);
+    box.addEventListener("toggle", () => (box.open ? openGroups.add(group.title) : openGroups.delete(group.title)));
+    const summary = document.createElement("summary");
+    summary.textContent = group.title;
+    const count = document.createElement("span");
+    count.className = "count";
+    count.textContent = `${group.fields.filter((f) => f.value).length} of ${group.fields.length} filled`;
+    summary.append(count);
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    for (const field of group.fields) grid.append(fieldRow(person, field));
+    box.append(summary, grid);
+    host.append(box);
   }
+}
+
+function fieldRow(person: Person, field: ProfileField): HTMLDivElement {
+  const wrap = document.createElement("div");
+  wrap.className = `field${WIDE.has(field.key) ? " wide" : ""}`;
+
+  const label = document.createElement("label");
+  label.htmlFor = `f-${field.key}`;
+  label.title = `The AI sees only {{${field.key}}}, never the value`;
+  label.append(field.label);
+  if (!DEFAULT_KEYS.has(field.key)) {
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "del";
+    del.textContent = "Remove";
+    del.addEventListener("click", () => {
+      person.fields = person.fields.filter((f) => f !== field);
+      renderFields();
+      flash("Removed. Press Save to keep the change.");
+    });
+    label.append(del);
+  }
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.id = `f-${field.key}`;
+  input.value = field.value;
+  input.autocomplete = "off";
+  input.addEventListener("input", () => {
+    field.value = input.value;
+    flash("");
+  });
+  wrap.append(label, input);
+  return wrap;
 }
 
 function renderFiles(): void {
@@ -249,6 +279,7 @@ async function init(): Promise<void> {
     // Keep text details together, before the files.
     const firstFile = person.fields.findIndex((f) => f.kind === "file");
     person.fields.splice(firstFile === -1 ? person.fields.length : firstFile, 0, { key, label, value: "" });
+    openGroups.add("Added by you");
     input.value = "";
     renderFields();
     document.getElementById(`f-${key}`)?.focus();
