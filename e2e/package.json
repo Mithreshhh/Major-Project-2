@@ -10,9 +10,13 @@
     "popup": "node popup-screens.mjs",
     "profile": "node run-profile.mjs",
     "pages": "node page-screens.mjs",
-    "smart": "node run-smart.mjs"
+    "smart": "node run-smart.mjs",
+    "vision": "node run-vision.mjs",
+    "ocr": "node run-ocr.mjs",
+    "frames": "node run-frames.mjs"
   },
   "devDependencies": {
-    "puppeteer": "^24.43.1"
+    "puppeteer": "^24.43.1",
+    "jpeg-js": "^0.4.4"
   }
 }
