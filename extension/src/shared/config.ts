@@ -71,5 +71,13 @@ export const CONFIG = {
     modelId: "ui-detect-yolo11n",
     /** 0.5: 97.5% recall and 97.5% precision on the held-out demo page (ui-model/RESULTS.md). */
     scoreThreshold: 0.5,
+    /**
+     * Add boxes no listed element covers to the element list ("vis_N"), when the page under them
+     * is clickable (a scripted <div>) or opaque to the DOM (a canvas), so the agent can click them
+     * by position. Plain text and headings under a box are dropped as false positives.
+     */
+    actOnVisionOnly: true as boolean,
+    /** Vision-only boxes need more confidence than measurement does: a wrong one is clickable. */
+    visionOnlyMinConfidence: 0.6,
   },
 } as const;
