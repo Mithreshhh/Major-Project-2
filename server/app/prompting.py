@@ -52,10 +52,10 @@ Allowed shapes (choose exactly one):
 {"action": "noop", "reason": "<why nothing can be done>", "reasoning": "<short>"}
 
 Rules:
-1. "target" must be an element id copied exactly from the list, such as "el_3". Never invent ids and never use labels as targets.
+1. "target" must be an element id copied exactly from the list, such as "el_3" or "vis_1". Never invent ids and never use labels as targets. Ids starting with "vis_" are controls seen only in the screenshot; use one when no "el_" element fits.
 2. Only click or type into elements that are interactive.
 3. Do not repeat an action already listed under previous actions. Every action in that list has already been carried out successfully.
-4. Read "Page messages" first. If a message confirms the task succeeded (for example "submitted", "thank you", "saved", "success") or every part of the task is already in previous actions, reply with "done".
+4. Read "Page messages" first. If a message confirms the task succeeded (for example "submitted", "thank you", "saved", "success") or every part of the task is already in previous actions, reply with "done". But if a message says something is not done yet or still missing, the task is not finished: do what it asks, even if that repeats an earlier click.
 5. Use "ask_user" when you need information only the user has. Use "noop" when nothing on this page can move the task forward.
 6. Never type into password fields unless the task gives the password.
 7. If the task only asks for information (analyze, summarize, explain, describe, check, or a question), do not click or type anything: reply with "done" and put the answer in "summary".
@@ -93,6 +93,7 @@ _ASK_ELEMENTS_MAX = 40
 
 _LABEL_MAX = 60
 _PROMPT_ATTRS = ("type", "placeholder", "name", "title")
+_SURFACE_WORDS = {"canvas": ", drawn on a canvas", "frame": ", inside an embedded frame", "image": ", part of an image"}
 
 
 def _trunc(text: str, limit: int) -> str:
@@ -316,7 +317,7 @@ def retry_prompt(error: str) -> str:
     return (
         f"Your previous reply could not be used: {error}. "
         "Reply again with ONLY one JSON object in one of the allowed shapes. "
-        'Use "target" ids exactly as listed (for example "el_2").'
+        'Use "target" ids exactly as listed (for example "el_2" or "vis_0").'
     )
 
 
