@@ -114,17 +114,30 @@ the dashed boxes and the "Found from pixels" section.
 > the exact position of every button from the page code, so the labels were free and perfect.
 > The test page was never used in training. On every step the extension checks the model
 > against the real page." Read the number from the screen: on the contact page it finds about
-> 11 of 13 controls. "On the original, plain test page it scored 97.5%. Across the whole
-> restyled test site it finds about 61%, and form inputs are still 97%. Links on unfamiliar
+> 8 of 12 controls. "On the original, plain test page it scored 97.5%. Across the whole
+> restyled test site it finds about 65%, and form inputs are still 98%. Links on unfamiliar
 > layouts are its weak spot. We show the live score instead of claiming it is perfect."
 
 Then show `perception/ui-model/RESULTS.md` for the numbers across thresholds.
 > "We also tried Microsoft's OmniParser model first. It was 77 MB and couldn't even load in the
 > browser, so we trained a model 7 times smaller."
 
-If asked what's still missing: the agent still clicks using the page's code, because it's exact.
-The vision boxes are measured and shown, and merging them in (for canvas apps or images of
-buttons) is the next milestone.
+**7b. Controls only vision can see, 1.5 minutes.** Open <http://127.0.0.1:5500/book.html>. In the
+popup type `Choose Thursday, 11:30 and Video call, then confirm the booking.` and press **Run task**.
+Press **Allow** when it asks about "Confirm booking".
+> "Every control on this booking card is a plain div with a click handler, the way many real
+> sites build them. The page code doesn't say they're buttons, so the old agent could not see
+> them at all. Our vision model finds them in the screenshot, the extension checks the page
+> under each box is really clickable, and the agent clicks them by position."
+
+Switch to "What the AI sees": the solid boxes labelled `vis_…` are the controls only vision
+found. The steps in the popup show "+12 only it saw".
+> "We had to train the model a fifth time for this: before, it found 3 of these 13 controls,
+> now all 13. Honest trade-off: it got a little less precise on three other pages."
+
+Name the options one by one as above. "Book a video call on Thursday at 11:30" makes this small
+model skip the call type.
+
 
 ## If something goes wrong live
 
@@ -133,6 +146,7 @@ buttons) is the next milestone.
 | Popup shows "server offline" | The start window was closed. Double-click `start.bat` again |
 | First step takes 10 to 20 seconds | Normal. The browser loads both on-device models once and Gemma warms up. Later steps take 2 to 4 seconds |
 | "This tab is not a normal web page" | You're on a Chrome page. Switch to the test page tab |
+| Booking page: the agent skips Video call | Name each option: "Choose Thursday, 11:30 and Video call, then confirm the booking." |
 | Agent stops with "kept proposing the same action" | The model repeated one action three times in a row. Click **Clear form** on the page and run again |
 | Popup says "Allow this action?" | That's the safety check. Click **Allow** (or **Don't allow** to show it stops) |
 | Popup says a text "is not in your task" | The agent tried to type something you didn't give it. Put the exact text in the task |
