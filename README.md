@@ -238,6 +238,32 @@ Limits found on the way: phrased as "Book a video call on Thursday at 11:30", th
 options works. A control drawn on a canvas is found and clickable but has no text in the page
 code, so a text-only model only knows where it is, not what it says.
 
+## Embedded frames
+
+A payment widget, a chat box or a map from another site sits in a frame: a separate document
+that the page's own code cannot see into. The content script now runs in every frame
+(`all_frames`), and frames are joined to the page on each step:
+
+1. For every `<iframe>` in view, the page's content script posts a fresh random nonce into it.
+2. The copy of the content script inside that frame sends the nonce to the background, which
+   learns the frame's id. Only a message from the parent window counts, and unknown nonces are
+   ignored.
+3. The background asks that frame for its own snapshot and moves everything to the frame's place
+   on the page. Elements get ids like `el_f1_5`, and are listed where the frame sits in reading
+   order. PII boxes, photos and, for questions, its text join the page's own.
+4. A click or typed text for `el_f1_5` is delivered to that frame's content script.
+
+Personal data inside a frame is then hidden by the same exact rules as the page's, with no OCR.
+Frames nothing answers for, such as Chrome's PDF viewer, which no extension may enter, are read
+from pixels instead (next section). Frames inside frames are read from pixels too: one level is
+entered.
+
+Proof: `npm run frames --workspace=e2e` on `demo/checkout.html`, whose PayEase widget comes from
+another origin, passed 3 of 3 runs. The widget's six fields and its Pay button joined the
+element list. Its card number, email and phone were hidden by the text rules and appear nowhere
+in what the server received. "Pay for the order with the Pay button in the payment box." clicked
+Pay inside the frame (then "Place order" under it), and the widget confirmed the payment.
+
 ## Reading text from pixels (OCR)
 
 Some text exists only as pixels:
