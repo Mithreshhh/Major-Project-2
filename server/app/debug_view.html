@@ -153,6 +153,7 @@ td.id{font-family:ui-monospace,monospace;color:var(--muted)}
         <span><i class="dash" style="--c:var(--vbtn)"></i>Button</span>
         <span><i class="dash" style="--c:var(--vinput)"></i>Input</span>
         <span><i class="dash" style="--c:var(--vlink)"></i>Link (found from pixels)</span>
+        <span><i style="--c:var(--vbtn)"></i>Only vision saw it: the agent can click it</span>
       </div>
     </div>
 
@@ -228,7 +229,8 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
   const place=(d,b)=>Object.assign(d.style,{left:`${b.x/vw*100}%`,top:`${b.y/vh*100}%`,width:`${b.width/vw*100}%`,height:`${b.height/vh*100}%`});
   for(const r of c.redactions){const d=document.createElement("div");d.className=`box ${keyOf(r)}`;place(d,r.bbox);
    d.innerHTML=`<span>${esc(r.category.replace("_"," "))}</span>`;shot.appendChild(d)}
-  for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}`;place(d,v.bbox);shot.appendChild(d)}}
+  for(const v of vis){const d=document.createElement("div");d.className=`box vbox ${v.role}${v.addedAs?" added":""}`;place(d,v.bbox);
+   if(v.addedAs)d.innerHTML=`<span>${esc(v.addedAs)}</span>`;shot.appendChild(d)}}
  else{shot.hidden=true;$("noshot").hidden=false}
 
  // Decision
@@ -242,7 +244,7 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
  // Tiles
  $("tHidden").textContent=c.redactions.length;
  const CMP=new Set(["button","link","textbox","checkbox","radio","select"]),vw2=c.viewport.width,vh2=c.viewport.height;
- const comparable=e=>CMP.has(e.role)&&e.isVisible&&e.bbox.width>=4&&e.bbox.height>=4&&e.bbox.x<vw2&&e.bbox.y<vh2&&e.bbox.x+e.bbox.width>0&&e.bbox.y+e.bbox.height>0;
+ const comparable=e=>!(e.attributes&&e.attributes.source==="vision")&&CMP.has(e.role)&&e.isVisible&&e.bbox.width>=4&&e.bbox.height>=4&&e.bbox.x<vw2&&e.bbox.y<vh2&&e.bbox.x+e.bbox.width>0&&e.bbox.y+e.bbox.height>0;
  const dom=c.elements.filter(comparable).length;
  $("tVision").innerHTML=c.perception.uiModelId?`${seen.size}<small>/ ${dom}</small>`:"–";
  const deviceMs=(c.perception.latencyMs||0)+(c.perception.uiLatencyMs||0);
@@ -252,9 +254,10 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
  // Hidden pills
  const by={};for(const r of c.redactions)by[keyOf(r)]=(by[keyOf(r)]||0)+1;
  $("pills").innerHTML=Object.keys(by).length?Object.entries(by).map(([m,n])=>`<span class="pill" style="--c:${COLOR[m]||"var(--muted)"}">${n} × ${NAMES[m]||m}</span>`).join(""):`<span class="pill plain">Nothing sensitive on this screen</span>`;
- if(c.perception.uiModelId){const correct=vis.filter(v=>v.matchedId).length,prec=vis.length?Math.round(correct/vis.length*100):100;
-  $("visionNote").textContent=`Vision model ${c.perception.uiModelId}: ${seen.size} of ${dom} buttons, inputs and links found from the screenshot alone; ${prec}% of its ${vis.length} boxes match a real element. Face model: ${c.perception.modelId}.`}
+ if(c.perception.uiModelId){const added=vis.filter(v=>v.addedAs).length,correct=vis.filter(v=>v.matchedId).length,prec=vis.length?Math.round((correct+added)/vis.length*100):100;
+  $("visionNote").textContent=`Vision model ${c.perception.uiModelId}: ${seen.size} of ${dom} buttons, inputs and links found from the screenshot alone; ${prec}% of its ${vis.length} boxes are real controls${added?" (listed, or clickable and added)":""}.${added?` ${added} control${added===1?"":"s"} the page code does not list ${added===1?"was":"were"} added from the screenshot (vis_…), so the agent can click ${added===1?"it":"them"} by position.`:""} Face model: ${c.perception.modelId}.`}
  else $("visionNote").textContent=c.hasScreenshot?`Face model: ${c.perception.modelId}.`:"";
+ if(c.perception.ocrModelId)$("visionNote").textContent+=` OCR ${c.perception.ocrModelId}: read ${plural(c.perception.ocrLines||0,"line")} of text the page code could not supply (embedded frames, drawn controls) in ${c.perception.ocrLatencyMs} ms, on the device.`;
 
  // Saved details (names only)
  const pf=c.profileFields||[];$("profileWrap").hidden=!pf.length;
@@ -266,7 +269,7 @@ function render(){const c=data.find(x=>x.id===selected)||data[0];$("empty").hidd
 
  // Elements
  $("elCount").textContent=c.elements.length;
- $("els").innerHTML=c.elements.map(e=>`<tr><td class="id">${esc(e.id)}</td><td><span class="role">${esc(e.role)}</span></td><td class="${e.redacted?"red":""}">${esc(e.label)}${e.attributes&&e.attributes.filled?' <span class="miss">· filled</span>':""}</td><td>${seen.has(e.id)?'<span class="ok">✓ found</span>':comparable(e)&&c.perception.uiModelId?'<span class="miss">missed</span>':""}</td></tr>`).join("")}
+ $("els").innerHTML=c.elements.map(e=>`<tr><td class="id">${esc(e.id)}</td><td><span class="role">${esc(e.role)}</span></td><td class="${e.redacted?"red":""}">${esc(e.label)}${e.attributes&&e.attributes.filled?' <span class="miss">· filled</span>':""}</td><td>${seen.has(e.id)?'<span class="ok">✓ found</span>':e.attributes&&e.attributes.source==="vision"?'<span class="ok">✓ only vision</span>':comparable(e)&&c.perception.uiModelId?'<span class="miss">missed</span>':""}</td></tr>`).join("")}
 
 $("history").addEventListener("click",e=>{const b=e.target.closest("button");if(b){selected=+b.dataset.id;render()}});
 $("boxes").addEventListener("change",e=>$("shot").classList.toggle("hide-boxes",!e.target.checked));
