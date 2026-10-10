@@ -306,7 +306,8 @@ async function captureDom(tabId: number, includeText = false): Promise<DomSnapsh
 }
 
 async function executeOnPage(tabId: number, command: ActionCommand, sensitive = false) {
-  const res = await sendToContent(tabId, sensitive ? { type: "EXECUTE_ACTION", command, sensitive } : { type: "EXECUTE_ACTION", command });
+  const frameId = "target" in command ? frameOf(tabId, command.target) : 0;
+  const res = await sendToContent(tabId, sensitive ? { type: "EXECUTE_ACTION", command, sensitive } : { type: "EXECUTE_ACTION", command }, frameId);
   if (res.type !== "EXECUTION_RESULT") {
     return { ok: false, message: res.type === "ERROR" ? res.message : `unexpected ${res.type}` };
   }
@@ -315,7 +316,7 @@ async function executeOnPage(tabId: number, command: ActionCommand, sensitive = 
 
 /** Attach a saved file to a file-upload field. The bytes go only to the page, never the server. */
 async function uploadOnPage(tabId: number, target: string, file: { name: string; type: string; dataBase64: string }) {
-  const res = await sendToContent(tabId, { type: "UPLOAD_FILE", target, file });
+  const res = await sendToContent(tabId, { type: "UPLOAD_FILE", target, file }, frameOf(tabId, target));
   if (res.type !== "EXECUTION_RESULT") {
     return { ok: false, message: res.type === "ERROR" ? res.message : `unexpected ${res.type}` };
   }
