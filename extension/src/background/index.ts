@@ -18,8 +18,10 @@ import {
   compareWithDom,
   detectUiElements,
   loadModel,
+  loadOcr,
   loadUiDetector,
   placeholderOutput,
+  readText,
   redactText,
   redactTextLabelled,
   runInference,
@@ -137,6 +139,26 @@ function ensureUiDetector(): Promise<boolean> {
       });
   }
   return uiDetectorReady;
+}
+
+let ocrReady: Promise<boolean> | null = null;
+
+/** Loads the OCR models on first need (most pages never need them). Never throws. */
+function ensureOcr(): Promise<boolean> {
+  if (!CONFIG.ocr.enabled) return Promise.resolve(false);
+  if (!ocrReady) {
+    ocrReady = loadOcr({ detModelUrl: CONFIG.ocr.detModelUrl, recModelUrl: CONFIG.ocr.recModelUrl, modelId: CONFIG.ocr.modelId })
+      .then((loaded) => {
+        console.info(LOG, `OCR loaded (${CONFIG.ocr.modelId})`);
+        return loaded;
+      })
+      .catch((err: unknown) => {
+        console.warn(LOG, "OCR unavailable", err);
+        ocrReady = null; // allow a retry on the next step
+        return false;
+      });
+  }
+  return ocrReady;
 }
 
 // ---------------------------------------------------------------------------
