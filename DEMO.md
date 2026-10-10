@@ -133,7 +133,7 @@ buttons) is the next milestone.
 | Popup shows "server offline" | The start window was closed. Double-click `start.bat` again |
 | First step takes 10 to 20 seconds | Normal. The browser loads both on-device models once and Gemma warms up. Later steps take 2 to 4 seconds |
 | "This tab is not a normal web page" | You're on a Chrome page. Switch to the test page tab |
-| Agent stops with "same action twice" | The loop guard worked. Click **Clear form** on the page and run again |
+| Agent stops with "kept proposing the same action" | The model repeated one action three times in a row. Click **Clear form** on the page and run again |
 | Popup says "Allow this action?" | That's the safety check. Click **Allow** (or **Don't allow** to show it stops) |
 | Popup says a text "is not in your task" | The agent tried to type something you didn't give it. Put the exact text in the task |
 | Popup was closed during "Allow this action?" | Click the extension icon again; the Allow button is still there (it waits 2 minutes) |

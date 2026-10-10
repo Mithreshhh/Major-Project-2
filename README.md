@@ -185,7 +185,7 @@ person, and checks that no saved value or file name appears in anything the serv
 | **Ask mode** | Questions ("analyze this login page", "what does this form ask for?") are answered from the page's visible text and never click or type. `POST /ask` returns text, not actions. Personal data in that text is replaced on-device by placeholders such as `[HIDDEN EMAIL]`. |
 | **Typed text must come from the task** | The agent cannot invent names, usernames or passwords. Anything not in the task is refused and the user is asked. |
 | **Confirm risky clicks** | Log in, submit, pay, buy, delete, send and similar actions wait for **Allow** in the popup (2-minute timeout, Stop refuses). |
-| **No repeats** | The same action twice in a row is refused and the task stops. |
+| **No repeats** | A repeated action is never executed twice: the agent skips it, tells the model, and goes on; a third repeat in a row stops the task. |
 
 Proof: `npm run ask --workspace=e2e` runs "Analyze this login page" on `demo/login.html` in real
 Chrome and checks that no field changed (`e2e/proof/ask.json`).
