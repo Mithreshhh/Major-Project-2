@@ -126,7 +126,7 @@
         "bbox": { "$ref": "#/$defs/BoundingBox" },
         "category": { "$ref": "#/$defs/SensitiveCategory" },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "method": { "type": "string", "enum": ["ml", "heuristic", "dom"] }
+        "method": { "type": "string", "enum": ["ml", "heuristic", "dom", "ocr"] }
       }
     },
     "SanitizedScreenshot": {
@@ -150,7 +150,10 @@
         "embedding": { "type": "array", "items": { "type": "number" } },
         "uiModelId": { "type": "string" },
         "uiLatencyMs": { "type": "number", "minimum": 0 },
-        "visualElements": { "type": "array", "items": { "$ref": "#/$defs/VisualElement" } }
+        "visualElements": { "type": "array", "items": { "$ref": "#/$defs/VisualElement" } },
+        "ocrModelId": { "type": "string" },
+        "ocrLatencyMs": { "type": "number", "minimum": 0 },
+        "ocrLines": { "type": "integer", "minimum": 0 }
       }
     },
     "VisualElement": {

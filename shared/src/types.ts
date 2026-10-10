@@ -106,7 +106,8 @@ export type SensitiveCategory =
   | "phone"
   | "other";
 
-export type RedactionMethod = "ml" | "heuristic" | "dom";
+/** "ocr": personal data in text read from pixels on-device, e.g. inside an embedded frame. */
+export type RedactionMethod = "ml" | "heuristic" | "dom" | "ocr";
 
 /**
  * A region of the screenshot (and/or DOM) that was masked before leaving the device.
@@ -170,6 +171,11 @@ export interface PerceptionSummary {
   uiLatencyMs?: number;
   /** Buttons, inputs and links detected from pixels alone. */
   visualElements?: VisualElement[];
+  /** Identifier of the on-device OCR models, when they ran this step. */
+  ocrModelId?: string;
+  ocrLatencyMs?: number;
+  /** Lines of text read from pixels (embedded frames, unlabelled canvas or image controls). */
+  ocrLines?: number;
 }
 
 // ---------------------------------------------------------------------------
