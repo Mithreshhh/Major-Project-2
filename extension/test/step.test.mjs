@@ -350,12 +350,15 @@ test("a task keeps stepping until the model says done", async () => {
 });
 
 test("a task stops when the model asks the user, and when it repeats itself", async () => {
+  // Automated runs have nobody to ask, so the question ends the task.
   serverScript.push({ action: "ask_user", question: "Which email should I use?" });
-  const asked = await globalThis.odpa.runTask(21, 1, "Sign me up");
+  const asked = await globalThis.odpa.runTask(21, 1, "Sign me up", { autoConfirm: true });
   assert.equal(asked.status, "needs_user");
   assert.equal(asked.message, "Which email should I use?");
   assert.equal(asked.steps.length, 1);
 
+  // A model that keeps repeating itself is stopped (the stub server answers "click el_1" forever).
+  reset();
   serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "click", target: "el_1" });
   const looped = await globalThis.odpa.runTask(22, 1, "Click submit", { autoConfirm: true });
   assert.equal(looped.status, "stopped");
@@ -363,6 +366,49 @@ test("a task stops when the model asks the user, and when it repeats itself", as
   assert.equal(looped.steps.length, 2);
   // The repeated click was refused, not executed: only one EXECUTE_ACTION reached the page.
   assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.target === "el_1").length, 1);
+});
+
+test("one repeated action is skipped, the model is told, and the task still finishes", async () => {
+  serverScript.push({ action: "click", target: "el_1" }, { action: "click", target: "el_1" }, { action: "done", summary: "Submitted." });
+  const state = await globalThis.odpa.runTask(26, 1, "Click submit", { autoConfirm: true });
+  assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+  assert.equal(state.steps[1].ok, true);
+  assert.match(calls.fetches[2].body.task, /was already done in the previous step, so it was not repeated/);
+  assert.ok(!calls.fetches[1].body.task.includes("already done"), "the note is only sent right after a repeat");
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.action === "click").length, 1);
+});
+
+test("in the popup, the model's question is asked there and the answer carries the task on", async () => {
+  serverScript.push(
+    { action: "ask_user", question: "Which email should I use?" },
+    { action: "type", target: "el_0", text: "sam@example.com" },
+    { action: "done", summary: "Filled." }
+  );
+  const running = globalThis.odpa.runTask(24, 1, "Sign me up");
+  await waitForStatus(24, "input");
+  assert.equal(sessionStore["task:24"].input.question, "Which email should I use?");
+  assert.equal(sessionStore["task:24"].input.target, undefined, "a plain question has no field to skip");
+
+  const replies = [];
+  onMessage({ type: "ANSWER", tabId: 24, answer: { kind: "fill", text: "sam@example.com" } }, {}, (r) => replies.push(r));
+  const state = await running;
+  assert.deepEqual(replies, [{ ok: true }]);
+  assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+  assert.match(calls.fetches[1].body.task, /Answer to "Which email should I use\?": sam@example\.com/);
+  // The answer is now part of the task, so typing it is allowed.
+  assert.equal(calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type").command.text, "sam@example.com");
+});
+
+test("typing nothing into an empty field skips it instead of looping into the repeat guard", async () => {
+  serverScript.push(
+    { action: "type", target: "el_0", text: "" },
+    { action: "type", target: "el_0", text: "" },
+    { action: "done", summary: "Filled." }
+  );
+  const state = await globalThis.odpa.runTask(25, 1, "Fill the form", { autoConfirm: true });
+  assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+  assert.equal(state.steps[0].summary, 'Left "Email" empty.');
+  assert.equal(calls.fetches[1].body.elements.find((e) => e.id === "el_0").attributes.filled, "skipped");
 });
 
 test("popup messages: RUN_TASK starts a task, GET_TASK_STATE reports it", async () => {
@@ -411,10 +457,21 @@ test("a question is answered in ask mode: nothing is executed and page PII leave
 
 test("the agent may only type text that is in the task: invented credentials are refused", async () => {
   serverScript.push({ action: "type", target: "el_2", text: "hunter2" });
-  const state = await globalThis.odpa.runTask(31, 1, "Log in to my account");
+  const auto = await globalThis.odpa.runTask(31, 1, "Log in to my account", { autoConfirm: true });
+  assert.equal(auto.status, "needs_user");
+  assert.match(auto.message, /"hunter2", which is not in your task/);
+  assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0, "nothing was typed");
 
-  assert.equal(state.status, "needs_user");
-  assert.match(state.message, /"hunter2", which is not in your task/);
+  // In the popup the user is asked what should go there instead; Stop ends it, still untyped.
+  serverScript.push({ action: "type", target: "el_2", text: "hunter2" });
+  const running = globalThis.odpa.runTask(34, 1, "Log in to my account");
+  await waitForStatus(34, "input");
+  assert.match(sessionStore["task:34"].input.question, /"hunter2" .*not in your task/);
+  assert.equal(sessionStore["task:34"].input.suggestion, "hunter2");
+  onMessage({ type: "STOP_TASK", tabId: 34 }, {}, () => {});
+  const stopped = await running;
+  assert.equal(stopped.status, "stopped");
+  assert.equal(stopped.message, "Stopped by you.");
   assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0, "nothing was typed");
 });
 
@@ -488,15 +545,48 @@ test("saved details: the placeholder becomes the real value on-device and the va
     const sent = JSON.stringify(calls.fetches) + JSON.stringify(calls.broadcasts) + JSON.stringify(sessionStore["task:40"]);
     assert.ok(!sent.includes("aarav.sharma@example.com") && !sent.includes("Aarav Sharma"), "saved values appear in no request, broadcast or stored state");
 
-    // A detail that was never saved is not invented: the task stops and asks.
+    // A detail that was never saved is not invented: an automated run stops and says so.
     reset();
     serverScript.push({ action: "type", target: "el_0", text: "{{passport_number}}" });
-    const missing = await globalThis.odpa.runTask(41, 1, "Fill this form with my saved details");
+    const missing = await globalThis.odpa.runTask(41, 1, "Fill this form with my saved details", { autoConfirm: true });
     assert.equal(missing.status, "needs_user");
     assert.match(missing.message, /^The form asks for "Email", but "passport_number" is not saved under My info/);
     assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION").length, 0);
+
+    // In the popup it asks for the value, types it on-device, saves it if asked, and carries on.
+    reset();
+    serverScript.push({ action: "type", target: "el_0", text: "{{passport_number}}" }, { action: "done", summary: "Filled." });
+    const running = globalThis.odpa.runTask(45, 1, "Fill this form with my saved details");
+    await waitForStatus(45, "input");
+    assert.match(sessionStore["task:45"].input.question, /^What should go in "Email"\?/);
+    assert.equal(sessionStore["task:45"].input.target, "el_0");
+    onMessage({ type: "ANSWER", tabId: 45, answer: { kind: "fill", text: "P1234567", save: true } }, {}, () => {});
+    const filled = await running;
+    assert.equal(filled.status, "done", `${filled.message}; errors: ${errors()}`);
+    const answered = calls.sent.find((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type");
+    assert.equal(answered.command.text, "P1234567");
+    assert.equal(answered.sensitive, true);
+    assert.equal(filled.steps[0].summary, 'Typed your answer into "Email" (saved to My info)');
+    assert.ok(!JSON.stringify(calls.fetches).includes("P1234567"), "the answer never reaches the server");
+    assert.ok(localStore.people[0].fields.some((f) => f.key === "email" && f.value === "P1234567"), "saved under My info");
+    delete localStore.people;
+    delete localStore.activePersonId;
+
+    // Or the user skips the field: it is shown to the reasoner as done, and the task goes on.
+    reset();
+    serverScript.push({ action: "type", target: "el_0", text: "{{passport_number}}" }, { action: "done", summary: "Filled." });
+    const skipping = globalThis.odpa.runTask(46, 1, "Fill this form with my saved details");
+    await waitForStatus(46, "input");
+    onMessage({ type: "ANSWER", tabId: 46, answer: { kind: "skip" } }, {}, () => {});
+    const skipped = await skipping;
+    assert.equal(skipped.status, "done", `${skipped.message}; errors: ${errors()}`);
+    assert.equal(skipped.steps[0].summary, 'Left "Email" empty (skipped by you)');
+    assert.equal(calls.fetches[1].body.elements.find((e) => e.id === "el_0").attributes.filled, "skipped");
+    assert.equal(calls.sent.filter((m) => m.type === "EXECUTE_ACTION" && m.command.action === "type").length, 0, "nothing was typed");
   } finally {
     delete localStore.profile;
+    delete localStore.people;
+    delete localStore.activePersonId;
   }
 });
 
