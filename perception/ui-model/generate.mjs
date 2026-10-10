@@ -255,8 +255,51 @@ function makePage(seed, images) {
   const eyebrow = () => `<div style="margin:14px 0 6px"><span style="display:inline-block;font-size:${size - 3}px;font-weight:600;color:${accent};` +
     `background:${hsl(hue, 70, dark ? 20 : 94)};border-radius:99px;padding:3px 12px">${cap(words(1, 2))}</span></div>${heading(pick([1, 2]))}${para()}`;
 
+  // Round 5: choice groups built from scripted <div>s (time slots, day tiles, size pickers,
+  // segmented controls, option tiles), labelled as buttons. Real booking and shop widgets are
+  // made this way and the extension can only find them from pixels. Unlike the info chips above
+  // they come as a row of uniform, bolder tiles, often with one highlighted.
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const choiceGroup = () => {
+    const kind = pick(["slots", "slots", "days", "sizes", "segmented", "options"]);
+    const n = kind === "segmented" ? int(2, 4) : int(3, 6);
+    const rad = kind === "segmented" ? int(6, 10) : pick([6, 8, 10, 12, 999]);
+    const selected = chance(0.6) ? int(0, n - 1) : -1;
+    const tileBg = pick([surface, surface, softBg, bg]);
+    const tileBorder = pick([border, softBorder, hsl(0, 0, dark ? 35 : 82)]);
+    const month = pick(MONTHS);
+    const start = int(0, 6);
+    const label = (i) => ({
+      slots: () => `${String(int(8, 18)).padStart(2, "0")}:${pick(["00", "15", "30", "45"])}${chance(0.2) ? pick([" am", " pm"]) : ""}`,
+      days: () => DAYS[(start + i) % 7],
+      sizes: () => ["XS", "S", "M", "L", "XL", "XXL", "38", "40", "42", "44"][i + (chance(0.5) ? 0 : 4)] ?? "M",
+      segmented: () => cap(pick(["monthly", "yearly", "list", "grid", "all", "open", "closed", "day", "week", "month", "video call", "phone"])),
+      options: () => cap(words(1, 2)),
+    })[kind]();
+    const tiles = Array.from({ length: n }, (_, i) => {
+      const on = i === selected;
+      const look = on
+        ? `background:${accent};color:#fff;border:1px solid ${accent}`
+        : `background:${tileBg};color:${text};border:1px solid ${tileBorder}`;
+      const content = kind === "days"
+        ? `${label(i)}<small style="display:block;font-weight:500;font-size:${size - 3}px;color:${on ? "#ffffffcc" : muted}">${int(1, 28)} ${month}</small>`
+        : label(i);
+      const box = kind === "days" ? `width:${int(64, 96)}px;text-align:center;padding:${int(8, 12)}px 0;` : `padding:${int(7, 12)}px ${int(12, 22)}px;`;
+      const shape = kind === "segmented"
+        ? (i === 0 ? `border-radius:${rad}px 0 0 ${rad}px;` : i === n - 1 ? `border-radius:0 ${rad}px ${rad}px 0;margin-left:-1px;` : "border-radius:0;margin-left:-1px;")
+        : `border-radius:${rad}px;`;
+      return `<div data-cls="button" style="display:inline-block;cursor:pointer;user-select:none;line-height:1.3;` +
+        `font-weight:${pick([500, 600, 600, 700])};font-size:${int(size - 1, size + 1)}px;${box}${shape}${look}">${content}</div>`;
+    });
+    const title = chance(0.7)
+      ? `<div style="font-size:${size - 2}px;font-weight:700;color:${muted};${chance(0.5) ? "text-transform:uppercase;letter-spacing:.06em;" : ""}margin-bottom:8px">${cap(words(1, 3))}</div>`
+      : "";
+    return `<div style="margin:14px 0">${title}<div style="display:flex;flex-wrap:wrap;gap:${kind === "segmented" ? 0 : int(6, 12)}px">${tiles.join("")}</div></div>`;
+  };
+
   const blocks = [hero, form, cards, table, searchBar, article, pager, banner, form, cards, details, details, logPanel, codeBox, stats, tags,
-    consolePanel, chipsRow, eyebrow, form, successBanner, details];
+    consolePanel, chipsRow, eyebrow, form, successBanner, details, choiceGroup, choiceGroup];
   const body = [];
   if (chance(0.9)) body.push(nav());
   const withSidebar = chance(0.35);
@@ -284,7 +327,7 @@ function collectBoxes(infer) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const classOf = (el) => {
-    if (!infer) return el.getAttribute("data-cls");
+    if (!infer || el.hasAttribute("data-cls")) return el.getAttribute("data-cls");
     const tag = el.tagName.toLowerCase();
     const type = (el.getAttribute("type") || "").toLowerCase();
     if (tag === "button" || (tag === "input" && ["submit", "button", "reset"].includes(type)) || el.getAttribute("role") === "button") return "button";
@@ -293,7 +336,8 @@ function collectBoxes(infer) {
     return null;
   };
   const nodes = infer
-    ? document.querySelectorAll("button, input, textarea, select, a[href], [role=button]")
+    // [data-cls] on a test page marks a scripted control (a <div> booking tile) as ground truth.
+    ? document.querySelectorAll("button, input, textarea, select, a[href], [role=button], [data-cls]")
     : document.querySelectorAll("[data-cls]");
   const out = [];
   for (const el of nodes) {
@@ -396,7 +440,7 @@ async function main() {
     }
   }
   // The rest of the test site (also never trained on): top of the page and scrolled down.
-  for (const file of ["apply.html", "store.html", "pricing.html", "features.html", "login.html"]) {
+  for (const file of ["apply.html", "store.html", "pricing.html", "features.html", "login.html", "book.html"]) {
     for (const [width, height] of [[1280, 720], [1536, 864], [1024, 768]]) {
       for (const scroll of [0, 420]) {
         await page.setViewport({ width, height, deviceScaleFactor: 1 });
