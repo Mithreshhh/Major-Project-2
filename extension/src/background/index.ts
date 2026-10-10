@@ -27,6 +27,8 @@ import {
   runInference,
   sanitize,
   scrubUrl,
+  sensitiveOcrText,
+  visionOnlyCandidates,
   type PerceptionOutput,
   type RawImage,
 } from "@odpa/perception";
@@ -331,6 +333,130 @@ async function perceive(
   };
 }
 
+const toScreenPx = (b: BoundingBox, dpr: number): BoundingBox => ({ x: b.x * dpr, y: b.y * dpr, width: b.width * dpr, height: b.height * dpr });
+const toCssPx = (b: BoundingBox, dpr: number): BoundingBox => ({ x: b.x / dpr, y: b.y / dpr, width: b.width / dpr, height: b.height / dpr });
+
+/** Placeholders for personal data in text read from pixels, worded like the page-text ones. */
+const OCR_PLACEHOLDER: Partial<Record<RedactedRegion["category"], string>> = {
+  payment_card: "[HIDDEN CARD NUMBER]",
+  email: "[HIDDEN EMAIL]",
+  phone: "[HIDDEN PHONE]",
+  pii_text: "[HIDDEN NUMBER]",
+};
+
+/** What OCR did this step, for the payload summary. */
+interface OcrStats {
+  ms: number;
+  lines: number;
+}
+
+/**
+ * Embedded frames: the content script cannot read their text, so it is read here from the raw
+ * screenshot, on the device. Lines with personal data become redaction regions (CSS px) and are
+ * replaced by placeholders in the frame text returned for ask mode. Fails closed: a frame that
+ * cannot be read is hidden whole.
+ */
+async function readFrames(raw: RawImage, frames: BoundingBox[], dpr: number, stats: OcrStats): Promise<{ regions: RedactedRegion[]; text: string[] }> {
+  const whole = (bbox: BoundingBox): RedactedRegion => ({ bbox, category: "other", confidence: 1, method: "ocr" });
+  if (!frames.length) return { regions: [], text: [] };
+  if (!(await ensureOcr())) return { regions: frames.map(whole), text: [] };
+  const regions: RedactedRegion[] = [];
+  const text: string[] = [];
+  for (const frame of frames) {
+    try {
+      const out = await readText(raw, toScreenPx(frame, dpr));
+      stats.ms += out.latencyMs;
+      stats.lines += out.lines.length;
+      const lines: string[] = [];
+      for (const line of out.lines) {
+        const category = sensitiveOcrText(line.text);
+        if (category) regions.push({ bbox: toCssPx(line.bbox, dpr), category, confidence: line.confidence, method: "ocr" });
+        // The whole line goes: an OCR slip can defeat the normal text rules applied later.
+        lines.push(category ? (OCR_PLACEHOLDER[category] ?? "[HIDDEN PERSONAL DATA]") : line.text);
+      }
+      if (lines.length) text.push(lines.join("\n"));
+    } catch (err) {
+      console.warn(LOG, "could not read a frame, hiding it whole", err);
+      regions.push(whole(frame));
+    }
+  }
+  console.info(LOG, `OCR: ${frames.length} frame(s), ${stats.lines} line(s), ${regions.length} hidden, ${stats.ms} ms`);
+  return { regions, text };
+}
+
+/** Text of a control drawn in pixels (a canvas or an image of a button), read on the device. */
+async function readControlLabel(raw: RawImage, bbox: BoundingBox, dpr: number, stats: OcrStats): Promise<string> {
+  if (!(await ensureOcr())) return "";
+  try {
+    const out = await readText(raw, toScreenPx(bbox, dpr));
+    stats.ms += out.latencyMs;
+    stats.lines += out.lines.length;
+    return out.lines.map((l) => l.text).join(" ").slice(0, 80);
+  } catch (err) {
+    console.warn(LOG, "could not read a control's text", err);
+    return "";
+  }
+}
+
+/**
+ * Controls only the vision model found: boxes no listed element covers, checked by the content
+ * script (is the page under them clickable?) and returned as "vis_N" elements, to be sanitized with
+ * the DOM's own elements so their labels go through the same redaction. Marks their vision boxes.
+ */
+async function visionOnlyElements(
+  tabId: number,
+  visual: VisualElement[],
+  snapshot: DomSnapshot,
+  raw: RawImage,
+  ocr: OcrStats
+): Promise<UIElement[]> {
+  const candidates = visionOnlyCandidates(visual, snapshot.elements, snapshot.viewport, {
+    minConfidence: CONFIG.uiDetector.visionOnlyMinConfidence,
+  });
+  if (!candidates.length) return [];
+  let probes: PointProbe[];
+  try {
+    const res = await sendToContent(tabId, {
+      type: "PROBE_POINTS",
+      points: candidates.map((c) => ({ index: c.index, role: c.role, ...c.point })),
+    });
+    if (res.type !== "PROBE_RESULT") throw new Error(res.type === "ERROR" ? res.message : `unexpected ${res.type}`);
+    probes = res.probes;
+  } catch (err) {
+    console.warn(LOG, "could not check vision-only boxes, continuing without them", err);
+    return [];
+  }
+  const added: UIElement[] = [];
+  for (const p of probes) {
+    const v = visual[p.index];
+    if (!p.keep || !p.id || !v) continue;
+    v.addedAs = p.id;
+    // Drawn controls carry no text in the page code: read it from the pixels instead.
+    const read = !p.label && p.surface !== "widget" ? await readControlLabel(raw, v.bbox, snapshot.viewport.devicePixelRatio, ocr) : "";
+    added.push({
+      id: p.id,
+      role: p.role ?? v.role,
+      label: p.label || read,
+      bbox: v.bbox,
+      attributes: {
+        source: "vision",
+        ...(p.surface ? { surface: p.surface } : {}),
+        ...(p.selected ? { checked: "yes" } : {}),
+        ...(read ? { labelFrom: "ocr" } : {}),
+      },
+      isVisible: true,
+      isInteractive: true,
+    });
+  }
+  // Reading order (rows top to bottom, then left to right), like the DOM's own elements: a small
+  // model works through a list in order, so "day, time, call type, Confirm" must read that way.
+  const row = (e: UIElement) => Math.round((e.bbox.y + e.bbox.height / 2) / 24);
+  added.sort((a, b) => row(a) - row(b) || a.bbox.x - b.bbox.x);
+  console.info(LOG, `vision-only: ${added.length} of ${candidates.length} unlisted box(es) added`, probes.filter((p) => !p.keep).map((p) => p.reason));
+  return added;
+}
+
+  const ocr: OcrStats = { ms: 0, lines: 0 };
 /**
  * Decides whether the model's command may run. Returns a veto to skip it (and end the task with
  * the veto's status), or null to go ahead. May wait for the user (risky-action confirmation).
