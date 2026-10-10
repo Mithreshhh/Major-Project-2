@@ -124,6 +124,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `e2e/run-ask.mjs` | Questions go to ask mode in real Chrome: "Analyze this login page" changes no field |
 | `e2e/run-profile.mjs` | A job application is filled from saved details; the values never reach the server |
 | `e2e/run-smart.mjs` | Reasoning on the store and pricing pages: each answer must contain the right fact |
+| `e2e/run-vision.mjs` | Books a call on a page whose controls are all `<div>`s, through elements only the vision model found |
 | `e2e/popup-screens.mjs` | Drives the real popup (Run task, Allow, Ask) and the My info page, saves screenshots |
 
 ## Compression study
@@ -196,11 +197,44 @@ A YOLO11n model we trained to find buttons, inputs and links **from the screensh
 (10.6 MB, runs in the extension). Training data is generated: headless Chrome renders 1,700
 random web pages and the DOM gives exact labels for free. On the original demo page, which it
 never saw in training, it found **97.5%** of the elements with **97.5%** precision. Across
-today's whole test site (seven restyled pages it never saw) it finds **61%** with **55%**
-precision, and inputs stay at 97% / 90%: strong on familiar styling, weaker on unfamiliar
-styling, and measured live either way.
+today's whole test site (seven pages it never saw, 57 screenshots) the fifth training round finds
+**65%** with **57%** precision: buttons 91%, inputs 98% / 88%, links 39% / 37%. Most of that gain
+is the booking page; on three other pages precision fell (per-page table in the model README).
+Strong on familiar styling, weaker on unfamiliar styling, and measured live either way.
 The extension compares its boxes with the DOM on every step and "What the AI sees" draws them.
 Details: [`perception/ui-model/`](perception/ui-model/README.md).
+
+## Acting on what only vision sees
+
+The DOM scan lists real buttons, links and fields. Many sites also build controls from plain
+`<div>`s with a click handler (booking slots, size pickers, custom menus), which the scan cannot
+recognise. The UI detector sees them in the screenshot, and the agent can now use them:
+
+1. **Candidates.** Vision boxes that no listed control covers, with confidence ≥ 0.6
+   (`visionOnlyCandidates` in `perception/src/ui-detector.ts`).
+2. **Check the page under each box** (content script, `PROBE_POINTS`). Something clickable (a
+   pointer cursor, a click handler, `tabindex`) is kept, labelled with its text. A canvas, image or
+   embedded frame is kept, labelled only from its `aria-label` or `title`. Plain text, headings and
+   anything inside an already-listed control are dropped as false positives.
+3. **List them** as `vis_N`: ids stay stable across steps, the elements are in reading order, and
+   `aria-pressed` shows as "checked". Their labels go through the same on-device redaction as every
+   other label.
+4. **Act by position.** A click on `vis_N` is replayed at that point as pointer, mouse and click
+   events with coordinates. It is refused if something else is under the point by then.
+
+"What the AI sees" draws them as solid boxes labelled with their id.
+
+Proof: `npm run vision --workspace=e2e` on `demo/book.html`, where every booking control is a
+`<div>`. The DOM scan lists the page's 8 links and none of its 13 controls; vision adds 12 (the
+13th, a slot that is already taken, is not clickable and is dropped). "Choose Thursday, 11:30 and
+Video call, then confirm the booking" passed 3 of 3 runs, in 7 to 8 seconds with 4 clicks, all on
+`vis_` elements (`e2e/proof/vision.json`). Before the fifth training round the detector found 3 of
+the 13 controls, and the run failed.
+
+Limits found on the way: phrased as "Book a video call on Thursday at 11:30", the 2B Gemma read
+"video call" as the goal instead of an option to pick and skipped it in all 3 tries; naming the
+options works. A control drawn on a canvas is found and clickable but has no text in the page
+code, so a text-only model only knows where it is, not what it says.
 
 ## Data contract
 
@@ -213,7 +247,6 @@ regions, history). Response: `ActionCommand` (`click`, `type`, `scroll`, `naviga
 
 | Item | Why |
 | --- | --- |
-| Act on vision-only elements | The UI detector's boxes are measured and shown; merging unmatched ones into the element list would cover canvas apps, images of buttons and cross-origin frames |
 | Train the UI detector on real sites | Today it is trained on generated pages; screenshots of real sites labelled from their DOM would close the gap on icons and custom widgets |
 | OCR-based PII detection | PII inside images (a photo of a card) is not caught by text rules |
 | In-browser benchmark page and WebGPU | Measure memory/speed inside Chrome; test GPU execution |
