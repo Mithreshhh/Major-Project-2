@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus - Arcade</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    .hero { padding: 30px 0 30px; margin-bottom: 26px; }
+    .hero h1 { font-size: 36px; margin: 10px 0 8px; }
+    .stage { padding: 20px; }
+    canvas { display: block; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="book.html">Book a call</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <span class="eyebrow">Arcade</span>
+      <h1>Space Run</h1>
+      <p>A break between meetings. The whole game, menu included, is drawn on a canvas.</p>
+    </section>
+
+    <!--
+      The menu's buttons exist only as pixels: no element, no text in the page code. The agent
+      finds them with the UI detector and reads their labels with on-device OCR. The extension
+      still blacks the canvas out before the screenshot leaves, like every canvas.
+    -->
+    <div class="card stage">
+      <canvas id="game" width="720" height="380"></canvas>
+      <div id="status" role="status"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container"><span class="copy">Nimbus test site · nothing here is real</span><a href="pricing.html">Pricing</a><a href="index.html">Support</a></div>
+  </footer>
+
+  <script>
+    // State is read by e2e/run-ocr.mjs.
+    window.game = { level: null, started: false };
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const LEVELS = ["Easy", "Normal", "Hard"];
+    const levelBox = (i) => ({ x: 150 + i * 150, y: 170, w: 120, h: 46 });
+    const startBox = { x: 270, y: 260, w: 180, h: 52 };
+    const FONT = '"Segoe UI", system-ui, sans-serif';
+
+    function button(b, label, on, primary) {
+      ctx.fillStyle = primary ? "#2563eb" : on ? "#2563eb" : "#ffffff";
+      ctx.strokeStyle = primary || on ? "#2563eb" : "#cbd5e1";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, b.w, b.h, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = primary || on ? "#ffffff" : "#0f172a";
+      ctx.font = `600 ${primary ? 18 : 16}px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, b.x + b.w / 2, b.y + b.h / 2 + 1);
+    }
+
+    function draw() {
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < 60; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${0.25 + ((i * 37) % 50) / 100})`;
+        ctx.fillRect((i * 127) % 720, (i * 61) % 380, 2, 2);
+      }
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `700 34px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.fillText(window.game.started ? `Playing on ${window.game.level}` : "SPACE RUN", 360, 90);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `500 16px ${FONT}`;
+      ctx.fillText("Choose a difficulty", 360, 140);
+      LEVELS.forEach((l, i) => button(levelBox(i), l, window.game.level === l, false));
+      button(startBox, "Start game", false, true);
+    }
+
+    const inside = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+    canvas.addEventListener("click", (e) => {
+      const r = canvas.getBoundingClientRect();
+      const x = ((e.clientX - r.left) * canvas.width) / r.width;
+      const y = ((e.clientY - r.top) * canvas.height) / r.height;
+      const status = document.getElementById("status");
+      LEVELS.forEach((l, i) => {
+        if (inside(levelBox(i), x, y)) {
+          window.game.level = l;
+          status.textContent = `${l} selected. Press Start game.`;
+        }
+      });
+      if (inside(startBox, x, y)) {
+        if (!window.game.level) status.textContent = "Choose a difficulty first.";
+        else {
+          window.game.started = true;
+          status.textContent = `Game started on ${window.game.level}.`;
+        }
+      }
+      draw();
+    });
+    draw();
+  </script>
+</body>
+</html>
