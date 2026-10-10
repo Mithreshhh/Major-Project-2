@@ -20,3 +20,4 @@ export * from "./postprocess";
 export * from "./redaction";
 export * from "./ui-detector";
 export { classifyField, findPii, luhnValid, redactTextLabelled, scrubUrl, type PiiMatch } from "./pii";
+export * from "./ocr";
