@@ -31,12 +31,44 @@ export type ContentRequest =
   /** `sensitive`: the typed text is a saved detail, so the field is masked in later screenshots. */
   | { type: "EXECUTE_ACTION"; command: ActionCommand; sensitive?: boolean }
   /** Attach a saved file ("My info") to the file-upload field `target`. */
-  | { type: "UPLOAD_FILE"; target: string; file: { name: string; type: string; dataBase64: string } };
+  | { type: "UPLOAD_FILE"; target: string; file: { name: string; type: string; dataBase64: string } }
+  /** Vision boxes no listed element covers: what is under each centre, and is it clickable? */
+  | { type: "PROBE_POINTS"; points: ProbePoint[] };
+
+export interface ProbePoint {
+  /** Index of the candidate, echoed back. */
+  index: number;
+  role: "button" | "textbox" | "link";
+  /** CSS pixels, viewport coordinates. */
+  x: number;
+  y: number;
+}
+
+/**
+ * What the page has under a vision box. Kept ones get an id ("vis_3") the agent can target; the
+ * content script remembers the point and acts there. The label is raw: the background redacts it.
+ */
+export interface PointProbe {
+  index: number;
+  keep: boolean;
+  id?: string;
+  label?: string;
+  /** Role to list it under; can differ from the detector's guess (a text-box-shaped picker is a button). */
+  role?: "button" | "textbox" | "link";
+  /** What is under the point: a scripted control the DOM scan does not list, or a surface whose
+   *  contents the DOM cannot describe (canvas, image, embedded frame). */
+  surface?: "widget" | "canvas" | "image" | "frame";
+  /** The control says it is pressed or selected (aria-pressed / -selected / -checked). */
+  selected?: boolean;
+  /** Why it was dropped (debugging only). */
+  reason?: string;
+}
 
 export type ContentResponse =
   | { type: "PONG" }
   | { type: "DOM_SNAPSHOT"; snapshot: DomSnapshot }
   | { type: "EXECUTION_RESULT"; result: ExecutionResult }
+  | { type: "PROBE_RESULT"; probes: PointProbe[] }
   | { type: "ERROR"; message: string };
 
 export interface RedactionCounts {
@@ -81,6 +113,8 @@ export interface VisionStats {
   found: number;
   recall: number;
   precision: number;
+  /** Elements only vision found, added to the list so the agent can act on them by position. */
+  added?: number;
 }
 
 // ---------------------------------------------------------------------------
