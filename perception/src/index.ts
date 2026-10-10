@@ -19,5 +19,5 @@ export * from "./preprocess";
 export * from "./postprocess";
 export * from "./redaction";
 export * from "./ui-detector";
-export { classifyField, findPii, luhnValid, redactTextLabelled, scrubUrl, type PiiMatch } from "./pii";
 export * from "./ocr";
+export { classifyField, findPii, luhnValid, redactTextLabelled, scrubUrl, sensitiveOcrText, type PiiMatch } from "./pii";

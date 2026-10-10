@@ -188,3 +188,16 @@ export function classifyField(field: {
   if (CREDENTIAL_HINT.test(hints)) return "credential";
   return null;
 }
+
+/**
+ * Stricter test for text read from pixels (OCR). One misread digit makes a card number fail the
+ * Luhn check, so besides the normal rules any run of 9+ digits (spaces and dashes allowed) and
+ * anything shaped like an email counts as sensitive: an OCR error can only hide too much.
+ */
+export function sensitiveOcrText(text: string): SensitiveCategory | null {
+  const match = findPii(text)[0];
+  if (match) return match.category;
+  if (/\d(?:[\s-]?\d){8,}/.test(text)) return "pii_text";
+  if (/\S+\s?@\s?\S+\.\S{2,}/.test(text)) return "email";
+  return null;
+}
