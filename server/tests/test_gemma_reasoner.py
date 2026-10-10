@@ -410,3 +410,56 @@ def test_prompt_lists_saved_details_by_name_only(example_context):
 def test_profile_fields_reject_values_smuggled_as_extra_keys(client, example_context):
     bad = {**example_context, "profileFields": [{"key": "email", "label": "Email", "value": "jane@example.com"}]}
     assert client.post("/process", json=bad).status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Controls only the on-device vision model found ("vis_N")
+# ---------------------------------------------------------------------------
+
+VISION_TILE = {
+    "id": "vis_3",
+    "role": "button",
+    "label": "11:30",
+    "bbox": {"x": 300, "y": 400, "width": 80, "height": 36},
+    "attributes": {"source": "vision", "surface": "widget"},
+    "isVisible": True,
+    "isInteractive": True,
+}
+VISION_CANVAS = {
+    "id": "vis_4",
+    "role": "button",
+    "label": "",
+    "bbox": {"x": 500, "y": 400, "width": 80, "height": 36},
+    "attributes": {"source": "vision", "surface": "canvas", "checked": "yes"},
+    "isVisible": True,
+    "isInteractive": True,
+}
+
+
+def test_prompt_marks_controls_seen_only_in_the_screenshot(example_context):
+    ctx = make_context(example_context, elements=[*example_context["elements"], VISION_TILE, VISION_CANVAS])
+    system, user = (m["content"] for m in build_messages(ctx, max_elements=60, include_screenshot=False))
+    assert '"vis_1"' in system and 'Ids starting with "vis_" are controls seen only in the screenshot' in system
+    assert 'vis_3 | button | "11:30"' in user and "[seen in the screenshot only]" in user
+    assert "seen in the screenshot only, drawn on a canvas" in user
+    assert "no text available" in user, "a text-only model is not told to look at an image it never gets"
+    assert "checked" in user.split("vis_4")[1]
+    shot = {"mimeType": "image/png", "dataBase64": "aGVsbG8=", "width": 2, "height": 2}
+    ctx = make_context(example_context, elements=[*example_context["elements"], VISION_CANVAS], screenshot=shot)
+    with_image = build_messages(ctx, max_elements=60, include_screenshot=True)[1]["content"]
+    assert "no text: look at the screenshot at this spot" in with_image
+
+
+@pytest.mark.parametrize("target", ["vis_3", "vis 3", "VIS-3", "vision 3", "11:30"])
+def test_parse_action_resolves_vision_targets(example_context, target):
+    ctx = make_context(example_context, elements=[*example_context["elements"], VISION_TILE])
+    command = parse_action(json.dumps({"action": "click", "target": target}), ctx)
+    assert command.target == "vis_3"
+
+
+def test_parse_action_rejects_vision_ids_that_were_not_sent(example_context):
+    ctx = make_context(example_context)
+    with pytest.raises(ActionParseError, match="unknown target 'vis_3'"):
+        parse_action('{"action": "click", "target": "vis_3"}', ctx)
+
+
