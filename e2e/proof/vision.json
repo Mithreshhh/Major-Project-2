@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-10T06:54:42.678Z",
+  "url": "http://127.0.0.1:5500/book.html",
+  "task": "Choose Thursday, 11:30 and Video call, then confirm the booking.",
+  "pass": true,
+  "seconds": 7.7,
+  "status": "done",
+  "message": "The task is complete as the booking was successfully made and confirmed according to the page message.",
+  "booking": {
+    "day": "Thu 16",
+    "time": "11:30",
+    "kind": "Video call",
+    "confirmed": true,
+    "status": "Booked: Video call on Thu 16 Oct at 11:30. Confirmation sent (test page, nothing was sent)."
+  },
+  "visionClicks": 4,
+  "steps": [
+    {
+      "step": 1,
+      "action": "click",
+      "target": "vis_2",
+      "targetLabel": "Thu 16 Oct",
+      "visionOnlyTarget": true,
+      "listedByDom": 8,
+      "addedFromVision": [
+        "vis_8 \"Mon 13 Oct\"",
+        "vis_3 \"Tue 14 Oct\"",
+        "vis_1 \"Wed 15 Oct\"",
+        "vis_2 \"Thu 16 Oct\"",
+        "vis_0 \"Fri 17 Oct\"",
+        "vis_9 \"09:30\"",
+        "vis_5 \"11:30\"",
+        "vis_4 \"14:00\"",
+        "vis_7 \"16:30\"",
+        "vis_10 \"Video call\"",
+        "vis_11 \"Phone call\"",
+        "vis_6 \"Confirm booking\""
+      ],
+      "reasoning": "Select Thursday as requested."
+    },
+    {
+      "step": 2,
+      "action": "click",
+      "target": "vis_5",
+      "targetLabel": "11:30",
+      "visionOnlyTarget": true,
+      "listedByDom": 8,
+      "addedFromVision": [
+        "vis_8 \"Mon 13 Oct\"",
+        "vis_3 \"Tue 14 Oct\"",
+        "vis_1 \"Wed 15 Oct\"",
+        "vis_2 \"Thu 16 Oct\" (selected)",
+        "vis_0 \"Fri 17 Oct\"",
+        "vis_9 \"09:30\"",
+        "vis_5 \"11:30\"",
+        "vis_4 \"14:00\"",
+        "vis_7 \"16:30\"",
+        "vis_10 \"Video call\"",
+        "vis_11 \"Phone call\"",
+        "vis_6 \"Confirm booking\""
+      ],
+      "reasoning": "Select the desired time slot, 11:30."
+    },
+    {
+      "step": 3,
+      "action": "click",
+      "target": "vis_10",
+      "targetLabel": "Video call",
+      "visionOnlyTarget": true,
+      "listedByDom": 8,
+      "addedFromVision": [
+        "vis_8 \"Mon 13 Oct\"",
+        "vis_3 \"Tue 14 Oct\"",
+        "vis_1 \"Wed 15 Oct\"",
+        "vis_2 \"Thu 16 Oct\" (selected)",
+        "vis_0 \"Fri 17 Oct\"",
+        "vis_9 \"09:30\"",
+        "vis_5 \"11:30\" (selected)",
+        "vis_4 \"14:00\"",
+        "vis_7 \"16:30\"",
+        "vis_10 \"Video call\"",
+        "vis_11 \"Phone call\"",
+        "vis_6 \"Confirm booking\""
+      ],
+      "reasoning": "Select 'Video call' as requested."
+    },
+    {
+      "step": 4,
+      "action": "click",
+      "target": "vis_6",
+      "targetLabel": "Confirm booking",
+      "visionOnlyTarget": true,
+      "listedByDom": 8,
+      "addedFromVision": [
+        "vis_8 \"Mon 13 Oct\"",
+        "vis_3 \"Tue 14 Oct\"",
+        "vis_1 \"Wed 15 Oct\"",
+        "vis_2 \"Thu 16 Oct\" (selected)",
+        "vis_0 \"Fri 17 Oct\"",
+        "vis_9 \"09:30\"",
+        "vis_5 \"11:30\" (selected)",
+        "vis_4 \"14:00\"",
+        "vis_7 \"16:30\"",
+        "vis_10 \"Video call\" (selected)",
+        "vis_11 \"Phone call\"",
+        "vis_6 \"Confirm booking\""
+      ],
+      "reasoning": "Confirm the booking to complete the task."
+    },
+    {
+      "step": 5,
+      "action": "done",
+      "visionOnlyTarget": false,
+      "listedByDom": 8,
+      "addedFromVision": [
+        "vis_8 \"Mon 13 Oct\"",
+        "vis_3 \"Tue 14 Oct\"",
+        "vis_1 \"Wed 15 Oct\"",
+        "vis_2 \"Thu 16 Oct\" (selected)",
+        "vis_0 \"Fri 17 Oct\"",
+        "vis_9 \"09:30\"",
+        "vis_5 \"11:30\" (selected)",
+        "vis_4 \"14:00\"",
+        "vis_7 \"16:30\"",
+        "vis_10 \"Video call\" (selected)",
+        "vis_11 \"Phone call\"",
+        "vis_6 \"Confirm booking\""
+      ]
+    }
+  ]
+}
