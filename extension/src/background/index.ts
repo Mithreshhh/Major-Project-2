@@ -174,9 +174,121 @@ async function sendToContent(tabId: number, request: ContentRequest): Promise<Co
     // Typical cause: the tab was open before the extension was (re)loaded, so the declared
     // content script never ran. Inject it once and retry.
     console.warn(LOG, "content script unreachable, injecting", err);
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-    return (await chrome.tabs.sendMessage(tabId, request)) as ContentResponse;
+    await chrome.scripting.executeScript({ target: { tabId, frameIds: [frameId] }, files: ["content.js"] });
+    return (await chrome.tabs.sendMessage(tabId, request, { frameId })) as ContentResponse;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Embedded frames
+// ---------------------------------------------------------------------------
+
+/** FRAME_HELLO answers by nonce: which frame of which tab got that nonce. */
+const hellos = new Map<string, { tabId: number; frameId: number }>();
+const helloWaiters = new Map<string, (frame: { tabId: number; frameId: number }) => void>();
+
+function frameHello(nonce: string, tabId: number, frameId: number): void {
+  const waiter = helloWaiters.get(nonce);
+  if (waiter) waiter({ tabId, frameId });
+  else if (hellos.size < 256) hellos.set(nonce, { tabId, frameId });
+}
+
+/** The frame that answered `nonce`, or null when nothing answered in time (no script in there). */
+function waitForHello(nonce: string, tabId: number, ms = 400): Promise<number | null> {
+  const known = hellos.get(nonce);
+  if (known) {
+    hellos.delete(nonce);
+    return Promise.resolve(known.tabId === tabId ? known.frameId : null);
+  }
+  return new Promise((resolve) => {
+    const done = (frame: { tabId: number; frameId: number } | null) => {
+      clearTimeout(timer);
+      helloWaiters.delete(nonce);
+      resolve(frame && frame.tabId === tabId ? frame.frameId : null);
+    };
+    const timer = setTimeout(() => done(null), ms);
+    helloWaiters.set(nonce, done);
+  });
+}
+
+/**
+ * Per tab, frame id -> n, for element ids "el_f<n>_<k>". Stable for the tab's lifetime, so the
+ * history ("clicked el_f1_4") keeps pointing at the same control from step to step.
+ */
+const frameNumbers = new Map<number, Map<number, number>>();
+
+function frameNumber(tabId: number, frameId: number): number {
+  let numbers = frameNumbers.get(tabId);
+  if (!numbers) frameNumbers.set(tabId, (numbers = new Map()));
+  let n = numbers.get(frameId);
+  if (n === undefined) numbers.set(frameId, (n = numbers.size + 1));
+  return n;
+}
+
+/** The frame an element id lives in: 0 for "el_7", the frame id for "el_f2_7". */
+function frameOf(tabId: number, elementId: string): number {
+  const n = Number(/^el_f(\d+)_/.exec(elementId)?.[1] ?? 0);
+  if (!n) return 0;
+  for (const [frameId, number] of frameNumbers.get(tabId) ?? []) if (number === n) return frameId;
+  return 0;
+}
+
+const intersect = (a: BoundingBox, b: BoundingBox): BoundingBox | null => {
+  const x = Math.max(a.x, b.x);
+  const y = Math.max(a.y, b.y);
+  const width = Math.min(a.x + a.width, b.x + b.width) - x;
+  const height = Math.min(a.y + a.height, b.y + b.height) - y;
+  return width > 0 && height > 0 ? { x, y, width, height } : null;
+};
+
+/**
+ * Brings the content of embedded frames into the top page's snapshot: each frame whose content
+ * script answered is asked for its own snapshot, which is moved to the frame's position and cut
+ * to its visible part. Elements, PII boxes, photos and (for questions) text join the page's own.
+ * Returns the frames nobody could read from the inside, for OCR.
+ */
+async function mergeFrames(tabId: number, snapshot: DomSnapshot, includeText: boolean): Promise<BoundingBox[]> {
+  const unread: BoundingBox[] = [];
+  for (const frame of snapshot.frames ?? []) {
+    const frameId = frame.nonce ? await waitForHello(frame.nonce, tabId) : null;
+    if (frameId === null) {
+      unread.push(frame.bbox);
+      continue;
+    }
+    let inner: DomSnapshot;
+    try {
+      const res = await sendToContent(tabId, { type: "CAPTURE_DOM", includeText, frame: frameNumber(tabId, frameId) }, frameId);
+      if (res.type !== "DOM_SNAPSHOT") throw new Error(res.type === "ERROR" ? res.message : res.type);
+      inner = res.snapshot;
+    } catch (err) {
+      console.warn(LOG, "an embedded frame did not answer, reading it from pixels instead", err);
+      unread.push(frame.bbox);
+      continue;
+    }
+    const move = (b: BoundingBox): BoundingBox => ({ ...b, x: b.x + frame.origin.x, y: b.y + frame.origin.y });
+    // In reading order: before the first page element below the frame (a small model works
+    // through the list in order, so the payment box's Pay must come before "Place order" under it).
+    const bottom = frame.bbox.y + frame.bbox.height;
+    const at = snapshot.elements.findIndex((e) => e.bbox.y >= bottom);
+    const moved = inner.elements.map((e) => {
+      const bbox = move(e.bbox);
+      return { ...e, bbox, isVisible: e.isVisible && intersect(bbox, frame.bbox) !== null, attributes: { ...e.attributes, frame: "embedded" } };
+    });
+    snapshot.elements.splice(at < 0 ? snapshot.elements.length : at, 0, ...moved);
+    const cut = (r: RedactedRegion): RedactedRegion[] => {
+      const bbox = intersect(move(r.bbox), frame.bbox);
+      return bbox ? [{ ...r, bbox }] : [];
+    };
+    snapshot.textRegions.push(...inner.textRegions.flatMap(cut));
+    snapshot.imageRegions = [...(snapshot.imageRegions ?? []), ...(inner.imageRegions ?? []).flatMap(cut)];
+    if (includeText && inner.pageText) snapshot.pageText = `${snapshot.pageText ?? ""}\n\n[Text inside an embedded frame]\n${inner.pageText}`;
+    // Frames inside this frame are not entered (one level deep): read those from pixels.
+    for (const nested of inner.frames ?? []) {
+      const bbox = intersect(move(nested.bbox), frame.bbox);
+      if (bbox) unread.push(bbox);
+    }
+  }
+  return unread;
 }
 
 /** PNG of the visible viewport, decoded to RGBA. Only ever called when CONFIG.sendScreenshot is true. */
