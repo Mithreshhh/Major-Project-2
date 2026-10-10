@@ -477,3 +477,10 @@ def test_text_read_from_pixels_is_accepted_and_marked(example_context):
     assert "no text available" not in user
 
 
+def test_elements_inside_embedded_frames_are_marked(example_context):
+    pay = {"id": "el_f1_1", "role": "button", "label": "Pay", "bbox": {"x": 640, "y": 640, "width": 500, "height": 40},
+           "attributes": {"frame": "embedded"}, "isVisible": True, "isInteractive": True}
+    ctx = make_context(example_context, elements=[*example_context["elements"], pay])
+    user = build_messages(ctx, max_elements=60, include_screenshot=False)[1]["content"]
+    assert 'el_f1_1 | button | "Pay"' in user and "[inside an embedded frame]" in user
+    assert parse_action('{"action": "click", "target": "el_f1_1"}', ctx).target == "el_f1_1"
