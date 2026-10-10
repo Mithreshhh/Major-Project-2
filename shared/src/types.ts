@@ -151,6 +151,11 @@ export interface VisualElement {
   confidence: number;
   /** `UIElement.id` of the DOM element this box overlaps best (IoU >= 0.5), if any. */
   matchedId?: string;
+  /**
+   * Set when no listed element covers this box but the page under it is clickable: the box was
+   * added to `elements` under this id (e.g. "vis_2") and actions on it are carried out by position.
+   */
+  addedAs?: string;
 }
 
 /** Small summary of what the on-device model produced, for observability/debugging. */

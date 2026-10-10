@@ -161,7 +161,8 @@
         "role": { "enum": ["button", "textbox", "link"] },
         "bbox": { "$ref": "#/$defs/BoundingBox" },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "matchedId": { "type": "string" }
+        "matchedId": { "type": "string" },
+        "addedAs": { "type": "string" }
       }
     }
   }
