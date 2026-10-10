@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus - Book a call</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    /*
+     * Every control in the booking card is a <div> with a click handler: no <button>, no role.
+     * Many real booking widgets are built this way. The extension's DOM scan does not list them,
+     * so the agent can only find them from the screenshot (the on-device UI detector).
+     * data-cls="button" marks them as ground truth for perception/ui-model/evaluate.ts only.
+     */
+    .hero { padding: 30px 0 30px; margin-bottom: 26px; }
+    .hero h1 { font-size: 36px; margin: 10px 0 8px; }
+    .book { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .book { grid-template-columns: 1fr; } }
+    .book .card { padding: 24px; }
+    .step { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .day, .slot, .kind {
+      cursor: pointer; user-select: none; border: 1px solid #d1d5db; border-radius: 10px; background: #fff;
+      font-weight: 600; color: var(--ink); transition: border-color .12s, background .12s;
+    }
+    .day { width: 84px; padding: 10px 0; text-align: center; line-height: 1.3; }
+    .day small { display: block; font-weight: 500; color: var(--muted); font-size: 12.5px; }
+    .slot { padding: 9px 18px; }
+    .kind { padding: 9px 16px; }
+    .day:hover, .slot:hover, .kind:hover { border-color: var(--brand); }
+    .on { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .on small { color: #dbeafe; }
+    .slot.taken { cursor: default; color: #9ca3af; background: var(--soft); text-decoration: line-through; border-style: dashed; }
+    .confirm {
+      display: inline-block; cursor: pointer; user-select: none; padding: 11px 24px; border-radius: 9px;
+      background: var(--brand); color: #fff; font-weight: 600; border: 1px solid var(--brand);
+    }
+    .confirm:hover { background: var(--brand-dark); }
+    .summary dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14.5px; }
+    .summary dt { color: var(--muted); }
+    .summary dd { margin: 0; font-weight: 600; }
+    .summary p { color: var(--muted); font-size: 14px; margin: 16px 0 0; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="book.html">Book a call</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <span class="eyebrow">Onboarding</span>
+      <h1>Book a 30-minute call</h1>
+      <p>A Nimbus engineer walks your team through setup. Times are in IST.</p>
+    </section>
+
+    <div class="book">
+      <div class="card" id="picker">
+        <p class="step">1 · Day</p>
+        <div class="row" id="days">
+          <div class="day" data-cls="button" data-day="Mon 13">Mon<small>13 Oct</small></div>
+          <div class="day" data-cls="button" data-day="Tue 14">Tue<small>14 Oct</small></div>
+          <div class="day" data-cls="button" data-day="Wed 15">Wed<small>15 Oct</small></div>
+          <div class="day" data-cls="button" data-day="Thu 16">Thu<small>16 Oct</small></div>
+          <div class="day" data-cls="button" data-day="Fri 17">Fri<small>17 Oct</small></div>
+        </div>
+
+        <p class="step">2 · Time</p>
+        <div class="row" id="slots">
+          <div class="slot" data-cls="button" data-time="09:30">09:30</div>
+          <div class="slot taken" data-cls="button" data-time="11:00">11:00</div>
+          <div class="slot" data-cls="button" data-time="11:30">11:30</div>
+          <div class="slot" data-cls="button" data-time="14:00">14:00</div>
+          <div class="slot" data-cls="button" data-time="16:30">16:30</div>
+        </div>
+
+        <p class="step">3 · How should we call you?</p>
+        <div class="row" id="kinds">
+          <div class="kind" data-cls="button" data-kind="Video call">Video call</div>
+          <div class="kind" data-cls="button" data-kind="Phone call">Phone call</div>
+        </div>
+
+        <div class="confirm" data-cls="button" id="confirm">Confirm booking</div>
+        <div id="status" role="status"></div>
+      </div>
+
+      <aside class="card summary">
+        <h2>Your booking</h2>
+        <p class="sub">Updates as you choose.</p>
+        <dl>
+          <dt>Day</dt><dd id="s-day">Not chosen</dd>
+          <dt>Time</dt><dd id="s-time">Not chosen</dd>
+          <dt>Call</dt><dd id="s-kind">Not chosen</dd>
+        </dl>
+        <p>Free for every plan. You can move the call later from the email we send.</p>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container"><span class="copy">Nimbus test site · nothing here is real</span><a href="pricing.html">Pricing</a><a href="index.html">Support</a></div>
+  </footer>
+
+  <script>
+    // State is read by e2e/run-vision.mjs.
+    window.booking = { day: null, time: null, kind: null, confirmed: false };
+    const status = document.getElementById("status");
+    // After a refused Confirm, the message follows each choice, like live form validation.
+    const missingParts = () => [!window.booking.day && "a day", !window.booking.time && "a time", !window.booking.kind && "Video call or Phone call"].filter(Boolean);
+    function refresh() {
+      if (!status.textContent || window.booking.confirmed) return;
+      const missing = missingParts();
+      status.textContent = missing.length ? `Not booked yet: choose ${missing.join(" and ")} first.` : "Not booked yet: press Confirm booking.";
+    }
+
+    function choose(group, attr, el) {
+      for (const other of document.querySelectorAll(`#${group} [data-${attr}]`)) {
+        other.classList.toggle("on", other === el);
+        other.setAttribute("aria-pressed", String(other === el));
+      }
+    }
+
+    document.getElementById("days").addEventListener("click", (e) => {
+      const el = e.target.closest("[data-day]");
+      if (!el) return;
+      choose("days", "day", el);
+      window.booking.day = el.dataset.day;
+      document.getElementById("s-day").textContent = el.dataset.day + " Oct";
+      refresh();
+    });
+    document.getElementById("slots").addEventListener("click", (e) => {
+      const el = e.target.closest("[data-time]");
+      if (!el) return;
+      if (el.classList.contains("taken")) {
+        status.textContent = `${el.dataset.time} is already taken. Pick another time.`;
+        return;
+      }
+      choose("slots", "time", el);
+      window.booking.time = el.dataset.time;
+      document.getElementById("s-time").textContent = el.dataset.time;
+      refresh();
+    });
+    document.getElementById("kinds").addEventListener("click", (e) => {
+      const el = e.target.closest("[data-kind]");
+      if (!el) return;
+      choose("kinds", "kind", el);
+      window.booking.kind = el.dataset.kind;
+      document.getElementById("s-kind").textContent = el.dataset.kind;
+      refresh();
+    });
+    document.getElementById("confirm").addEventListener("click", () => {
+      const b = window.booking;
+      const missing = missingParts();
+      if (missing.length) {
+        status.textContent = `Not booked yet: choose ${missing.join(" and ")} first.`;
+        return;
+      }
+      b.confirmed = true;
+      status.textContent = `Booked: ${b.kind} on ${b.day} Oct at ${b.time}. Confirmation sent (test page, nothing was sent).`;
+    });
+  </script>
+</body>
+</html>
