@@ -13,7 +13,7 @@
 import { findPii } from "@odpa/perception/pii";
 import type { ActionCommand, BoundingBox, ElementRole, RedactedRegion, UIElement } from "@odpa/shared";
 
-import type { ContentRequest, ContentResponse, DomSnapshot, ExecutionResult } from "../shared/messages";
+import type { ContentRequest, ContentResponse, DomSnapshot, ExecutionResult, FrameInfo, PointProbe, ProbePoint } from "../shared/messages";
 
 const LOG = "[odpa:content]";
 const MAX_ELEMENTS = 200;
@@ -311,6 +311,50 @@ function scanImages(): RedactedRegion[] {
   return regions;
 }
 
+/**
+ * Embedded frames in view (iframe, embed, object), clipped to the viewport. Their contents are
+ * not part of this document. Each iframe is sent a fresh random nonce; the copy of this script
+ * running inside it (if the extension may run there) reports the nonce to the background, which
+ * then asks that frame for its own snapshot. Frames that never answer (a PDF viewer, a data:
+ * document) are read from the screenshot instead.
+ */
+function scanFrames(): FrameInfo[] {
+  const frames: FrameInfo[] = [];
+  for (const el of document.querySelectorAll("iframe, frame, embed, object")) {
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, r.left);
+    const y = Math.max(0, r.top);
+    const width = Math.min(window.innerWidth, r.right) - x;
+    const height = Math.min(window.innerHeight, r.bottom) - y;
+    if (width < MIN_PHOTO_PX || height < MIN_PHOTO_PX) continue;
+    const style = getComputedStyle(el);
+    if (style.visibility === "hidden" || style.display === "none" || style.opacity === "0") continue;
+    // The frame's own viewport starts inside the element's border and padding.
+    const origin = {
+      x: r.left + el.clientLeft + parseFloat(style.paddingLeft || "0"),
+      y: r.top + el.clientTop + parseFloat(style.paddingTop || "0"),
+    };
+    const frame: FrameInfo = { bbox: { x, y, width, height }, origin };
+    const target = (el as HTMLIFrameElement).contentWindow;
+    if (target) {
+      frame.nonce = crypto.randomUUID();
+      target.postMessage({ odpaFrameHello: frame.nonce }, "*");
+    }
+    frames.push(frame);
+  }
+  return frames;
+}
+
+// Inside an embedded frame: answer the parent's hello so the background learns which frame this
+// is. Only a message from the parent window counts; the background ignores unknown nonces.
+if (window !== window.top) {
+  window.addEventListener("message", (event) => {
+    const nonce = (event.data as { odpaFrameHello?: unknown } | null)?.odpaFrameHello;
+    if (event.source !== window.parent || typeof nonce !== "string") return;
+    chrome.runtime.sendMessage({ type: "FRAME_HELLO", nonce }).catch(() => {});
+  });
+}
+
 const PAGE_TEXT_MAX = 15_000;
 
 /**
@@ -381,6 +425,7 @@ export function captureDom(includeText = false, frame?: number): DomSnapshot {
     elements,
     textRegions: [...scanTextForPii(), ...scanInputValuesForPii()],
     imageRegions: scanImages(),
+    frames: scanFrames(),
     ...(includeText ? { pageText: collectPageText() } : {}),
   };
 }
