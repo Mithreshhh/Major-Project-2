@@ -17,51 +17,57 @@
     * { box-sizing: border-box; }
     html { background: var(--bg2); }
     body { margin: 0; color: var(--fg); background: var(--bg); font: 14px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; min-height: 100vh; }
-    main { max-width: 880px; margin: 0 auto; padding: 28px 20px 110px; }
+    main { max-width: 720px; margin: 0 auto; padding: 22px 20px 90px; }
     header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-    .mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; background: var(--brand); }
-    .mark svg { width: 21px; height: 21px; }
-    h1 { font-size: 26px; margin: 0; letter-spacing: -.025em; }
+    .mark { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: #fff; flex: none; background: var(--brand); }
+    .mark svg { width: 18px; height: 18px; }
+    h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
     h2 { font-size: 15px; margin: 0 0 4px; }
-    .lead { color: var(--muted); margin: 0 0 16px; max-width: 660px; }
-    .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .lead { color: var(--muted); margin: 0 0 12px; font-size: 13.5px; }
+    .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
     .privacy { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 25%, var(--line)); border-radius: 12px;
-               padding: 12px 14px; margin-bottom: 18px; font-size: 13.5px; }
+               padding: 8px 12px; margin-bottom: 14px; font-size: 12.5px; }
     .privacy b { color: var(--brand); }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
 
-    .people { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
-    .chip { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 99px; padding: 6px 14px; cursor: pointer; font: inherit; font-weight: 600; }
+    .people { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+    .chip { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 99px; padding: 4px 12px; cursor: pointer; font: inherit; font-weight: 600; }
     .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
     .chip .star { margin-left: 6px; font-size: 11px; opacity: .85; font-weight: 500; }
     .chip.add { border-style: dashed; color: var(--brand); font-weight: 500; }
-    .person { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .person { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-bottom: 10px; margin-bottom: 4px; }
     .person label { font-weight: 600; font-size: 13px; }
-    .person input[type=text] { width: 220px; }
+    .person input[type=text] { width: 180px; }
     .people .chip { line-height: 1.3; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 4px 0 10px; }
     @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
     .field { min-width: 0; }
     .field.wide { grid-column: 1 / -1; }
-    .field label { display: flex; align-items: baseline; gap: 8px; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .field label { display: flex; align-items: baseline; gap: 8px; font-weight: 600; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
     code { font: 11px ui-monospace, monospace; color: var(--muted); font-weight: 400; }
     .del { margin-left: auto; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
     .del:hover { color: var(--bad); }
-    input[type=text], textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft);
+    input[type=text], textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); font-size: 13.5px;
                                  color: var(--fg); font: inherit; }
     textarea { min-height: 70px; resize: vertical; }
     input:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
-    .add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); align-items: center; }
+    .add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
+    details.group { border-top: 1px solid var(--line); }
+    details.group summary { cursor: pointer; padding: 9px 0; font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; list-style: none; }
+    details.group summary::-webkit-details-marker { display: none; }
+    details.group summary::before { content: "▸"; color: var(--muted); font-size: 11px; transition: transform .15s; }
+    details.group[open] summary::before { transform: rotate(90deg); }
+    details.group .count { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 12px; }
     .add input[type=text] { flex: 1; min-width: 200px; }
     .add input[type=file] { flex: 1; min-width: 200px; font: inherit; color: var(--muted); }
-    button { font: inherit; font-weight: 600; padding: 9px 15px; border-radius: 9px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); cursor: pointer; }
+    button { font: inherit; font-weight: 600; padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); cursor: pointer; }
     button.primary { border-color: var(--brand); color: #fff; background: var(--brand); }
     button.link { border: none; background: none; color: var(--brand); padding: 0; font-weight: 500; }
     button.link.danger { color: var(--bad); }
 
     .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-    .files li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+    .files li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
     .files .icon { width: 34px; height: 34px; border-radius: 8px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
     .files .meta { min-width: 0; flex: 1; }
     .files .meta b { display: block; }
@@ -69,10 +75,11 @@
     .empty { color: var(--muted); font-size: 13px; }
 
     .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); }
-    .bar .inner { max-width: 880px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+    .bar .inner { max-width: 720px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
     #saved { color: var(--ok); font-weight: 600; font-size: 13px; }
     #saved.bad { color: var(--bad); }
     .spacer { flex: 1; }
+    .bar button.link { white-space: nowrap; }
     .how { color: var(--muted); font-size: 13px; }
     .how code { background: var(--soft); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
   </style>
@@ -85,12 +92,10 @@
       </div>
       <h1>My info</h1>
     </header>
-    <p class="lead">Save details and files once, for yourself and for anyone you fill forms for. Then tell the agent “fill this form with my details” on any page.</p>
+    <p class="lead">Save your details once. Then tell the agent “fill this form with my details” on any page.</p>
 
     <div class="privacy">
-      <b>Stays on this device.</b> Everything here is stored only in this browser. The AI is told only the
-      <i>names</i> of what you saved (like “Email” or “Resume”), never the values or the files. It answers with a
-      placeholder, and the extension types the real value or attaches the real file for it.
+      <b>Stays on this device.</b> The AI sees only field names like “Email”, never the values or files.
     </div>
 
     <div class="people" id="people"></div>
@@ -104,18 +109,16 @@
         <button class="link danger" id="delete-person">Delete this person</button>
       </div>
 
-      <h2>Details</h2>
-      <p class="hint">Leave anything blank that you do not want filled.</p>
-      <div class="grid" id="fields"></div>
+      <div id="fields"></div>
       <form class="add" id="add">
-        <input type="text" id="new-label" placeholder="Add your own detail: type its name, e.g. Roll number, Father's name, Passport number" maxlength="40" />
+        <input type="text" id="new-label" placeholder="Add a detail, e.g. Roll number" maxlength="40" />
         <button type="submit">Add detail</button>
       </form>
     </div>
 
     <div class="card">
       <h2>Files</h2>
-      <p class="hint">Resume, certificates, photo, signature. The agent attaches them to file-upload fields. Up to 10 MB each.</p>
+      <p class="hint">Resume, photo, certificates. Attached to upload fields. Up to 10 MB each.</p>
       <ul class="files" id="files"></ul>
       <form class="add" id="add-file">
         <input type="text" id="file-label" list="file-labels" placeholder="What is this file? e.g. Resume" maxlength="40" />
@@ -126,9 +129,8 @@
     </div>
 
     <p class="how">
-      Example tasks: <code>Fill this form with my saved details and submit it</code> ·
-      <code>Fill this form with Father's details</code> (uses the person called “Father”).
-      Passwords, PINs and OTPs are not stored here on purpose.
+      Try: <code>Fill this form with my saved details</code> · <code>Fill this form with Father's details</code>.
+      Passwords, PINs and OTPs are never stored here.
     </p>
   </main>
 
