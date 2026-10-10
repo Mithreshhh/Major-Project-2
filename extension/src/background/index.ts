@@ -304,7 +304,9 @@ export async function runStep(
   tabId: number,
   windowId?: number,
   taskOverride?: string,
-  gate: Gate = () => null
+  gate: Gate = () => null,
+  /** Fields the user chose to leave empty: shown to the reasoner as done so it moves on. */
+  skipped: ReadonlySet<string> = new Set()
 ): Promise<StepResult & { confirmed?: "user" | "auto" }> {
   if (runningTabs.has(tabId)) throw new Error("a step is already running on this tab");
   runningTabs.add(tabId);
@@ -316,6 +318,9 @@ export async function runStep(
     const person = pickPerson(task, await loadPeople());
     const profile = (person?.fields ?? []).filter((f) => f.value.trim());
     const { context, redactions, perceptionMs, vision } = await perceive(tabId, windowId, task, false, profile);
+    for (const el of context.elements) {
+      if (skipped.has(el.id)) el.attributes = { ...el.attributes, filled: "skipped" };
+    }
 
     console.info(LOG, `step ${session.stepIndex} -> /process`, {
       elements: context.elements.length,
@@ -336,26 +341,37 @@ export async function runStep(
     if (command.action === "type") {
       const target = context.elements.find((e) => e.id === command.target);
       const isFileField = target?.attributes?.type === "file";
+      const label = target?.label || command.target;
       const resolved = hasPlaceholder(command.text) ? resolvePlaceholders(command.text, profile) : null;
       if (resolved?.missing.length) {
         missing = {
           status: "needs_user",
           message:
-            `The form asks for "${target?.label || command.target}", but "${resolved.missing.join('", "')}" is not saved${who} under My info. ` +
+            `The form asks for "${label}", but "${resolved.missing.join('", "')}" is not saved${who} under My info. ` +
             `Everything that was saved has been filled in. Add the missing detail there, or fill that field yourself.`,
+          ask: isFileField
+            ? { question: `"${label}" needs a file, and none is saved${who} under My info. Add one under My info → Files and press Try again, or skip this field.`, target: command.target, label, file: true }
+            : { question: `What should go in "${label}"? Nothing is saved${who} under My info for it.`, target: command.target, label },
         };
       } else if (isFileField !== Boolean(resolved?.file)) {
         // A file can only go into a file-upload field, and a file-upload field only takes a file.
         missing = {
           status: "needs_user",
           message: isFileField
-            ? `"${target?.label || command.target}" needs a file. Save one${who} under My info → Files, then run the task again.`
-            : `"${resolved?.file?.label}" is a saved file, but "${target?.label || command.target}" is not a file-upload field.`,
+            ? `"${label}" needs a file. Save one${who} under My info → Files, then run the task again.`
+            : `"${resolved?.file?.label}" is a saved file, but "${label}" is not a file-upload field.`,
+          ...(isFileField
+            ? { ask: { question: `"${label}" needs a file, and none is saved${who} under My info. Add one under My info → Files and press Try again, or skip this field.`, target: command.target, label, file: true } }
+            : {}),
         };
       } else if (resolved?.file) {
         const stored = resolved.file.fileId ? await getFile(resolved.file.fileId).catch(() => undefined) : undefined;
         if (!stored) {
-          missing = { status: "needs_user", message: `The saved file "${resolved.file.label}" could not be read. Add it again under My info → Files.` };
+          missing = {
+            status: "needs_user",
+            message: `The saved file "${resolved.file.label}" could not be read. Add it again under My info → Files.`,
+            ask: { question: `The saved file "${resolved.file.label}" could not be read. Add it again under My info → Files and press Try again, or skip this field.`, target: command.target, label, file: true },
+          };
         } else {
           upload = { name: stored.name, type: stored.type, dataBase64: toBase64(stored.bytes) };
           savedDetails = resolved.used;
