@@ -286,7 +286,6 @@ async function perceive(
     elements: [...snapshot.elements, ...visionOnly],
     perception,
     textRegions: [...(snapshot.textRegions ?? []), ...(CONFIG.hidePhotos ? (snapshot.imageRegions ?? []) : [])],
-    devicePixelRatio: snapshot.viewport.devicePixelRatio,
   });
   const counts = countBy(redacted.redactions.map((r) => (r.category === "photo" ? "photo" : r.method)));
   console.info(
@@ -456,7 +455,130 @@ async function visionOnlyElements(
   return added;
 }
 
+/**
+ * Capture, detect, redact and build the payload. Everything here happens on the device; the
+ * returned context is the only thing that may leave it. `includeText` adds the visible page
+ * text (for questions), with personal data replaced by "[HIDDEN EMAIL]"-style placeholders.
+ */
+async function perceive(
+  tabId: number,
+  windowId: number | undefined,
+  task: string,
+  includeText: boolean,
+  profile: ProfileField[] = []
+): Promise<Perceived> {
+  const session = getSession(tabId);
+
+  // 1. DOM snapshot (+ boxes around PII found in page text and typed values), embedded frames
+  //    included where the content script runs inside them
+  const snapshot = await captureDom(tabId, includeText);
+  const unreadFrames = await mergeFrames(tabId, snapshot, includeText);
+
+  // 2. Screenshot. With sendScreenshot=false this branch is skipped entirely.
+  const rawImage: RawImage | null = CONFIG.sendScreenshot ? await captureScreenshot(windowId) : null;
+
+  // 3. On-device face detection. No screenshot -> nothing to detect, model not loaded.
+  let perception: PerceptionOutput;
+  if (rawImage) {
+    const loaded = await ensurePerception();
+    if (!loaded) throw new Error("screenshot captured but no perception model is configured; refusing to continue unredacted");
+    perception = await runInference(rawImage);
+  } else {
+    perception = placeholderOutput();
+  }
+
+  // 3b. On-device UI detection from pixels, scored live against the DOM. Must run before
+  //     sanitize() zeroes the raw buffer. Optional: a failure here never blocks the step.
+  const summary: PerceptionSummary = { modelId: perception.modelId, latencyMs: perception.latencyMs };
+  let vision: StepResult["vision"];
+  let visionOnly: UIElement[] = [];
   const ocr: OcrStats = { ms: 0, lines: 0 };
+  if (rawImage && (await ensureUiDetector())) {
+    try {
+      const ui = await detectUiElements(rawImage);
+      const cmp = compareWithDom(ui.detections, snapshot.elements, snapshot.viewport.devicePixelRatio, snapshot.viewport);
+      summary.uiModelId = ui.modelId;
+      summary.uiLatencyMs = ui.latencyMs;
+      summary.visualElements = cmp.visual;
+      vision = { ms: ui.latencyMs, detections: ui.detections.length, domCount: cmp.domCount, found: cmp.found, recall: cmp.recall, precision: cmp.precision };
+      console.info(LOG, `vision: ${ui.detections.length} UI element(s) in ${ui.latencyMs} ms, found ${cmp.found}/${cmp.domCount} DOM elements, precision ${cmp.precision}`);
+      if (CONFIG.uiDetector.actOnVisionOnly) {
+        visionOnly = await visionOnlyElements(tabId, cmp.visual, snapshot, rawImage, ocr);
+        if (visionOnly.length) vision.added = visionOnly.length;
+      }
+    } catch (err) {
+      console.warn(LOG, "UI detection failed, continuing without it", err);
+    }
+  }
+
+  // 3c. Embedded frames the content script cannot enter (a PDF viewer, a data: document): their
+  //     text is read from pixels (OCR) and its personal data hidden. Not optional: a frame that
+  //     cannot be read is hidden whole.
+  const dpr = snapshot.viewport.devicePixelRatio;
+  const frames = rawImage ? await readFrames(rawImage, unreadFrames, dpr, ocr) : { regions: [], text: [] };
+  if (frames.text.length && snapshot.pageText !== undefined) {
+    snapshot.pageText += frames.text.map((t) => `\n\n[Text inside an embedded frame, read from the screenshot]\n${t}`).join("");
+  }
+  if (ocr.lines || frames.regions.length) {
+    summary.ocrModelId = CONFIG.ocr.modelId;
+    summary.ocrLatencyMs = ocr.ms;
+    summary.ocrLines = ocr.lines;
+  }
+
+  // 4. Redaction: faces (ml) + password/card fields (dom) + PII text (heuristic, ocr) are blacked
+  //    out on a fresh copy; `rawImage`'s buffer is zeroed by sanitize(). Labels are scrubbed.
+  const redacted = await sanitize({
+    screenshot: rawImage,
+    elements: [...snapshot.elements, ...visionOnly],
+    perception,
+    textRegions: [...(snapshot.textRegions ?? []), ...frames.regions, ...(CONFIG.hidePhotos ? (snapshot.imageRegions ?? []) : [])],
+    devicePixelRatio: dpr,
+  });
+  const counts = countBy(redacted.redactions.map((r) => (r.category === "photo" ? "photo" : r.method)));
+  console.info(
+    LOG,
+    `redaction: ${redacted.redactions.length} region(s) blacked out (faces ${counts.ml ?? 0}, photos ${counts.photo ?? 0}, fields ${counts.dom ?? 0}, text ${counts.heuristic ?? 0}, read from pixels ${counts.ocr ?? 0})`
+  );
+
+  // 5. Build the wire payload
+  const hiddenText = snapshot.pageText ? redactTextLabelled(snapshot.pageText) : null;
+  const textHidden = hiddenText ? Object.values(hiddenText.counts).reduce((a, b) => a + (b ?? 0), 0) : 0;
+  const context: SanitizedContext = {
+    protocolVersion: PROTOCOL_VERSION,
+    sessionId: session.sessionId,
+    stepIndex: session.stepIndex,
+    task,
+    page: {
+      ...snapshot.page,
+      url: scrubUrl(snapshot.page.url),
+      title: redactText(snapshot.page.title).text,
+    },
+    viewport: snapshot.viewport,
+    elements: redacted.elements,
+    screenshot: redacted.screenshot
+      ? await encodeRawImage(redacted.screenshot, CONFIG.screenshotMimeType, CONFIG.screenshotQuality)
+      : null,
+    redactions: redacted.redactions,
+    history: session.history,
+    perception: summary,
+    ...(hiddenText ? { pageText: hiddenText.text } : {}),
+    // Names of the saved details only. The values stay in chrome.storage.local.
+    ...(profile.length ? { profileFields: profileFieldNames(profile) } : {}),
+  };
+
+  return {
+    context,
+    redactions: {
+      faces: counts.ml ?? 0,
+      photos: counts.photo ?? 0,
+      fields: counts.dom ?? 0,
+      text: Math.max((counts.heuristic ?? 0) + (counts.ocr ?? 0), textHidden),
+    },
+    perceptionMs: perception.latencyMs,
+    ...(vision ? { vision } : {}),
+  };
+}
+
 /**
  * Decides whether the model's command may run. Returns a veto to skip it (and end the task with
  * the veto's status), or null to go ahead. May wait for the user (risky-action confirmation).
