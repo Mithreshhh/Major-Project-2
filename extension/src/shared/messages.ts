@@ -150,6 +150,8 @@ export interface TaskState {
   hidden?: RedactionCounts;
   /** Risky action waiting for the user's decision (status "confirm"). */
   pending?: string;
+  /** What the agent is asking the user (status "input"). */
+  input?: InputRequest;
   /** Whose saved details ("My info") this task is using, when it uses any. */
   person?: string;
   steps: StepLog[];
@@ -164,6 +166,7 @@ export type PopupRequest =
   | { type: "RUN_TASK"; tabId: number; windowId?: number; task: string; maxSteps?: number }
   | { type: "ASK"; tabId: number; windowId?: number; question: string }
   | { type: "CONFIRM"; tabId: number; allow: boolean }
+  | { type: "ANSWER"; tabId: number; answer: InputAnswer }
   | { type: "STOP_TASK"; tabId: number }
   | { type: "GET_TASK_STATE"; tabId: number }
   | { type: "RUN_STEP"; tabId: number; windowId?: number };
