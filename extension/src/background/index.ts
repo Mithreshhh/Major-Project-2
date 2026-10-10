@@ -43,7 +43,17 @@ import type {
 } from "../shared/messages";
 import { describeCommand, looksLikeQuestion, riskyAction, textComesFromTask } from "../shared/messages";
 import { getFile, toBase64 } from "../shared/files";
-import { hasPlaceholder, loadPeople, pickPerson, profileFieldNames, resolvePlaceholders, type ProfileField } from "../shared/profile";
+import {
+  hasPlaceholder,
+  loadPeople,
+  newId,
+  pickPerson,
+  profileFieldNames,
+  resolvePlaceholders,
+  savePeople,
+  toKey,
+  type ProfileField,
+} from "../shared/profile";
 import { requestAction, requestAnswer } from "./api";
 import { decodeDataUrl, encodeRawImage } from "./image";
 
@@ -419,7 +429,7 @@ export async function runStep(
  */
 export async function runAsk(tabId: number, windowId: number | undefined, question: string): Promise<TaskState> {
   const current = tasks.get(tabId);
-  if (current?.status === "running" || current?.status === "confirm") return current;
+  if (current?.status === "running" || current?.status === "confirm" || current?.status === "input") return current;
   if (runningTabs.has(tabId)) throw new Error("a step is already running on this tab");
 
   resetSession(tabId);
@@ -517,6 +527,42 @@ export function confirmAction(tabId: number, allow: boolean): boolean {
   return settle !== undefined;
 }
 
+/** Resolvers for questions waiting on the user's answer in the popup. Null means stop. */
+const answers = new Map<number, (answer: InputAnswer | null) => void>();
+const ANSWER_TIMEOUT_MS = 600_000;
+
+function waitForAnswer(tabId: number): Promise<InputAnswer | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => settle(null), ANSWER_TIMEOUT_MS);
+    const settle = (answer: InputAnswer | null) => {
+      clearTimeout(timer);
+      answers.delete(tabId);
+      resolve(answer);
+    };
+    answers.set(tabId, settle);
+  });
+}
+
+export function answerInput(tabId: number, answer: InputAnswer | null): boolean {
+  const settle = answers.get(tabId);
+  settle?.(answer);
+  return settle !== undefined;
+}
+
+/** Saves an answer the user typed under My info, so the next form gets it without asking. */
+async function saveAnswer(task: string, label: string, value: string): Promise<void> {
+  const clean = label.replace(/\((optional|required)\)|\*/gi, "").replace(/\s+/g, " ").trim() || label;
+  const key = toKey(clean);
+  if (!key) return;
+  const { people, activeId } = await loadPeople();
+  if (people.length === 0) people.push({ id: newId(), name: "Me", fields: [] });
+  const person = pickPerson(task, { people, activeId }) ?? people[0]!;
+  const existing = person.fields.find((f) => f.key === key);
+  if (existing) existing.value = value;
+  else person.fields.push({ key, label: clean, value, kind: "text" });
+  await savePeople(people, activeId || person.id);
+}
+
 export interface TaskOptions {
   maxSteps?: number;
   /** Allow risky actions without asking (automated runs only). */
@@ -544,7 +590,7 @@ export async function runTask(
   if ((opts.mode ?? "auto") === "auto" && looksLikeQuestion(task)) return runAsk(tabId, windowId, task);
 
   const current = tasks.get(tabId);
-  if (current?.status === "running" || current?.status === "confirm") return current;
+  if (current?.status === "running" || current?.status === "confirm" || current?.status === "input") return current;
 
   stopRequested.delete(tabId);
   resetSession(tabId);
@@ -577,6 +623,7 @@ export async function runTask(
     state.pending = risk;
     await publish(state);
     await setBadge(tabId, "?", "#9a6700");
+    void showPopup(windowId);
     const allow = await waitForConfirmation(tabId);
     state.status = "running";
     delete state.pending;
@@ -584,6 +631,20 @@ export async function runTask(
     if (!allow) return { status: "stopped", message: `Not allowed: ${risk}. Nothing was done.` };
     confirmed = "user";
     return null;
+  };
+
+  /** Pauses the task on a question in the popup. Null when the user stopped or did not answer. */
+  const ask = async (input: InputRequest): Promise<InputAnswer | null> => {
+    state.status = "input";
+    state.input = input;
+    await publish(state);
+    await setBadge(tabId, "?", "#9a6700");
+    void showPopup(windowId);
+    const answer = await waitForAnswer(tabId);
+    state.status = "running";
+    delete state.input;
+    await publish(state);
+    return answer;
   };
 
   try {
@@ -676,6 +737,15 @@ async function setBadge(tabId: number, text: string, color: string): Promise<voi
   }
 }
 
+/** Open the popup so a pending Allow / Don't allow is seen without hunting for the toolbar icon. */
+async function showPopup(windowId: number | undefined): Promise<void> {
+  try {
+    await chrome.action.openPopup(windowId !== undefined ? { windowId } : undefined);
+  } catch {
+    // Already open, window not focused, or unsupported (Firefox): the "?" badge still shows.
+  }
+}
+
 /**
  * Only fires when no popup is configured (the popup normally takes the click), so it is not
  * reachable from the toolbar in this build. Kept as a one-step fallback for the bundle tests;
@@ -725,9 +795,13 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     case "CONFIRM":
       sendResponse({ ok: confirmAction(msg.tabId, msg.allow) });
       return false;
+    case "ANSWER":
+      sendResponse({ ok: answerInput(msg.tabId, msg.answer) });
+      return false;
     case "STOP_TASK":
       stopRequested.add(msg.tabId);
       confirmAction(msg.tabId, false); // a pending "Allow?" counts as refused
+      answerInput(msg.tabId, null); // and a pending question as unanswered
       sendResponse({ ok: true });
       return false;
     case "GET_TASK_STATE":
