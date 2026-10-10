@@ -88,6 +88,7 @@ class VisualElement(_Strict):
     bbox: BoundingBox
     confidence: float = Field(ge=0, le=1)
     matchedId: Optional[str] = None
+    addedAs: Optional[str] = None
 
 
 class PerceptionSummary(_Strict):
