@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-10T06:55:20.265Z",
+  "pdf": {
+    "url": "http://127.0.0.1:5500/statement.html",
+    "question": "How much was the salary on this statement, and which personal details does it show?",
+    "pass": true,
+    "seconds": 8.1,
+    "ocrLines": 22,
+    "ocrMs": 2881,
+    "hidden": [
+      "email",
+      "payment_card",
+      "phone"
+    ],
+    "blackInScreenshot": true,
+    "leaked": [],
+    "answer": "The salary shown on the statement is +85,000.00. The statement displays the account holder's name as Jane Doe. Personal details shown include the email, phone, and card number, which are hidden placeholders on the page."
+  },
+  "canvas": {
+    "url": "http://127.0.0.1:5500/arcade.html",
+    "task": "Choose Hard, then start the game.",
+    "pass": true,
+    "seconds": 5.3,
+    "status": "done",
+    "game": {
+      "level": "Hard",
+      "started": true,
+      "status": "Game started on Hard."
+    },
+    "steps": [
+      {
+        "action": "click",
+        "target": "vis_2",
+        "label": "Hard",
+        "labelFrom": "ocr",
+        "drawn": [
+          "Easy",
+          "Normal",
+          "Hard",
+          "Start game"
+        ]
+      },
+      {
+        "action": "click",
+        "target": "vis_0",
+        "label": "Start game",
+        "labelFrom": "ocr",
+        "drawn": [
+          "Easy",
+          "Normal",
+          "Hard",
+          "Start game"
+        ]
+      },
+      {
+        "action": "done",
+        "drawn": [
+          "Easy",
+          "Normal",
+          "Hard",
+          "Start game"
+        ]
+      }
+    ]
+  }
+}
