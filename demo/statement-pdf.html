@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Nimbus Bank statement</title>
+  <!--
+    Source of statement.pdf (printed with Chrome: e2e/make-statement.mjs). The PDF, not this page,
+    is what statement.html shows.
+  -->
+  <style>
+    @page { size: 720px 520px; margin: 0; }
+    body { margin: 0; padding: 32px 40px; font: 15px/1.5 "Segoe UI", Arial, sans-serif; color: #111827; }
+    h1 { font-size: 22px; margin: 0 0 2px; }
+    .sub { color: #4b5563; margin: 0 0 18px; }
+    dl { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; margin: 0 0 18px; }
+    dt { color: #4b5563; }
+    dd { margin: 0; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #e5e7eb; }
+    td:last-child, th:last-child { text-align: right; }
+  </style>
+</head>
+<body>
+  <h1>Nimbus Bank</h1>
+  <p class="sub">Account statement, September 2026</p>
+  <dl>
+    <dt>Account holder</dt><dd>Jane Doe</dd>
+    <dt>Email</dt><dd>jane.doe@example.com</dd>
+    <dt>Phone</dt><dd>+91 98765 43210</dd>
+    <dt>Card</dt><dd>4111 1111 1111 1111</dd>
+  </dl>
+  <table>
+    <tr><th>Date</th><th>Description</th><th>Amount</th></tr>
+    <tr><td>02 Sep</td><td>Nimbus Pro plan</td><td>-11,788.00</td></tr>
+    <tr><td>15 Sep</td><td>Salary</td><td>+85,000.00</td></tr>
+    <tr><td>21 Sep</td><td>Groceries</td><td>-2,340.50</td></tr>
+  </table>
+</body>
+</html>
