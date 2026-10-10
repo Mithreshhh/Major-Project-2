@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus - Statements</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    .hero { padding: 30px 0 30px; margin-bottom: 26px; }
+    .hero h1 { font-size: 36px; margin: 10px 0 8px; }
+    .doc { padding: 20px; }
+    embed { display: block; width: 100%; height: 540px; border: 1px solid var(--line); border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="book.html">Book a call</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <span class="eyebrow">Documents</span>
+      <h1>Your September statement</h1>
+      <p>Shown in the browser's PDF viewer.</p>
+    </section>
+
+    <!--
+      Chrome's PDF viewer is closed to every extension, so the extension cannot read this text
+      from the page code. It reads it from the screenshot instead (on-device OCR) and blacks out
+      the personal data before anything leaves the laptop.
+    -->
+    <div class="card doc">
+      <embed src="statement.pdf#toolbar=0&amp;view=FitH" type="application/pdf" title="September statement" />
+    </div>
+  </main>
+</body>
+</html>
