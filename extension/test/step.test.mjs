@@ -46,6 +46,20 @@ const snapshot = {
   textRegions: [{ bbox: { x: 40, y: 470, width: 150, height: 18 }, category: "phone", confidence: 0.99, method: "heuristic" }],
 };
 
+/**
+ * What the stubbed tab shows. Tests may swap these (and restore them): the screenshot, the DOM
+ * snapshot, and the content script's answer to PROBE_POINTS (by default every box is dropped).
+ */
+const tab = {
+  jpeg: fixtureJpeg,
+  snapshot,
+  probe: (points) => points.map((p) => ({ index: p.index, keep: false, reason: "stub" })),
+  /** Embedded frames with a content script inside: frame id -> its own snapshot. */
+  frames: {},
+  /** Which frame answers which hello nonce (the top page posts the nonces while it is captured). */
+  hellos: {},
+};
+
 /** Commands the stubbed /process returns, in order; when empty it answers "click el_1". */
 const serverScript = [];
 
@@ -76,6 +90,7 @@ function reset() {
   calls.capture = 0;
   calls.badges.length = 0;
   calls.sent.length = 0;
+  calls.sentTo.length = 0;
   calls.fetches.length = 0;
   calls.logs.length = 0;
   calls.broadcasts.length = 0;
@@ -101,13 +116,24 @@ globalThis.chrome = {
     onRemoved: { addListener() {} },
     captureVisibleTab: async () => {
       calls.capture += 1;
-      return `data:image/jpeg;base64,${fixtureJpeg.toString("base64")}`;
+      return `data:image/jpeg;base64,${tab.jpeg.toString("base64")}`;
     },
-    sendMessage: async (_tabId, message) => {
+    sendMessage: async (tabId, message, options) => {
+      const frameId = options?.frameId ?? 0;
       calls.sent.push(message);
-      if (message.type === "CAPTURE_DOM") {
-        return { type: "DOM_SNAPSHOT", snapshot: message.includeText ? { ...snapshot, pageText: PAGE_TEXT } : snapshot };
+      calls.sentTo.push(frameId);
+      if (frameId !== 0) {
+        // A content script inside an embedded frame.
+        if (message.type === "CAPTURE_DOM") return { type: "DOM_SNAPSHOT", snapshot: tab.frames[frameId] };
+        if (message.type === "EXECUTE_ACTION") return { type: "EXECUTION_RESULT", result: { ok: true } };
+        return { type: "ERROR", message: `unexpected ${message.type} in frame ${frameId}` };
       }
+      if (message.type === "CAPTURE_DOM") {
+        // The frames' scripts answer the hellos the top page posts while it is being captured.
+        for (const [nonce, id] of Object.entries(tab.hellos)) onMessage({ type: "FRAME_HELLO", nonce }, { tab: { id: tabId }, frameId: id }, () => {});
+        return { type: "DOM_SNAPSHOT", snapshot: message.includeText ? { ...tab.snapshot, pageText: PAGE_TEXT } : tab.snapshot };
+      }
+      if (message.type === "PROBE_POINTS") return { type: "PROBE_RESULT", probes: tab.probe(message.points) };
       if (message.type === "EXECUTE_ACTION") return { type: "EXECUTION_RESULT", result: { ok: true } };
       return { type: "ERROR", message: `unexpected ${message.type}` };
     },
@@ -464,6 +490,177 @@ test(
       assert.match(state.steps[0].summary, /Confirm booking/);
     } finally {
       Object.assign(tab, { jpeg: fixtureJpeg, snapshot, probe: (points) => points.map((p) => ({ index: p.index, keep: false, reason: "stub" })) });
+    }
+  }
+);
+
+/** Loads a demo-page fixture (extension/test/fixtures/<name>.jpg + .json) into the stubbed tab. */
+function loadPage(name) {
+  const page = JSON.parse(readFileSync(path.join(root, `test/fixtures/${name}.json`), "utf8"));
+  const jpegBytes = readFileSync(path.join(root, `test/fixtures/${name}.jpg`));
+  const elements = [
+    ...page.links.map((l) => ({ role: "link", ...l })),
+    ...page.buttons.map((b) => ({ role: "button", ...b })),
+  ].map((e, i) => ({ id: `el_${i}`, ...e, isVisible: true, isInteractive: true }));
+  Object.assign(tab, {
+    jpeg: jpegBytes,
+    snapshot: {
+      ...snapshot,
+      viewport: { ...page.viewport, scrollX: 0, scrollY: 0, devicePixelRatio: 1 },
+      elements,
+      textRegions: [],
+      // What the content script reports: every canvas is a "photo", every frame is unreadable to it.
+      imageRegions: page.canvases.map((bbox) => ({ bbox, category: "photo", confidence: 1, method: "dom" })),
+      frames: page.frames.map((bbox) => ({ bbox, origin: { x: bbox.x, y: bbox.y } })),
+    },
+  });
+  return { page, pixels: decodeJpeg(jpegBytes) };
+}
+
+function restoreTab() {
+  Object.assign(tab, { jpeg: fixtureJpeg, snapshot, probe: (points) => points.map((p) => ({ index: p.index, keep: false, reason: "stub" })), frames: {}, hellos: {} });
+}
+
+test(
+  "embedded frames the extension can enter: their elements join the page, their PII is hidden by the text rules, clicks go to that frame",
+  { skip: !screenshotsEnabled && "needs screenshots" },
+  async () => {
+    // demo/checkout.html: the payment widget's own content script answers the hello, so it is
+    // read from the page code (exact, no OCR) and its Pay button can be clicked.
+    const { page } = loadPage("checkout");
+    const frame = page.frames[0];
+    tab.snapshot = { ...tab.snapshot, frames: [{ bbox: frame, origin: { x: frame.x, y: frame.y }, nonce: "nonce-1" }] };
+    tab.hellos = { "nonce-1": 9 };
+    tab.frames = {
+      9: {
+        page: { url: "http://localhost:5500/pay-frame.html", title: "PayEase", capturedAt: new Date().toISOString() },
+        viewport: { width: frame.width, height: frame.height, scrollX: 0, scrollY: 0, devicePixelRatio: 1 },
+        elements: [
+          { id: "el_f1_0", role: "textbox", label: "Receipt to", bbox: { x: 18, y: 230, width: 240, height: 38 }, isVisible: true, isInteractive: true, attributes: { filled: "yes" } },
+          { id: "el_f1_1", role: "button", label: "Pay ₹11,788", bbox: { x: 18, y: 280, width: 500, height: 40 }, isVisible: true, isInteractive: true },
+          // Below the frame's visible part: listed, but not visible.
+          { id: "el_f1_2", role: "link", label: "Terms", bbox: { x: 18, y: 900, width: 60, height: 20 }, isVisible: true, isInteractive: true },
+        ],
+        // The frame's own PII scan found the email in the "Receipt to" field (frame coordinates).
+        textRegions: [{ bbox: { x: 18, y: 230, width: 240, height: 38 }, category: "email", confidence: 0.99, method: "heuristic" }],
+        imageRegions: [],
+        frames: [],
+        pageText: "PayEase\nReceipt to jane.doe@example.com",
+      },
+    };
+    try {
+      serverScript.push({ action: "click", target: "el_f1_1" }, { action: "done", summary: "Paid." });
+      const state = await globalThis.odpa.runTask(31, 1, "Pay for the order", { autoConfirm: true });
+      assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+      const body = calls.fetches[0].body;
+
+      const pay = body.elements.find((e) => e.id === "el_f1_1");
+      assert.deepEqual(pay.bbox, { x: frame.x + 18, y: frame.y + 280, width: 500, height: 40 }, "moved to the frame's place on the page");
+      assert.equal(pay.attributes.frame, "embedded");
+      assert.equal(body.elements.find((e) => e.id === "el_f1_2").isVisible, false, "outside the frame's visible part");
+
+      const hidden = body.redactions.find((r) => r.category === "email");
+      assert.ok(hidden && hidden.method === "heuristic", `the frame's email box is hidden by the text rules: ${JSON.stringify(body.redactions)}`);
+      assert.ok(inside(hidden.bbox.x + hidden.bbox.width / 2, hidden.bbox.y + hidden.bbox.height / 2, [frame]));
+      assert.equal(body.perception.ocrModelId, undefined, "a frame read from the inside needs no OCR");
+
+      // The click is delivered to the frame's own content script.
+      const click = calls.sent.findIndex((m) => m.type === "EXECUTE_ACTION");
+      assert.equal(calls.sent[click].command.target, "el_f1_1");
+      assert.equal(calls.sentTo[click], 9);
+      assert.ok(calls.sentTo.every((f, i) => calls.sent[i].type !== "CAPTURE_DOM" || f === 0 || f === 9), "every message addressed one frame");
+
+      // Questions get the frame's text too, its PII as placeholders.
+      reset();
+      await globalThis.odpa.runAsk(32, 1, "Where is the receipt sent?");
+      const asked = calls.fetches[0].body.pageText;
+      assert.match(asked, /\[Text inside an embedded frame\]\nPayEase\nReceipt to \[HIDDEN EMAIL\]/);
+      assert.ok(!JSON.stringify(calls.fetches).includes("jane.doe@example.com"));
+    } finally {
+      restoreTab();
+    }
+  }
+);
+
+test(
+  "embedded frames: their text is read on-device (OCR) and the personal data in it is blacked out",
+  { skip: !screenshotsEnabled && "needs screenshots" },
+  async () => {
+    // demo/checkout.html: a payment widget from another origin shows a card number, an email and
+    // a phone. The content script cannot read inside the frame, so only OCR can find them.
+    const { page, pixels } = loadPage("checkout");
+    const frame = page.frames[0];
+    try {
+      serverScript.push({ action: "done", summary: "Nothing to do." });
+      const state = await globalThis.odpa.runTask(28, 1, "Look at the checkout", { autoConfirm: true });
+      assert.equal(state.status, "done", `${state.message}; errors: ${errors()}`);
+      const body = calls.fetches[0].body;
+      assert.equal(body.perception.ocrModelId, "ppocr-v3-en");
+      assert.ok(body.perception.ocrLines >= 10, `OCR read the frame: ${body.perception.ocrLines} lines`);
+
+      const ocr = body.redactions.filter((r) => r.method === "ocr");
+      assert.deepEqual(ocr.map((r) => r.category).sort(), ["email", "payment_card", "phone"], `card, email and phone lines hidden: ${JSON.stringify(ocr)}`);
+      for (const r of ocr) {
+        const cx = r.bbox.x + r.bbox.width / 2, cy = r.bbox.y + r.bbox.height / 2;
+        assert.ok(inside(cx, cy, [frame]), `hidden line lies inside the frame: ${JSON.stringify(r.bbox)}`);
+      }
+
+      // Pixels: black over each hidden line; the frame's labels ("Card holder") stay readable.
+      const sent = new Uint8ClampedArray(Buffer.from(body.screenshot.dataBase64, "base64"));
+      const at = (x, y) => Array.from(sent.slice((Math.round(y) * pixels.width + Math.round(x)) * 4, (Math.round(y) * pixels.width + Math.round(x)) * 4 + 3));
+      for (const r of ocr) assert.deepEqual(at(r.bbox.x + r.bbox.width / 2, r.bbox.y + r.bbox.height / 2), [0, 0, 0]);
+      const changed = (x0, y0, x1, y1) => {
+        let n = 0;
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+          const i = (y * pixels.width + x) * 4;
+          if (sent[i] !== pixels.data[i] || sent[i + 1] !== pixels.data[i + 1] || sent[i + 2] !== pixels.data[i + 2]) n++;
+        }
+        return n;
+      };
+      assert.equal(changed(frame.x + 10, frame.y + 60, frame.x + 120, frame.y + 80), 0, '"Card holder" label untouched');
+
+      // Ask mode: the frame's text reaches the reasoner, with the personal data as placeholders.
+      reset();
+      await globalThis.odpa.runAsk(29, 1, "What is in the payment box?");
+      const asked = calls.fetches[0].body.pageText;
+      assert.match(asked, /\[Text inside an embedded frame, read from the screenshot\]/);
+      assert.match(asked, /Card number/);
+      for (const placeholder of ["[HIDDEN CARD NUMBER]", "[HIDDEN EMAIL]", "[HIDDEN PHONE]"]) assert.ok(asked.includes(placeholder), `${placeholder} in ${asked}`);
+      const wire = JSON.stringify(calls.fetches);
+      for (const secret of ["4111", "98765", "jane.doe@example.com"]) assert.ok(!wire.includes(secret), `${secret} never leaves`);
+    } finally {
+      restoreTab();
+    }
+  }
+);
+
+test(
+  "controls drawn on a canvas: found by vision, named by OCR, the canvas itself still hidden",
+  { skip: !screenshotsEnabled && "needs screenshots" },
+  async () => {
+    // demo/arcade.html: the game menu's buttons exist only as pixels on a <canvas>.
+    const { page, pixels } = loadPage("arcade");
+    const canvas = page.canvases[0];
+    tab.probe = (points) =>
+      points.map((p) => (inside(p.x, p.y, [canvas]) ? { index: p.index, keep: true, id: `vis_${p.index}`, label: "", surface: "canvas" } : { index: p.index, keep: false, reason: "not clickable" }));
+    try {
+      serverScript.push({ action: "done", summary: "Looked." });
+      await globalThis.odpa.runTask(30, 1, "Look at the game", { autoConfirm: true });
+      const body = calls.fetches[0].body;
+      const drawn = body.elements.filter((e) => e.attributes?.surface === "canvas");
+      assert.deepEqual(drawn.map((e) => e.label).sort(), ["Easy", "Hard", "Normal", "Start game"], JSON.stringify(drawn));
+      for (const e of drawn) assert.equal(e.attributes.labelFrom, "ocr");
+      // Reading order: the three levels left to right, then Start game below them.
+      assert.deepEqual(drawn.map((e) => e.label), ["Easy", "Normal", "Hard", "Start game"]);
+
+      // The canvas is still blacked out: the reasoner gets the names, never the pixels.
+      const sent = new Uint8ClampedArray(Buffer.from(body.screenshot.dataBase64, "base64"));
+      for (const e of drawn) {
+        const i = (Math.round(e.bbox.y + e.bbox.height / 2) * pixels.width + Math.round(e.bbox.x + e.bbox.width / 2)) * 4;
+        assert.deepEqual(Array.from(sent.slice(i, i + 3)), [0, 0, 0], `${e.label} is black in the screenshot`);
+      }
+    } finally {
+      restoreTab();
     }
   }
 );
