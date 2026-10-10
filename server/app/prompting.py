@@ -118,7 +118,7 @@ def describe_location(bbox: BoundingBox, viewport: Viewport) -> str:
     return f"{row}-{col}"
 
 
-def format_element(el: UIElement, viewport: Viewport) -> str:
+def format_element(el: UIElement, viewport: Viewport, *, image_attached: bool = False) -> str:
     b = el.bbox
     parts = [
         el.id,
@@ -188,7 +188,7 @@ def describe_command(cmd: ActionCommand, labels: Optional[dict[str, str]] = None
     return f"noop: {_trunc(cmd.reason, 80)}"
 
 
-def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
+def build_user_prompt(context: SanitizedContext, *, max_elements: int, image_attached: bool = False) -> str:
     elements, omitted = select_elements(context.elements, max_elements)
     vp = context.viewport
 
@@ -251,7 +251,7 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int) -> str:
     lines.append("")
     lines.append("UI elements (id | role | label | location [notes]):")
     if elements:
-        lines.extend(format_element(e, vp) for e in elements)
+        lines.extend(format_element(e, vp, image_attached=image_attached) for e in elements)
     else:
         lines.append("(no visible elements)")
     if omitted:
@@ -268,8 +268,9 @@ def build_messages(
     max_elements: int,
     include_screenshot: bool,
 ) -> list[dict[str, Any]]:
-    user: dict[str, Any] = {"role": "user", "content": build_user_prompt(context, max_elements=max_elements)}
-    if include_screenshot and context.screenshot is not None:
+    image_attached = include_screenshot and context.screenshot is not None
+    user: dict[str, Any] = {"role": "user", "content": build_user_prompt(context, max_elements=max_elements, image_attached=image_attached)}
+    if image_attached:
         user["images"] = [context.screenshot.dataBase64]
     return [{"role": "system", "content": SYSTEM_PROMPT}, user]
 
