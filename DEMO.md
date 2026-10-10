@@ -1,6 +1,6 @@
 # Demo guide
 
-Everything you need to show the project to your mentors. It takes about 12 minutes.
+Everything you need to show the project to your mentors. It takes about 16 minutes.
 
 ## Before the meeting: 3 minutes
 
@@ -19,7 +19,7 @@ Everything you need to show the project to your mentors. It takes about 12 minut
 
 To stop: press `Ctrl+C` in the start window.
 
-## The demo: 12 minutes
+## The demo: 16 minutes
 
 **1. The idea, 30 seconds.** Show the architecture diagram.
 > "A browser agent that completes tasks for you, but personal data never leaves your laptop. The
@@ -138,6 +138,29 @@ found. The steps in the popup show "+12 only it saw".
 Name the options one by one as above. "Book a video call on Thursday at 11:30" makes this small
 model skip the call type.
 
+**7c. Frames and documents, 2 minutes.** Open <http://127.0.0.1:5500/checkout.html>. Point at
+the PayEase box.
+> "This payment box comes from another website, inside a frame: a separate page the checkout's
+> own code can't see into. Our extension runs a copy of itself inside the frame, matches it to its
+> place on the page with a one-time secret, and joins the two."
+
+Run `Pay for the order with the Pay button in the payment box.` and press **Allow** for "Pay".
+The box says "Payment complete". On "What the AI sees" the card number, email and phone inside
+the box are blacked out, by the same rules as the rest of the page.
+
+Open <http://127.0.0.1:5500/statement.html> (a bank statement PDF).
+> "Chrome's PDF viewer is closed to every extension, so here there is no code to read at all.
+> The extension reads the pixels with an OCR model on the laptop and blacks out every line with
+> personal data."
+
+Ask `How much was the salary on this statement?`. The answer gives the amount and says the
+personal details were hidden; the pink boxes on "What the AI sees" are "text read from pixels".
+The first OCR use takes a few seconds longer while the model loads.
+
+Then open <http://127.0.0.1:5500/arcade.html> and run `Choose Hard, then start the game.`
+> "This game menu is drawn on a canvas, so there is no text in the page code at all. The vision
+> model finds the buttons, OCR reads their names, and the agent plays. The canvas itself is still
+> blacked out: the AI gets the button names, never the picture."
 
 ## If something goes wrong live
 
@@ -146,6 +169,7 @@ model skip the call type.
 | Popup shows "server offline" | The start window was closed. Double-click `start.bat` again |
 | First step takes 10 to 20 seconds | Normal. The browser loads both on-device models once and Gemma warms up. Later steps take 2 to 4 seconds |
 | "This tab is not a normal web page" | You're on a Chrome page. Switch to the test page tab |
+| Checkout page: the payment box is empty | It loads from `localhost:5500`. Open the page as `http://127.0.0.1:5500/checkout.html`, not from a file |
 | Booking page: the agent skips Video call | Name each option: "Choose Thursday, 11:30 and Video call, then confirm the booking." |
 | Agent stops with "kept proposing the same action" | The model repeated one action three times in a row. Click **Clear form** on the page and run again |
 | Popup says "Allow this action?" | That's the safety check. Click **Allow** (or **Don't allow** to show it stops) |
@@ -200,9 +224,15 @@ takes weeks. Generated pages give perfect labels in minutes, and we test on a pa
 saw. Real sites are harder (icons, custom widgets), which is why the extension measures it
 against the page on every step instead of trusting it blindly.
 
-**"Why does the agent still use the page code to click?"** It's exact and it's free. The vision
-model matters when there is no usable page code: canvas apps, images of buttons, embedded
-frames. That merge is the next step.
+**"Why does the agent still use the page code to click?"** It's exact and it's free, so it comes
+first. When the page code doesn't list a control (a div with a click handler, a canvas), the
+vision model's box is used and the agent clicks by position: step 7b. On a canvas, OCR reads the
+button's name: step 7c.
+
+**"What about a frame from another site, a PDF, or text inside an image?"** The extension runs
+inside frames, so their text and buttons are used like the page's own and their personal data is
+hidden the same way; the agent can click inside them (step 7c). A PDF can't be entered, so it is
+read with on-device OCR. Photos are not read at all: every photo is blacked out whole.
 
 **"What does 'on-device' mean here?"** The face model runs inside the browser extension with
 ONNX Runtime on WebAssembly. The only thing that leaves the extension is the sanitized request.
