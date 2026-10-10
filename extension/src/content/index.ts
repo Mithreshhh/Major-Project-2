@@ -137,13 +137,22 @@ function isRendered(el: Element, bbox: BoundingBox): boolean {
  * every id whenever the page scrolls, and the reasoner's history ("typed into el_8") would then
  * point at the wrong field.
  */
-const stableIds = new WeakMap<Element, string>();
+let stableIds = new WeakMap<Element, string>();
 let nextId = 0;
+/** "el_" in the top page; "el_f2_" in the second embedded frame, so ids are unique per tab. */
+let idPrefix = "el_";
+
+function setIdPrefix(prefix: string): void {
+  if (prefix === idPrefix) return;
+  idPrefix = prefix;
+  stableIds = new WeakMap();
+  nextId = 0;
+}
 
 function stableId(el: Element): string {
   let id = stableIds.get(el);
   if (!id) {
-    id = `el_${nextId++}`;
+    id = `${idPrefix}${nextId++}`;
     stableIds.set(el, id);
   }
   return id;
@@ -319,8 +328,11 @@ export function collectPageText(): string {
   return text.length > PAGE_TEXT_MAX ? text.slice(0, PAGE_TEXT_MAX) : text;
 }
 
-export function captureDom(includeText = false): DomSnapshot {
+export function captureDom(includeText = false, frame?: number): DomSnapshot {
+  setIdPrefix(frame === undefined ? "el_" : `el_f${frame}_`);
   registry = new Map();
+  listedControls = new Set();
+  pointTargets = new Map();
   const elements: UIElement[] = [];
 
   for (const el of document.querySelectorAll(CANDIDATE_SELECTOR)) {
@@ -619,7 +631,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       case "PING":
         return { type: "PONG" };
       case "CAPTURE_DOM":
-        return { type: "DOM_SNAPSHOT", snapshot: captureDom(message.includeText === true) };
+        return { type: "DOM_SNAPSHOT", snapshot: captureDom(message.includeText === true, message.frame) };
       case "EXECUTE_ACTION":
         return { type: "EXECUTION_RESULT", result: await executeAction(message.command, message.sensitive === true) };
       case "UPLOAD_FILE":
