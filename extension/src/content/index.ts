@@ -4,6 +4,7 @@
  * Responsibilities
  *   - CAPTURE_DOM      build a compact, PII-conscious summary of the visible UI
  *   - EXECUTE_ACTION   carry out an ActionCommand the server returned
+ *   - PROBE_POINTS     check what is under boxes only the vision model found; keep clickable ones
  *
  * It never captures pixels itself (only the background can call captureVisibleTab) and it
  * never forwards form *values*. Labels are still raw here; redaction happens in the background
@@ -23,6 +24,8 @@ const ATTRIBUTE_WHITELIST = ["type", "placeholder", "aria-label", "role", "title
 
 /** `UIElement.id` -> live DOM node, for the most recent snapshot. */
 let registry = new Map<string, Element>();
+/** Interactive elements in the most recent snapshot: what a vision box must not duplicate. */
+let listedControls = new Set<Element>();
 
 /**
  * Fields the agent filled with one of the user's saved details ("My info"). Their values are
@@ -334,6 +337,7 @@ export function captureDom(includeText = false): DomSnapshot {
 
     const id = stableId(el);
     registry.set(id, el);
+    if (isInteractive(el, role)) listedControls.add(el);
 
     const element: UIElement = {
       id,
@@ -373,6 +377,134 @@ export function captureDom(includeText = false): DomSnapshot {
 // Action execution
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Vision-only elements: controls the UI detector sees that the DOM scan does not list
+// ---------------------------------------------------------------------------
+
+/** Where a vision-only element is acted on: a point in the viewport and what was under it. */
+interface PointTarget {
+  x: number;
+  y: number;
+  node: Element;
+}
+
+/** `vis_N` id -> point target, for the most recent probe. */
+let pointTargets = new Map<string, PointTarget>();
+
+/** Surfaces the DOM cannot see into: anything drawn there is only visible in pixels. */
+const OPAQUE: Record<string, NonNullable<PointProbe["surface"]>> = {
+  CANVAS: "canvas",
+  IFRAME: "frame",
+  EMBED: "frame",
+  OBJECT: "frame",
+  IMG: "image",
+  VIDEO: "image",
+};
+
+/** How far up from the element under the point a scripted control is looked for. */
+const MAX_WIDGET_DEPTH = 6;
+
+/** Signs that an element reacts to clicks although it is no button, link or field. */
+function looksClickable(el: Element): boolean {
+  if (el instanceof HTMLElement) {
+    if (el.onclick || el.hasAttribute("onclick") || el.isContentEditable) return true;
+    if (el.hasAttribute("tabindex") && el.tabIndex >= 0) return true;
+  }
+  return getComputedStyle(el).cursor === "pointer";
+}
+
+/**
+ * Stable ids for vision-only elements, like stableId for listed ones, so "clicked vis_1" in the
+ * history still means the same control on the next step. A surface (a canvas) can hold several
+ * controls, so there the id is per 16 px cell of the surface.
+ */
+const visionIds = new WeakMap<Element, Map<string, string>>();
+let nextVisionId = 0;
+
+function visionId(node: Element, cell: string): string {
+  let ids = visionIds.get(node);
+  if (!ids) visionIds.set(node, (ids = new Map()));
+  let id = ids.get(cell);
+  if (!id) ids.set(cell, (id = `vis_${nextVisionId++}`));
+  return id;
+}
+
+function shortText(text: string | null | undefined): string {
+  return (text ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+/**
+ * For each vision box centre: is the thing under it already listed (drop), a scripted control
+ * the DOM scan missed, e.g. a `<div onclick>` styled as a button (keep, label from its text), or
+ * a surface the DOM cannot describe, such as a canvas (keep, label only from its attributes)?
+ * Anything else is a vision false positive, such as a heading or plain text (drop).
+ */
+export function probePoints(points: ProbePoint[]): PointProbe[] {
+  const viewportArea = window.innerWidth * window.innerHeight;
+  const claimed = new Set<Element>();
+  return points.map(({ index, role, x, y }): PointProbe => {
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || hit === document.documentElement || hit === document.body) return { index, keep: false, reason: "nothing there" };
+    for (let el: Element | null = hit; el; el = el.parentElement) {
+      if (listedControls.has(el)) return { index, keep: false, reason: "already listed" };
+    }
+
+    const surface = OPAQUE[hit.tagName];
+    if (surface === "frame") return { index, keep: false, reason: "inside an embedded frame: a click cannot reach it" };
+    let node: Element;
+    let label: string;
+    if (surface) {
+      node = hit;
+      label = shortText(hit.getAttribute("aria-label") || hit.getAttribute("title") || hit.getAttribute("alt"));
+    } else {
+      if (!looksClickable(hit)) return { index, keep: false, reason: "not clickable" };
+      // The outermost element of the clickable run is the control; its children inherit the cursor.
+      node = hit;
+      for (let depth = 0, up = hit.parentElement; depth < MAX_WIDGET_DEPTH && up && up !== document.body; depth++, up = up.parentElement) {
+        if (!looksClickable(up)) break;
+        node = up;
+      }
+      const r = node.getBoundingClientRect();
+      if (r.width * r.height > viewportArea / 4) return { index, keep: false, reason: "too large to be one control" };
+      if ([...listedControls].some((c) => node.contains(c))) return { index, keep: false, reason: "contains listed controls" };
+      label = shortText(
+        node.getAttribute("aria-label") ||
+          node.getAttribute("title") ||
+          (node as HTMLElement).innerText ||
+          node.querySelector("img[alt]")?.getAttribute("alt")
+      );
+    }
+    if (claimed.has(node) && !surface) return { index, keep: false, reason: "duplicate" };
+    claimed.add(node);
+
+    const editable = node instanceof HTMLElement && node.isContentEditable;
+    // A text-box-shaped widget that is not editable is most likely a custom picker: a button.
+    const actsAs = editable ? "textbox" : role === "textbox" && !surface ? "button" : role;
+    const cell = surface ? `${Math.round(x / 16)},${Math.round(y / 16)}` : "widget";
+    const id = visionId(node, cell);
+    pointTargets.set(id, { x, y, node });
+    const selected = ["aria-pressed", "aria-selected", "aria-checked"].some((name) => node.getAttribute(name) === "true");
+    return { index, keep: true, id, label, role: actsAs, surface: surface ?? "widget", ...(selected ? { selected } : {}) };
+  });
+}
+
+/** Pointer, mouse and click events at a point, the way a real click arrives: canvas apps read the coordinates. */
+function clickAt(target: PointTarget): Element {
+  const hit = document.elementFromPoint(target.x, target.y);
+  if (!hit || !(hit === target.node || target.node.contains(hit))) {
+    throw new Error("the page changed under that spot since it was seen; look again");
+  }
+  const base = { bubbles: true, cancelable: true, composed: true, clientX: target.x, clientY: target.y, button: 0, view: window };
+  const pointer = { ...base, pointerId: 1, pointerType: "mouse", isPrimary: true };
+  hit.dispatchEvent(new PointerEvent("pointerdown", pointer));
+  hit.dispatchEvent(new MouseEvent("mousedown", base));
+  if (target.node instanceof HTMLElement) target.node.focus({ preventScroll: true });
+  hit.dispatchEvent(new PointerEvent("pointerup", pointer));
+  hit.dispatchEvent(new MouseEvent("mouseup", base));
+  hit.dispatchEvent(new MouseEvent("click", { ...base, detail: 1 }));
+  return hit;
+}
+
 function resolveTarget(id: string): Element {
   const el = registry.get(id);
   if (!el || !el.isConnected) {
@@ -395,13 +527,21 @@ export async function executeAction(command: ActionCommand, sensitive = false): 
   // before they reach this point (see riskyAction in shared/messages.ts).
   switch (command.action) {
     case "click": {
+      const point = pointTargets.get(command.target);
+      if (point) {
+        clickAt(point);
+        return { ok: true, message: `clicked at (${Math.round(point.x)}, ${Math.round(point.y)}): found by vision` };
+      }
       const el = resolveTarget(command.target);
       el.scrollIntoView({ block: "center", inline: "center" });
       (el as HTMLElement).click();
       return { ok: true };
     }
     case "type": {
-      const el = resolveTarget(command.target);
+      const point = pointTargets.get(command.target);
+      // A vision-only field: click it, then type into whatever took the focus.
+      if (point) clickAt(point);
+      const el = point ? (document.activeElement ?? point.node) : resolveTarget(command.target);
       if (el instanceof HTMLInputElement && el.type === "file") {
         return { ok: false, message: `${command.target} is a file-upload field: it takes a saved file, not text` };
       }
@@ -484,6 +624,8 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
         return { type: "EXECUTION_RESULT", result: await executeAction(message.command, message.sensitive === true) };
       case "UPLOAD_FILE":
         return { type: "EXECUTION_RESULT", result: uploadFile(message.target, message.file) };
+      case "PROBE_POINTS":
+        return { type: "PROBE_RESULT", probes: probePoints(message.points) };
       default:
         return { type: "ERROR", message: `unknown message ${(message as { type: string }).type}` };
     }
