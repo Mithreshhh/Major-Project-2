@@ -182,7 +182,7 @@ function render(state: TaskState | null): void {
     const chips = document.createElement("span");
     chips.className = "chips";
     chips.append(...hiddenChips(step.redactions));
-    if (step.vision) chips.append(chip("vision", `vision ${step.vision.found}/${step.vision.domCount} elements`));
+    if (step.vision) chips.append(chip("vision", `vision ${step.vision.found}/${step.vision.domCount} elements${step.vision.added ? `, +${step.vision.added} only it saw` : ""}`));
     const meta = document.createElement("span");
     meta.className = "meta";
     meta.textContent = `${(step.ms / 1000).toFixed(1)} s` + (step.ok ? "" : ` · ${step.message ?? "failed"}`);
