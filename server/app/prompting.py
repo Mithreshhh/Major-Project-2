@@ -327,6 +327,7 @@ def retry_prompt(error: str) -> str:
 
 _FENCE_RE = re.compile(r"```(?:json|JSON)?\s*(.*?)```", re.DOTALL)
 _TRAILING_COMMA_RE = re.compile(r",\s*([}\]])")
+_VISION_TARGET_RE = re.compile(r"^\s*vis(?:ion)?[\s_\-:#]*(\d+)\s*$", re.IGNORECASE)
 _TARGET_RE = re.compile(r"^\s*#?\s*(?:el|elem|element|id)?[\s_\-:#]*(\d+)\s*$", re.IGNORECASE)
 
 _ACTION_ALIASES: dict[str, str] = {
@@ -540,6 +541,9 @@ def _resolve_target(value: Any, elements: list[UIElement]) -> Any:
     ids = {e.id for e in elements}
     if s in ids:
         return s
+    m = _VISION_TARGET_RE.match(s)
+    if m:
+        return f"vis_{int(m.group(1))}"
     m = _TARGET_RE.match(s)
     if m:
         return f"el_{int(m.group(1))}"
