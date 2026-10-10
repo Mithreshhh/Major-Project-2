@@ -236,6 +236,7 @@ async function perceive(
   //     sanitize() zeroes the raw buffer. Optional: a failure here never blocks the step.
   const summary: PerceptionSummary = { modelId: perception.modelId, latencyMs: perception.latencyMs };
   let vision: StepResult["vision"];
+  let visionOnly: UIElement[] = [];
   if (rawImage && (await ensureUiDetector())) {
     try {
       const ui = await detectUiElements(rawImage);
@@ -245,6 +246,10 @@ async function perceive(
       summary.visualElements = cmp.visual;
       vision = { ms: ui.latencyMs, detections: ui.detections.length, domCount: cmp.domCount, found: cmp.found, recall: cmp.recall, precision: cmp.precision };
       console.info(LOG, `vision: ${ui.detections.length} UI element(s) in ${ui.latencyMs} ms, found ${cmp.found}/${cmp.domCount} DOM elements, precision ${cmp.precision}`);
+      if (CONFIG.uiDetector.actOnVisionOnly) {
+        visionOnly = await visionOnlyElements(tabId, cmp.visual, snapshot, rawImage, ocr);
+        if (visionOnly.length) vision.added = visionOnly.length;
+      }
     } catch (err) {
       console.warn(LOG, "UI detection failed, continuing without it", err);
     }
@@ -254,7 +259,7 @@ async function perceive(
   //    out on a fresh copy; `rawImage`'s buffer is zeroed by sanitize(). Labels are scrubbed.
   const redacted = await sanitize({
     screenshot: rawImage,
-    elements: snapshot.elements,
+    elements: [...snapshot.elements, ...visionOnly],
     perception,
     textRegions: [...(snapshot.textRegions ?? []), ...(CONFIG.hidePhotos ? (snapshot.imageRegions ?? []) : [])],
     devicePixelRatio: snapshot.viewport.devicePixelRatio,
