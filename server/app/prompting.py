@@ -136,6 +136,11 @@ def format_element(el: UIElement, viewport: Viewport) -> str:
             notes.append("ALREADY FILLED")
         if el.attributes.get("checked"):
             notes.append("checked")
+        if el.attributes.get("source") == "vision":
+            surface = el.attributes.get("surface")
+            notes.append(f"seen in the screenshot only{_SURFACE_WORDS.get(surface or '', '')}")
+            if not el.label:
+                notes.append("no text: look at the screenshot at this spot" if image_attached else "no text available")
     if not el.isInteractive:
         notes.append("not interactive")
     if el.redacted:
