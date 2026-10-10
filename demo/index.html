@@ -74,17 +74,21 @@
       </section>
 
       <form id="contact" class="card" aria-label="Contact form">
-        <h2>Send us a message</h2>
-        <p class="sub">All fields except the password are required.</p>
+        <h2>Raise a support request</h2>
+        <p class="sub">Tell us what went wrong. We reply by email.</p>
         <div class="two">
           <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="off" /></div>
           <div><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="off" /></div>
         </div>
+        <div class="two">
+          <div><label for="subject">Subject</label><input id="subject" name="subject" type="text" placeholder="e.g. Charged twice this month" autocomplete="off" /></div>
+          <div><label for="invoice">Invoice number <span class="opt">(optional)</span></label><input id="invoice" name="invoice" type="text" placeholder="e.g. INV-48213" autocomplete="off" /></div>
+        </div>
         <label for="password">Account password <span class="opt">(optional)</span></label>
         <input id="password" name="password" type="password" value="hunter2-secret" autocomplete="off" />
 
-        <label for="message">Message</label>
-        <textarea id="message" name="message" rows="3" placeholder="How can we help?"></textarea>
+        <label for="message">Describe the problem</label>
+        <textarea id="message" name="message" rows="3" placeholder="What happened, when, and what you expected"></textarea>
 
         <div class="check">
           <input id="newsletter" name="newsletter" type="checkbox" />
