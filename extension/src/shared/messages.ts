@@ -2,7 +2,7 @@
  * Message protocol inside the extension: background <-> content script, background <-> popup.
  * (The extension <-> server contract lives in @odpa/shared.)
  */
-import type { ActionCommand, PageMeta, RedactedRegion, SanitizedContext, UIElement, Viewport } from "@odpa/shared";
+import type { ActionCommand, BoundingBox, PageMeta, RedactedRegion, SanitizedContext, UIElement, Viewport } from "@odpa/shared";
 
 export interface DomSnapshot {
   page: PageMeta;
@@ -16,8 +16,24 @@ export interface DomSnapshot {
   textRegions: RedactedRegion[];
   /** Boxes (CSS px) of every photo, video and canvas in view (category "photo"). */
   imageRegions?: RedactedRegion[];
+  /**
+   * Embedded frames in view (iframe, embed, object). The content script also runs inside frames
+   * it is allowed into; each such frame answers a FRAME_HELLO with the frame's nonce, so the
+   * background can ask it for its own snapshot. Frames nobody answers for (a PDF viewer, a
+   * sandboxed or data: document) are read from pixels instead (OCR).
+   */
+  frames?: FrameInfo[];
   /** Visible page text (document.body.innerText), only when asked for. Redacted in the background. */
   pageText?: string;
+}
+
+export interface FrameInfo {
+  /** Visible part of the frame, CSS px of this document's viewport. */
+  bbox: BoundingBox;
+  /** Top-left of the frame's content box: the frame's own (0, 0), in this document's viewport. */
+  origin: { x: number; y: number };
+  /** Posted into the frame; its content script reports it back with FRAME_HELLO. */
+  nonce?: string;
 }
 
 export interface ExecutionResult {
@@ -27,7 +43,8 @@ export interface ExecutionResult {
 
 export type ContentRequest =
   | { type: "PING" }
-  | { type: "CAPTURE_DOM"; includeText?: boolean }
+  /** `frame`: this document is the n-th embedded frame; its element ids become "el_f<n>_<k>". */
+  | { type: "CAPTURE_DOM"; includeText?: boolean; frame?: number }
   /** `sensitive`: the typed text is a saved detail, so the field is masked in later screenshots. */
   | { type: "EXECUTE_ACTION"; command: ActionCommand; sensitive?: boolean }
   /** Attach a saved file ("My info") to the file-upload field `target`. */
@@ -202,6 +219,8 @@ export type PopupRequest =
   | { type: "CONFIRM"; tabId: number; allow: boolean }
   | { type: "ANSWER"; tabId: number; answer: InputAnswer }
   | { type: "STOP_TASK"; tabId: number }
+  /** From a content script inside an embedded frame: "I am the frame that got this nonce". */
+  | { type: "FRAME_HELLO"; nonce: string }
   | { type: "GET_TASK_STATE"; tabId: number }
   | { type: "RUN_STEP"; tabId: number; windowId?: number };
 
