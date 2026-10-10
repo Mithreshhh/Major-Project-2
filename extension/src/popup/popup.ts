@@ -9,7 +9,7 @@
 import { HEALTH_ENDPOINT, type HealthResponse } from "@odpa/shared";
 
 import { CONFIG } from "../shared/config";
-import { looksLikeQuestion, type BackgroundBroadcast, type PopupRequest, type TaskState } from "../shared/messages";
+import { looksLikeQuestion, type BackgroundBroadcast, type InputAnswer, type PopupRequest, type TaskState } from "../shared/messages";
 import { loadPeople, profileFieldNames, setActivePerson } from "../shared/profile";
 
 const DEMO_TASK =
@@ -60,6 +60,7 @@ async function checkServer(): Promise<void> {
 const TITLES: Record<TaskState["status"], string> = {
   running: "Working…",
   confirm: "Allow this action?",
+  input: "The agent needs your input",
   done: "Task complete",
   answered: "Answer",
   needs_user: "The agent needs your input",
@@ -105,8 +106,35 @@ function updateHint(): void {
     text && looksLikeQuestion(text) ? "This looks like a question: Run task will answer it without touching the page." : "";
 }
 
+/** Question currently shown in the answer box, so a progress update does not wipe what is typed. */
+let shownQuestion = "";
+
+function renderAnswer(state: TaskState | null): void {
+  const input = state?.status === "input" ? state.input : undefined;
+  $("answer").classList.toggle("show", !!input);
+  if (!input) {
+    shownQuestion = "";
+    return;
+  }
+  const key = `${input.target ?? ""}|${input.question}`;
+  if (key === shownQuestion) return;
+  shownQuestion = key;
+  const text = $<HTMLInputElement>("answer-text");
+  const field = input.target !== undefined;
+  text.hidden = !!input.file;
+  text.value = input.suggestion ?? "";
+  text.placeholder = input.label ? `Type the ${input.label.replace(/\((optional|required)\)|\*/gi, "").trim()} here` : "Type your answer here";
+  $<HTMLInputElement>("answer-save").checked = false;
+  $("answer-save-row").hidden = !field || !!input.file;
+  $("answer-go").hidden = !!input.file;
+  $("answer-go").textContent = field ? "Fill in and continue" : "Answer and continue";
+  $("answer-retry").hidden = !input.file;
+  $("answer-skip").hidden = !field;
+  if (!input.file) text.focus();
+}
+
 function render(state: TaskState | null): void {
-  const busy = state?.status === "running" || state?.status === "confirm";
+  const busy = state?.status === "running" || state?.status === "confirm" || state?.status === "input";
   runEl.disabled = busy || !isWebPage();
   askEl.disabled = busy || !isWebPage();
   stopEl.disabled = !busy;
@@ -116,6 +144,7 @@ function render(state: TaskState | null): void {
   const steps = $("steps");
   steps.replaceChildren();
   $("confirm").classList.toggle("show", state?.status === "confirm");
+  renderAnswer(state);
   if (!state) {
     status.className = "";
     return;
@@ -128,7 +157,12 @@ function render(state: TaskState | null): void {
   } else {
     $("status-title").textContent = TITLES[state.status];
   }
-  $("status-msg").textContent = state.status === "confirm" ? `The agent wants to: ${state.pending ?? "do something"}` : state.message ?? "";
+  $("status-msg").textContent =
+    state.status === "confirm"
+      ? `The agent wants to: ${state.pending ?? "do something"}`
+      : state.status === "input"
+        ? (state.input?.question ?? "")
+        : (state.message ?? "");
   $("status-meta").textContent =
     state.mode === "ask" && state.hidden
       ? `Ask mode: nothing was clicked or typed. ${hiddenSummary(state.hidden)}.`
@@ -212,6 +246,21 @@ async function init(): Promise<void> {
   $("deny").addEventListener("click", async () => {
     if (tab?.id !== undefined) await send({ type: "CONFIRM", tabId: tab.id, allow: false });
   });
+
+  const answer = async (a: InputAnswer) => {
+    if (tab?.id !== undefined) await send({ type: "ANSWER", tabId: tab.id, answer: a });
+  };
+  $("answer").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = $<HTMLInputElement>("answer-text");
+    if (!text.value.trim()) {
+      text.focus();
+      return;
+    }
+    void answer({ kind: "fill", text: text.value, save: $<HTMLInputElement>("answer-save").checked });
+  });
+  $("answer-skip").addEventListener("click", () => void answer({ kind: "skip" }));
+  $("answer-retry").addEventListener("click", () => void answer({ kind: "retry" }));
 
   $("demo").addEventListener("click", () => {
     taskEl.value = DEMO_TASK;
