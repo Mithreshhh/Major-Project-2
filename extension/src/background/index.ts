@@ -474,6 +474,9 @@ const stopRequested = new Set<number>();
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Repeats of the previous action that are skipped (and the model told) before the task stops. */
+const MAX_REPEATS = 2;
+
 function sameCommand(a: ActionCommand | undefined, b: ActionCommand): boolean {
   if (!a || a.action !== b.action) return false;
   return JSON.stringify({ ...a, reasoning: undefined, confidence: undefined }) === JSON.stringify({ ...b, reasoning: undefined, confidence: undefined });
@@ -601,16 +604,47 @@ export async function runTask(
 
   let previous: ActionCommand | undefined;
   let confirmed: "user" | "auto" | undefined;
+  // The task as the reasoner sees it: the user's text plus any answers given mid-task.
+  let reasoningTask = task;
+  const skipped = new Set<string>();
+  // Repeated actions forgiven so far, and the note telling the model about the last one.
+  let repeats = 0;
+  let repeatNote = "";
   const gate: Gate = async (command, context) => {
     confirmed = undefined;
     if (sameCommand(previous, command)) {
-      return { status: "stopped", message: "The agent proposed the same action twice in a row; it was not repeated and the task was stopped." };
+      const what = describeCommand(command, "target" in command ? context.elements.find((e) => e.id === command.target)?.label : undefined);
+      // First repeats: not executed, and the model is told so it can move on. Only a model that
+      // keeps repeating itself is stopped, so one slip does not end a demo.
+      if (repeats < MAX_REPEATS) {
+        repeats += 1;
+        return { status: "stopped", message: `Skipped a repeat of: ${what}`, repeat: what };
+      }
+      return {
+        status: "stopped",
+        message: `The agent kept proposing the same action (${what}), so it was stopped to stay safe. Everything before it was done; check the page and run the task again if something is left.`,
+      };
+    }
+    // Typing nothing into an empty field is how a small model "skips" it (an optional invoice
+    // number). Doing it changes nothing, so it would propose it again and hit the repeat guard.
+    if (command.action === "type" && !command.text.trim()) {
+      const el = context.elements.find((e) => e.id === command.target);
+      if (!el?.attributes?.filled || el.attributes.filled === "skipped") {
+        return { status: "stopped", message: `Left "${el?.label || command.target}" empty.`, skipField: command.target };
+      }
     }
     // Placeholders for saved details are allowed: runStep has already checked they exist.
-    if (command.action === "type" && !hasPlaceholder(command.text) && !textComesFromTask(command.text, task)) {
+    if (command.action === "type" && !hasPlaceholder(command.text) && !textComesFromTask(command.text, reasoningTask)) {
+      const label = context.elements.find((e) => e.id === command.target)?.label || command.target;
       return {
         status: "needs_user",
         message: `The agent wanted to type "${command.text}", which is not in your task, so nothing was typed. Tell it exactly what to enter.`,
+        ask: {
+          question: `The agent wanted to type "${command.text}" into "${label}", but that is not in your task, so nothing was typed. What should go there?`,
+          target: command.target,
+          label,
+          suggestion: command.text,
+        },
       };
     }
     const risk = riskyAction(command, context);
@@ -657,7 +691,8 @@ export async function runTask(
 
       await setBadge(tabId, `${i + 1}`, "#6e7781");
       const started = Date.now();
-      const result = await runStep(tabId, windowId, task, gate);
+      const result = await runStep(tabId, windowId, reasoningTask + repeatNote, gate, skipped);
+      repeatNote = "";
       const log: StepLog = {
         index: i,
         summary: describeCommand(result.command, result.targetLabel, result.savedDetails, result.attached),
@@ -674,6 +709,62 @@ export async function runTask(
       await publish(state);
 
       const action = result.command.action;
+      if (result.veto?.repeat) {
+        repeatNote =
+          `\nNote: "${result.veto.repeat}" was already done in the previous step, so it was not repeated. ` +
+          `Do the next part of the task, or reply "done" if the page shows it is finished.`;
+        log.summary = result.veto.message;
+        log.ok = true;
+        await publish(state);
+        await sleep(CONFIG.stepDelayMs);
+        continue;
+      }
+      if (result.veto?.skipField) {
+        // One repeat of the same skip is let through; a second one hits the repeat guard.
+        previous = skipped.has(result.veto.skipField) ? result.command : undefined;
+        skipped.add(result.veto.skipField);
+        log.summary = result.veto.message;
+        log.ok = true;
+        await publish(state);
+        await sleep(CONFIG.stepDelayMs);
+        continue;
+      }
+      // Something only the user can supply: ask in the popup and carry on, instead of ending the
+      // task. Automated runs (autoConfirm) have nobody to ask, so they stop as before.
+      const question: InputRequest | undefined =
+        result.veto?.ask ?? (action === "ask_user" && result.command.action === "ask_user" ? { question: result.command.question } : undefined);
+      if (question && !opts.autoConfirm) {
+        const answer = await ask(question);
+        if (!answer) {
+          state.status = "stopped";
+          state.message = stopRequested.has(tabId) ? "Stopped by you." : "No answer was given, so the task was stopped.";
+          break;
+        }
+        if (question.target === undefined) {
+          // A plain question: the answer becomes part of the task, so the agent may type it.
+          if (answer.kind === "fill" && answer.text.trim()) {
+            reasoningTask += `\nAnswer to "${question.question}": ${answer.text.trim()}`;
+            log.summary += ` (you answered)`;
+            log.ok = true;
+          }
+        } else if (answer.kind === "skip") {
+          skipped.add(question.target);
+          log.summary = `Left "${question.label}" empty (skipped by you)`;
+          log.ok = true;
+        } else if (answer.kind === "fill" && answer.text.trim()) {
+          const text = answer.text.trim();
+          const typed = await executeOnPage(tabId, { action: "type", target: question.target, text } as ActionCommand, true);
+          if (answer.save && question.label) await saveAnswer(task, question.label, text).catch((err: unknown) => console.warn(LOG, "could not save answer", err));
+          log.summary = `Typed your answer into "${question.label}"${answer.save ? " (saved to My info)" : ""}`;
+          log.ok = typed.ok;
+          log.message = typed.message;
+        }
+        // "retry" (e.g. after adding a file under My info) just runs the next step again.
+        await publish(state);
+        previous = undefined;
+        await sleep(CONFIG.stepDelayMs);
+        continue;
+      }
       if (result.veto) {
         state.status = result.veto.status;
         state.message = result.veto.message;
