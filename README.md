@@ -9,8 +9,13 @@ repeats until the task is done.
 > UltraFace on ONNX Runtime Web, redaction of faces, password/card fields and PII text, an
 > on-device UI detector we trained (YOLO11n) that finds buttons, inputs and links from the
 > screenshot, multi-step tasks driven by Gemma via Ollama, a compression study of the face model,
-> and a server page that shows exactly what the AI received. The agent still acts on DOM
-> elements; merging vision-only elements in is next. See [Next steps](#next-steps).
+> and a server page that shows exactly what the AI received. Controls the page code does not
+> list (a `<div>` styled as a button, a time-slot picker) are found by the UI detector and clicked
+> by position: see [Acting on what only vision sees](#acting-on-what-only-vision-sees). On-device
+> OCR reads text the page code cannot supply: personal data in a PDF is blacked out, and buttons
+> drawn on a canvas get their names: see [Reading text from pixels](#reading-text-from-pixels-ocr).
+> The agent also reads and acts inside embedded frames, such as a payment widget from another
+> site: see [Embedded frames](#embedded-frames).
 
 For presenting it, see **[DEMO.md](DEMO.md)**.
 
@@ -37,15 +42,20 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 ```
 
 1. **Capture.** The content script lists visible UI elements (role, label, box; never form
-   values) and finds PII in visible text and typed values, returning only bounding boxes. The
-   background worker screenshots the tab.
+   values) and finds PII in visible text and typed values, returning only bounding boxes. It
+   runs inside embedded frames too, whose results join the page's. The background worker
+   screenshots the tab.
 2. **Perceive.** UltraFace (RFB-640, cleaned graph) runs on ONNX Runtime Web inside the
    extension and returns face boxes, ~100-130 ms per screenshot in Chrome. Our UI detector
    (YOLO11n, trained on auto-labelled pages) finds buttons, inputs and links from the same
-   pixels, ~0.4-0.8 s, and is scored against the DOM on every step.
+   pixels, ~0.4-0.8 s, and is scored against the DOM on every step. Boxes that no listed element
+   covers, over something clickable, are added to the element list as `vis_N`. OCR (PaddleOCR
+   PP-OCRv3) reads frames no script may enter (a PDF viewer) and controls drawn on a canvas,
+   only when the page has them.
 3. **Redact.** Faces (model), every photo, video and canvas in view (DOM, so tiny avatars are
-   covered too), password/PIN/card fields (DOM rules) and emails, phones, card,
-   Aadhaar, PAN and SSN numbers (text rules) are blacked out on a fresh copy of the screenshot;
+   covered too), password/PIN/card fields (DOM rules), emails, phones, card,
+   Aadhaar, PAN and SSN numbers (text rules, inside embedded frames too), and the same kinds of
+   data inside documents read by OCR are blacked out on a fresh copy of the screenshot;
    the raw buffer is zeroed. PII in labels, the page title and the URL becomes `[REDACTED]`.
    If detection or redaction fails, the step aborts: raw pixels never leave.
 4. **Reason.** The sanitized context goes to the server; Gemma returns one action such as
@@ -62,7 +72,7 @@ For presenting it, see **[DEMO.md](DEMO.md)**.
 | [`server/`](server/) | `POST /process` and `POST /ask` (Gemma via Ollama), `/health/gemma`, `/debug/view` | Python, FastAPI |
 | [`shared/`](shared/) | Data contract: TypeScript types + JSON Schemas | TypeScript, JSON Schema |
 | [`e2e/`](e2e/) | Real-browser run of the whole system, saves proof screenshots | Puppeteer |
-| [`demo/`](demo/) | Test site: contact form with sample PII, job application, store with a cart and offers, pricing, features, a bank login page, an Instagram-style chat | HTML |
+| [`demo/`](demo/) | Test site: contact form with sample PII, job application, store with a cart and offers, pricing, features, a call booking page built from `<div>` controls, a checkout with a payment widget from another origin, a bank statement PDF, a game menu drawn on a canvas, a bank login page, an Instagram-style chat | HTML |
 
 ## Prerequisites
 
@@ -126,6 +136,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `e2e/run-profile.mjs` | A job application is filled from saved details; the values never reach the server |
 | `e2e/run-smart.mjs` | Reasoning on the store and pricing pages: each answer must contain the right fact |
 | `e2e/run-vision.mjs` | Books a call on a page whose controls are all `<div>`s, through elements only the vision model found |
+| `e2e/run-frames.mjs` | Pays inside a payment widget from another origin; the widget's card, email and phone never leave |
 | `e2e/run-ocr.mjs` | Personal data in a PDF statement is found by OCR and never leaves; a canvas game is played through OCR-named buttons |
 | `e2e/popup-screens.mjs` | Drives the real popup (Run task, Allow, Ask) and the My info page, saves screenshots |
 
@@ -310,14 +321,15 @@ regions, history). Response: `ActionCommand` (`click`, `type`, `scroll`, `naviga
 | Item | Why |
 | --- | --- |
 | Train the UI detector on real sites | Today it is trained on generated pages; screenshots of real sites labelled from their DOM would close the gap on icons and custom widgets |
-| OCR-based PII detection | PII inside images (a photo of a card) is not caught by text rules |
+| OCR on the GPU, more languages | One CPU thread takes about 1.5 s per frame and 6.5 s per full screen; WebGPU would allow reading every screen. Only English is read today |
 | In-browser benchmark page and WebGPU | Measure memory/speed inside Chrome; test GPU execution |
-| Frames, big pages, navigation across pages | Needed for real websites beyond the test page |
+| Big pages, navigation across pages, frames inside frames | Needed for real websites beyond the test pages; frames are entered one level deep today |
 
 ## Security note
 
 Redaction is rule- and model-based: it catches faces, sensitive form fields and well-formatted
-PII, and will miss unusual formats and text inside images. The server stores what it receives
+PII (inside embedded frames too, and in PDFs through OCR), and will miss unusual formats. Photos and
+canvases are blacked out whole rather than read. The server stores what it receives
 in `server/debug_captures/` for the debug view (disable with `ODPA_DEBUG_VIEW=0`). Keep the
 server on `localhost`.
 
