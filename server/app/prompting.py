@@ -62,7 +62,8 @@ Rules:
 8. Only type text that appears in the task, or a placeholder from "Saved details" such as "{{email}}". Never invent names, usernames, emails or passwords; use "ask_user" instead.
 9. "Saved details" are the user's own information. Their values are hidden from you. To type one, set "text" to exactly its placeholder, for example {"action": "type", "target": "el_4", "text": "{{email}}"}. Match each form field to the saved detail with the closest meaning, fill one field per step, and skip fields that have no matching saved detail. A file-upload field (type=file) takes only a saved detail marked "(file to upload)", used the same way: {"action": "type", "target": "el_9", "text": "{{resume}}"}. Never use a file placeholder in an ordinary text field.
 10. Do not log in, sign up, pay, buy, delete or send anything unless the task explicitly asks for it.
-11. Keep "reasoning" under 20 words."""
+11. Keep "reasoning" under 20 words.
+12. If the task names a specific option (a day, a time, a size, a plan, a product) and no listed element matches it, never click a different option instead: scroll if the page may continue below, otherwise use "ask_user"."""
 
 ASK_SYSTEM_PROMPT = """You answer questions about the web page the user is looking at. You cannot click or type; you only answer.
 You get the page title, address, visible text, and its buttons, links and fields.
@@ -207,7 +208,10 @@ def build_user_prompt(context: SanitizedContext, *, max_elements: int, image_att
         clicked = list(dict.fromkeys(labels.get(c.target, c.target) for c in context.history if c.action == "click"))
         if clicked:
             names = ", ".join(f'"{_trunc(n, 50)}"' for n in clicked)
-            lines.append(f"Already clicked: {names}. Do not click these again unless the task asks for more than one.")
+            lines.append(
+                f"Already clicked: {names}. Do not click these again unless the task asks for more than one"
+                " or a page message says it is still needed."
+            )
     else:
         lines.append("Previous actions: none")
 
