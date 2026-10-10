@@ -47,6 +47,7 @@ What five training rounds taught us:
 | 2 | Added look-alikes that are not controls (label/value lists, log panels, code boxes) | Original page: precision 55% → 97.5%. |
 | 3 | Added modern styling (tinted inputs, gradient buttons, muted nav links, console panels) after the page was redesigned | Redesigned contact page: recall 59.6% → 76.2%, precision 45.2% → 63.9%. |
 | 4 | Added logo links, pill badges, plain "Log in" links, one-row footers, coloured headline words | Whole site (Ultralytics validation at 0.5): precision 48% → 63%, recall 66% → 70%. |
+| 5 | Added choice groups built from `<div>`s (time slots, day tiles, size pickers, segmented controls, option tiles), labelled as buttons, so the agent can act on controls the DOM scan does not list | Whole site with the booking page (extension's matching, 0.5): recall 56.0% → 65.1%, precision 55.6% → 57.2%, buttons 45.5% → 90.9% recall. Input precision fell 91.2% → 87.6%. |
 
 The honest picture: generated pages are easy (97%+), form inputs carry over to new designs
 (97%), and links and buttons on unfamiliar layouts are the weak spot. Every redesign of the test
@@ -81,6 +82,8 @@ benchmarks/.venv/Scripts/pip install ultralytics
 benchmarks/.venv/Scripts/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 node ui-model/generate.mjs 1500 200        # -> ui-model/dataset/
 cd ui-model && ../benchmarks/.venv/Scripts/python train.py 40   # -> ../models/ui-detect.onnx
+# rounds 4 and 5 fine-tuned the previous round instead (20 epochs, about 5 minutes):
+#   ../benchmarks/.venv/Scripts/python train.py 20 weights/tmp/round4-best.pt
 cd .. && npx tsx ui-model/evaluate.ts      # -> ui-model/RESULTS.md
 npm test                                   # includes test/ui-detector.test.ts
 ```
@@ -98,6 +101,8 @@ nano model on auto-labelled pages gave a 7x smaller model with three classes ins
 
 - Trained on synthetic pages. Real sites have icons, images of text and custom widgets it has not
   seen; the live DOM comparison in the extension shows where it misses.
+- Links on unfamiliar layouts stay weak (39% recall). They matter less for acting: links are
+  `<a href>` elements, which the DOM scan always lists.
 - About 0.4-0.8 s per screenshot in single-threaded WASM. WebGPU in an offscreen document would
   make it several times faster.
 - Licences: YOLO11 weights and Ultralytics are AGPL-3.0, fine for this academic project.
