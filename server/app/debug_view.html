@@ -8,14 +8,14 @@
 :root{
   --bg:#f7f8fa;--bg2:#f7f8fa;--card:#ffffff;--glass:#ffffff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--soft:#f9fafb;
   --brand:#2563eb;--brand2:#2563eb;--mint:#16a34a;
-  --face:#dc2626;--photo:#0e7490;--field:#7c3aed;--text:#b45309;--vbtn:#2563eb;--vinput:#15803d;--vlink:#c2410c;
+  --face:#dc2626;--photo:#0e7490;--field:#7c3aed;--text:#b45309;--ocr:#be185d;--vbtn:#2563eb;--vinput:#15803d;--vlink:#c2410c;
   --ok:#15803d;--bad:#dc2626;--shadow:0 1px 2px rgba(17,24,39,.05);
   color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#111318;--bg2:#111318;--card:#16191f;--glass:#16191f;--fg:#f3f4f6;--muted:#9ca3af;--line:#262b34;--soft:#1d2129;
   --brand:#3b82f6;--brand2:#3b82f6;--mint:#4ade80;
-  --face:#f87171;--photo:#22d3ee;--field:#a78bfa;--text:#fbbf24;--vbtn:#60a5fa;--vinput:#4ade80;--vlink:#fb923c;
+  --face:#f87171;--photo:#22d3ee;--field:#a78bfa;--text:#fbbf24;--ocr:#f472b6;--vbtn:#60a5fa;--vinput:#4ade80;--vlink:#fb923c;
   --ok:#4ade80;--bad:#f87171;--shadow:none;
 }}
 *{box-sizing:border-box}
@@ -68,6 +68,7 @@ h1 span{color:var(--brand)}
 .box.photo{border-color:var(--photo)}.box.photo span{background:var(--photo)}
 .box.dom{border-color:var(--field)}.box.dom span{background:var(--field)}
 .box.heuristic{border-color:var(--text)}.box.heuristic span{background:var(--text)}
+.box.ocr{border-color:var(--ocr)}.box.ocr span{background:var(--ocr)}
 .vbox{border:2px dashed var(--vbtn);border-radius:4px}.vbox.textbox{border-color:var(--vinput)}.vbox.link{border-color:var(--vlink)}
 .vbox.added{border:3px solid var(--vbtn);box-shadow:0 0 0 2px color-mix(in srgb,var(--vbtn) 25%,transparent)}.vbox.added span{background:var(--vbtn);text-transform:none}
 .hide-boxes .box:not(.vbox){display:none}.hide-vision .vbox{display:none}
@@ -151,6 +152,7 @@ td.id{font-family:ui-monospace,monospace;color:var(--muted)}
         <span><i style="--c:var(--photo)"></i>Photo or video</span>
         <span><i style="--c:var(--field)"></i>Sensitive field</span>
         <span><i style="--c:var(--text)"></i>Personal text</span>
+        <span><i style="--c:var(--ocr)"></i>Personal text read from pixels (OCR)</span>
         <span><i class="dash" style="--c:var(--vbtn)"></i>Button</span>
         <span><i class="dash" style="--c:var(--vinput)"></i>Input</span>
         <span><i class="dash" style="--c:var(--vlink)"></i>Link (found from pixels)</span>
@@ -201,8 +203,8 @@ td.id{font-family:ui-monospace,monospace;color:var(--muted)}
 
 <script>
 const $=id=>document.getElementById(id);let selected=null,latestId=null,data=[];
-const NAMES={ml:"face",photo:"photo or video",dom:"sensitive field",heuristic:"personal text"};
-const COLOR={ml:"var(--face)",photo:"var(--photo)",dom:"var(--field)",heuristic:"var(--text)"};
+const NAMES={ml:"face",photo:"photo or video",dom:"sensitive field",heuristic:"personal text",ocr:"text read from pixels"};
+const COLOR={ml:"var(--face)",photo:"var(--photo)",dom:"var(--field)",heuristic:"var(--text)",ocr:"var(--ocr)"};
 const KIND={click:"Click",type:"Type",scroll:"Scroll",navigate:"Navigate",wait:"Wait",done:"Finished",answer:"Answer",ask_user:"Needs you",noop:"No action"};
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function plural(n,w){return `${n} ${w}${n===1?"":"s"}`}
