@@ -16,7 +16,7 @@ import jpeg from "jpeg-js";
 
 import { configureRuntime } from "../src/inference";
 import type { RawImage } from "../src/types";
-import { UI_CLASSES, compareWithDom, detectUiElements, loadUiDetector, type UiDetection } from "../src/ui-detector";
+import { UI_CLASSES, compareWithDom, detectUiElements, loadUiDetector, visionOnlyCandidates, type UiDetection } from "../src/ui-detector";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(here, "fixtures", "ui");
@@ -105,3 +105,25 @@ for (const sample of SAMPLES) {
     assert.ok(cmp.precision >= 0.8, `precision ${cmp.precision} below 0.8`);
   });
 }
+
+test("vision-only candidates: unmatched, confident boxes that no listed control covers", () => {
+  const el = (id: string, role: UIElement["role"], x: number, y: number, w: number, h: number, interactive = true): UIElement =>
+    ({ id, role, label: id, bbox: { x, y, width: w, height: h }, isVisible: true, isInteractive: interactive });
+  const elements = [el("el_0", "button", 100, 100, 120, 40), el("el_1", "heading", 400, 100, 300, 40, false)];
+  const box = (x: number, y: number, w: number, h: number, confidence: number, matchedId?: string) =>
+    ({ role: "button" as const, bbox: { x, y, width: w, height: h }, confidence, ...(matchedId ? { matchedId } : {}) });
+  const visual = [
+    box(100, 100, 120, 40, 0.95, "el_0"), // 0: matched to a DOM button: already listed
+    box(300, 300, 90, 36, 0.9), //           1: a <div> tile only vision saw
+    box(105, 104, 60, 30, 0.9), //           2: unmatched, but centred on listed button el_0
+    box(420, 104, 100, 30, 0.8), //          3: over a heading: geometry keeps it, the page probe decides
+    box(600, 300, 90, 36, 0.4), //           4: not confident enough
+    box(0, 0, 1000, 700, 0.9), //            5: half the screen: layout, not a control
+    box(1250, 300, 90, 36, 0.9), //          6: centre outside the viewport
+    box(700, 500, 5, 30, 0.9), //            7: too thin
+  ];
+  const out = visionOnlyCandidates(visual, elements, { width: 1280, height: 800 }, { minConfidence: 0.6 });
+  assert.deepEqual(out.map((c) => c.index), [1, 3]);
+  assert.deepEqual(out[0]!.point, { x: 345, y: 318 });
+  assert.equal(visionOnlyCandidates(visual, elements, { width: 1280, height: 800 }, { minConfidence: 0.6, maxCandidates: 1 }).length, 1);
+});
