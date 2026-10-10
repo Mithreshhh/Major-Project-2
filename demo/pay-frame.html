@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PayEase</title>
+  <style>
+    /*
+     * A payment provider's widget, embedded by checkout.html from a different origin. The
+     * extension's content script runs in here too, so this frame's fields are hidden by the same
+     * rules as the page's, and the agent can press Pay inside it.
+     */
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14.5px/1.5 "Segoe UI", system-ui, sans-serif; color: #1f2937; background: #fff; }
+    .bar { display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #0f766e; }
+    .bar small { margin-left: auto; font-weight: 500; color: #6b7280; }
+    .body { padding: 16px 18px 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+    label { display: block; font-size: 12.5px; font-weight: 600; color: #6b7280; margin-bottom: 4px; }
+    input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; color: #111827; background: #f9fafb; margin-bottom: 12px; }
+    .pay { width: 100%; padding: 10px; border: 0; border-radius: 8px; background: #0f766e; color: #fff; font: 600 15px "Segoe UI", system-ui, sans-serif; cursor: pointer; }
+    #paid { margin-top: 10px; font-weight: 600; color: #0f766e; }
+  </style>
+</head>
+<body>
+  <div class="bar">PayEase<small>Saved details · secure payment</small></div>
+  <div class="body">
+    <div class="row">
+      <div><label for="holder">Card holder</label><input id="holder" readonly value="Jane Doe" /></div>
+      <div><label for="expiry">Expiry</label><input id="expiry" readonly value="08/29" /></div>
+    </div>
+    <label for="card">Card number</label><input id="card" readonly value="4111 1111 1111 1111" />
+    <div class="row">
+      <div><label for="receipt">Receipt to</label><input id="receipt" readonly value="jane.doe@example.com" /></div>
+      <div><label for="phone">Phone</label><input id="phone" readonly value="+91 98765 43210" /></div>
+    </div>
+    <button class="pay" id="pay" type="button">Pay ₹11,788</button>
+    <div id="paid" role="status"></div>
+  </div>
+  <script>
+    // Read by e2e/run-frames.mjs.
+    window.paid = false;
+    document.getElementById("pay").addEventListener("click", () => {
+      window.paid = true;
+      document.getElementById("paid").textContent = "Payment complete (test page, nothing was charged).";
+    });
+  </script>
+</body>
+</html>

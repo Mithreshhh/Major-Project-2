@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus - Checkout</title>
+  <link rel="stylesheet" href="site.css" />
+  <style>
+    .hero { padding: 30px 0 30px; margin-bottom: 26px; }
+    .hero h1 { font-size: 36px; margin: 10px 0 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .grid .card { padding: 24px; }
+    .lines { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; font-size: 15px; }
+    .lines dt { color: var(--muted); }
+    .lines dd { margin: 0; font-weight: 600; text-align: right; }
+    .lines .total { font-size: 18px; color: var(--ink); border-top: 1px solid var(--line); padding-top: 10px; }
+    iframe { width: 100%; height: 360px; border: 1px solid var(--line); border-radius: 12px; display: block; margin-bottom: 18px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a class="logo" href="index.html"><span class="logo-mark">N</span>Nimbus</a>
+      <nav><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="store.html">Store</a><a href="book.html">Book a call</a></nav>
+      <div class="right"><a href="login.html">Log in</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <span class="eyebrow">Checkout</span>
+      <h1>Upgrade to Pro</h1>
+      <p>Billed yearly. You can cancel any time before the next renewal.</p>
+    </section>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Order summary</h2>
+        <p class="sub">Pro plan for one workspace.</p>
+        <dl class="lines">
+          <dt>Pro plan, yearly</dt><dd>₹9,990</dd>
+          <dt>GST 18%</dt><dd>₹1,798</dd>
+          <dt class="total">Total</dt><dd class="total">₹11,788</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Payment</h2>
+        <p class="sub">Handled by PayEase. Your card details stay with them.</p>
+        <!-- Another origin on purpose (127.0.0.1 <-> localhost), as payment widgets are. -->
+        <iframe id="pay" title="PayEase payment"></iframe>
+        <div class="actions"><button id="place" type="button">Place order</button></div>
+        <div id="status" role="status"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container"><span class="copy">Nimbus test site · nothing here is real</span><a href="pricing.html">Pricing</a><a href="index.html">Support</a></div>
+  </footer>
+
+  <script>
+    const other = location.hostname === "localhost" ? "127.0.0.1" : "localhost";
+    document.getElementById("pay").src = `${location.protocol}//${other}:${location.port}/pay-frame.html`;
+    document.getElementById("place").addEventListener("click", () => {
+      document.getElementById("status").textContent = "Order placed (test page, nothing was charged).";
+    });
+  </script>
+</body>
+</html>
