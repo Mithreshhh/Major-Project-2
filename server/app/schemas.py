@@ -73,7 +73,7 @@ class RedactedRegion(_Strict):
     bbox: BoundingBox
     category: SensitiveCategory
     confidence: float = Field(ge=0, le=1)
-    method: Literal["ml", "heuristic", "dom"]
+    method: Literal["ml", "heuristic", "dom", "ocr"]
 
 
 class SanitizedScreenshot(_Strict):
@@ -98,6 +98,9 @@ class PerceptionSummary(_Strict):
     uiModelId: Optional[str] = None
     uiLatencyMs: Optional[float] = Field(default=None, ge=0)
     visualElements: Optional[list[VisualElement]] = None
+    ocrModelId: Optional[str] = None
+    ocrLatencyMs: Optional[float] = Field(default=None, ge=0)
+    ocrLines: Optional[int] = Field(default=None, ge=0)
 
 
 # ---------------------------------------------------------------------------
