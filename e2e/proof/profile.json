@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-06T17:42:26.907Z",
+  "date": "2026-10-10T06:53:01.999Z",
   "runs": [
     {
       "task": "Fill this application with my saved details, then submit it.",
       "person": "Me",
       "status": "done",
-      "seconds": 42,
+      "seconds": 23.9,
       "steps": [
         "Type the saved Full name into \"Full name\"",
         "Type the saved Email into \"Email\"",
@@ -20,7 +20,7 @@
         "Type the saved Skills into \"Skills\"",
         "Attach the saved Resume to \"Resume (PDF)\"",
         "Click \"Submit application\"",
-        "Done: Application submitted successfully."
+        "Done: Application filled and submitted successfully."
       ],
       "fieldsCorrect": "11/11",
       "file": {
@@ -35,7 +35,7 @@
       "task": "Fill this application with Father's details.",
       "person": "Father",
       "status": "needs_user",
-      "seconds": 13.2,
+      "seconds": 9.7,
       "steps": [
         "Type the saved Full name into \"Full name\"",
         "Type the saved Email into \"Email\"",
