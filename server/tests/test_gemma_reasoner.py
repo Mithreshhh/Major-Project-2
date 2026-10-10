@@ -463,3 +463,17 @@ def test_parse_action_rejects_vision_ids_that_were_not_sent(example_context):
         parse_action('{"action": "click", "target": "vis_3"}', ctx)
 
 
+def test_text_read_from_pixels_is_accepted_and_marked(example_context):
+    ocr_tile = {**VISION_CANVAS, "label": "Start game", "attributes": {"source": "vision", "surface": "canvas", "labelFrom": "ocr"}}
+    hidden_line = {"bbox": {"x": 650, "y": 600, "width": 180, "height": 24}, "category": "email", "confidence": 0.98, "method": "ocr"}
+    ctx = make_context(
+        example_context,
+        elements=[*example_context["elements"], ocr_tile],
+        redactions=[*example_context["redactions"], hidden_line],
+        perception={**example_context["perception"], "ocrModelId": "ppocr-v3-en", "ocrLatencyMs": 1500, "ocrLines": 13},
+    )
+    user = build_messages(ctx, max_elements=60, include_screenshot=False)[1]["content"]
+    assert 'vis_4 | button | "Start game"' in user and "text read from the pixels" in user
+    assert "no text available" not in user
+
+
