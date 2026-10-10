@@ -137,6 +137,8 @@ def format_element(el: UIElement, viewport: Viewport, *, image_attached: bool = 
             notes.append("ALREADY FILLED")
         if el.attributes.get("checked"):
             notes.append("checked")
+        if el.attributes.get("frame") == "embedded":
+            notes.append("inside an embedded frame")
         if el.attributes.get("source") == "vision":
             surface = el.attributes.get("surface")
             notes.append(f"seen in the screenshot only{_SURFACE_WORDS.get(surface or '', '')}")
