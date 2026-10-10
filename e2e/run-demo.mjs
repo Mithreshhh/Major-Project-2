@@ -32,7 +32,7 @@ const SERVER = process.env.ODPA_SERVER ?? "http://127.0.0.1:8000";
 const DEMO = process.env.ODPA_DEMO ?? "http://127.0.0.1:5500/";
 const TASK =
   process.env.ODPA_TASK ??
-  "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.";
+  "Fill in the contact form with name John Doe, email john@example.com, subject Charged twice this month and message I was charged twice for my Pro plan this month, please refund one payment. Then submit it.";
 
 const log = (...a) => console.log("[e2e]", ...a);
 
@@ -99,11 +99,12 @@ async function main() {
     const pageState = await page.evaluate(() => ({
       name: document.querySelector("#name").value,
       email: document.querySelector("#email").value,
+      subject: document.querySelector("#subject").value,
       message: document.querySelector("#message").value,
       status: document.querySelector("#status").textContent,
       log: [...document.querySelectorAll("#log li")].map((li) => li.textContent).reverse(),
     }));
-    log(`page now: name="${pageState.name}" email="${pageState.email}" message="${pageState.message}" status="${pageState.status}"`);
+    log(`page now: name="${pageState.name}" email="${pageState.email}" subject="${pageState.subject}" message="${pageState.message}" status="${pageState.status}"`);
 
     // What the server actually received on the first step.
     const captures = await fetch(`${SERVER}/debug/captures`).then((r) => r.json());

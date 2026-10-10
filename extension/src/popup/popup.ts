@@ -13,7 +13,7 @@ import { looksLikeQuestion, type BackgroundBroadcast, type PopupRequest, type Ta
 import { loadPeople, profileFieldNames, setActivePerson } from "../shared/profile";
 
 const DEMO_TASK =
-  "Fill in the contact form with name John Doe, email john@example.com and message Hello from the agent, then submit it.";
+  "Fill in the contact form with name John Doe, email john@example.com, subject Charged twice this month and message I was charged twice for my Pro plan this month, please refund one payment. Then submit it.";
 const DEMO_INFO_TASK = "Fill this form with my saved details, then submit it.";
 const DEMO_QUESTION = "What personal information is shown on this page, and what can I do here?";
 /** Questions that show reasoning, offered on the test site's store and pricing pages. */
