@@ -274,6 +274,52 @@ export function compareWithDom(
   };
 }
 
+/** A vision box that no listed element covers: a candidate to act on by position. */
+export interface VisionCandidate {
+  /** Index into the `visual` array it came from. */
+  index: number;
+  role: UiClass;
+  bbox: BoundingBox;
+  confidence: number;
+  /** Centre of the box in CSS pixels, viewport coordinates: where a click would land. */
+  point: { x: number; y: number };
+}
+
+export interface VisionCandidateOptions {
+  minConfidence?: number;
+  maxCandidates?: number;
+  /** Boxes covering more than this share of the viewport are layout, not controls. */
+  maxViewportShare?: number;
+}
+
+/**
+ * Vision boxes (CSS px, from compareWithDom) that are not already in the element list: unmatched,
+ * confident, inside the viewport, and not centred on a listed interactive element. Whether the
+ * page under the box is really clickable is for the content script to check (it can see the DOM
+ * there); this only does the geometry.
+ */
+export function visionOnlyCandidates(
+  visual: VisualElement[],
+  elements: UIElement[],
+  viewport: { width: number; height: number },
+  { minConfidence = 0.5, maxCandidates = 24, maxViewportShare = 0.25 }: VisionCandidateOptions = {}
+): VisionCandidate[] {
+  const listed = elements.filter((e) => e.isVisible && e.isInteractive);
+  const out: VisionCandidate[] = [];
+  visual.forEach((v, index) => {
+    if (v.matchedId || v.confidence < minConfidence) return;
+    const { x, y, width, height } = v.bbox;
+    if (width < 8 || height < 8 || width * height > maxViewportShare * viewport.width * viewport.height) return;
+    const point = { x: round1(x + width / 2), y: round1(y + height / 2) };
+    if (point.x < 0 || point.y < 0 || point.x >= viewport.width || point.y >= viewport.height) return;
+    const covered = listed.some(
+      (e) => point.x >= e.bbox.x && point.x <= e.bbox.x + e.bbox.width && point.y >= e.bbox.y && point.y <= e.bbox.y + e.bbox.height
+    );
+    if (!covered) out.push({ index, role: v.role, bbox: v.bbox, confidence: v.confidence, point });
+  });
+  return out.sort((a, b) => b.confidence - a.confidence).slice(0, maxCandidates);
+}
+
 function round1(v: number): number {
   return Math.round(v * 10) / 10;
 }
