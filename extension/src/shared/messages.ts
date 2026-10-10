@@ -90,6 +90,7 @@ export interface VisionStats {
 export type TaskStatus =
   | "running"
   | "confirm" // waiting for the user to allow a risky action
+  | "input" // waiting for the user to type an answer or skip a field
   | "done"
   | "answered" // ask mode: the answer is in `message`
   | "needs_user"
