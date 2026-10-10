@@ -102,7 +102,30 @@ export type TaskStatus =
 export interface Veto {
   status: TaskStatus;
   message: string;
+  /** Set when the user could unblock the step by answering in the popup instead. */
+  ask?: InputRequest;
+  /** Id of a field the agent chose to leave empty: not an error, the task goes on without it. */
+  skipField?: string;
+  /** The model repeated its last action (described here): skipped, and the task goes on. */
+  repeat?: string;
 }
+
+/** Something the agent asks the user in the popup, mid-task (status "input"). */
+export interface InputRequest {
+  question: string;
+  /** Field the answer is typed into; absent for a plain question from the agent. */
+  target?: string;
+  label?: string;
+  /** The field needs a saved file, so the answer cannot be typed: only "try again" or "skip". */
+  file?: boolean;
+  /** Pre-filled answer, e.g. what the agent wanted to type. */
+  suggestion?: string;
+}
+
+export type InputAnswer =
+  | { kind: "fill"; text: string; /** Also save it under My info. */ save?: boolean }
+  | { kind: "skip" }
+  | { kind: "retry" };
 
 export interface StepLog {
   index: number;
