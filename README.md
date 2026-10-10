@@ -118,6 +118,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `perception/test/redaction.test.ts` | Faces blacked out with margin; detector finds nothing afterwards |
 | `perception/test/pii.test.ts` | PII detection, no false positives on ordinary numbers, field rules |
 | `perception/test/ui-detector.test.ts` | Our UI detector on held-out demo screenshots, scored against their DOM boxes |
+| `perception/test/ocr.test.ts` | OCR decoding and box-finding, and the real models reading a payment widget's card, email and phone |
 | `extension/test/step.test.mjs` | The built worker with the real model sends only masked pixels; multi-step tasks |
 | `server/tests/` | Contract, prompt, parser, retries, error mapping, debug view |
 | `e2e/run-demo.mjs` | The whole system in Chrome; latest proof in `e2e/proof/` |
@@ -125,6 +126,7 @@ npm run e2e               # real Chrome + real extension + real Gemma on the dem
 | `e2e/run-profile.mjs` | A job application is filled from saved details; the values never reach the server |
 | `e2e/run-smart.mjs` | Reasoning on the store and pricing pages: each answer must contain the right fact |
 | `e2e/run-vision.mjs` | Books a call on a page whose controls are all `<div>`s, through elements only the vision model found |
+| `e2e/run-ocr.mjs` | Personal data in a PDF statement is found by OCR and never leaves; a canvas game is played through OCR-named buttons |
 | `e2e/popup-screens.mjs` | Drives the real popup (Run task, Allow, Ask) and the My info page, saves screenshots |
 
 ## Compression study
@@ -235,6 +237,40 @@ Limits found on the way: phrased as "Book a video call on Thursday at 11:30", th
 "video call" as the goal instead of an option to pick and skipped it in all 3 tries; naming the
 options works. A control drawn on a canvas is found and clickable but has no text in the page
 code, so a text-only model only knows where it is, not what it says.
+
+## Reading text from pixels (OCR)
+
+Some text exists only as pixels:
+
+- **Documents no extension may enter.** A PDF shown in Chrome's viewer (a bank statement, an
+  invoice) has no page code the content script can read, and its text used to reach the server
+  in the screenshot unredacted.
+- **Canvases and images of buttons.** A game menu drawn on a canvas has buttons the vision model
+  finds, but no text in the page code to say what they are.
+
+The extension runs PaddleOCR's PP-OCRv3 English models (detection 2.4 MB, recognition 9.0 MB,
+Apache-2.0, ONNX conversions by RapidOCR) on the same ONNX Runtime as the other models, inside
+the extension (`perception/src/ocr.ts`). They load the first time a page needs them and run only
+there, because reading a whole screen takes about 6.5 s on one CPU thread.
+
+- **Unreadable frames:** every line of text is read on the device. A line with personal data is
+  blacked out in the screenshot and becomes `[HIDDEN EMAIL]`-style text. The test is stricter
+  than for page text, because one misread digit would make a card number fail its checksum: any
+  run of 9 or more digits counts. A frame that cannot be read at all is blacked out whole.
+- **Questions** ("how much was the salary?") get the document's text, with those placeholders.
+- **Drawn controls:** a `vis_N` element on a canvas or image with no text gets its label read
+  from its box. The canvas itself stays blacked out: the reasoner gets the names, not the pixels.
+
+Proof: `npm run ocr --workspace=e2e`, 3 of 3 runs in real Chrome with real Gemma.
+
+| Page | What happened |
+| --- | --- |
+| `statement.html`, a bank statement in Chrome's PDF viewer | 22 lines read in 2.2 to 2.9 s. The email, phone and card number are black in the screenshot the server stored and appear nowhere in what it received. Asked about the salary, Gemma answered "+85,000.00" and said the personal details were hidden. |
+| `arcade.html`, a game menu drawn on a canvas | OCR named the 4 buttons ("Easy", "Normal", "Hard", "Start game"). "Choose Hard, then start the game." took 2 clicks and the game started. |
+
+Limits: English only (the rupee sign is read as "7" or "2"); names are not hidden (as on the
+page itself, the text rules catch emails, phones, card and ID numbers); text inside photos is not
+read, because every photo is already blacked out whole.
 
 ## Data contract
 
